@@ -1,0 +1,8 @@
+aws_region           = "eu-west-2"
+project_name         = "adhd-autism-platform"
+environment          = "staging"
+db_password          = "replace-me"
+openai_api_key       = "replace-me"
+frontend_image_tag   = "staging"
+backend_image_tag    = "staging"
+ai_workers_image_tag = "staging"

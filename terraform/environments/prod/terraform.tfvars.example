@@ -1,0 +1,36 @@
+aws_region              = "eu-west-2"
+project_name            = "adhd-autism-platform"
+environment             = "prod"
+db_password             = "replace-me-strong-password"
+openai_api_key          = "sk-replace-me"
+frontend_image_tag      = "latest"
+backend_image_tag       = "latest"
+ai_workers_image_tag    = "latest"
+
+# JWT — generate with: openssl rand -hex 32
+jwt_secret              = "replace-me-run-openssl-rand-hex-32"
+
+# WooCommerce webhook shared secret — must match WordPress webhook config
+webhook_secret          = "replace-me-run-openssl-rand-hex-32"
+
+# Public domain for the NeuroFlow frontend (e.g. app.neuroflow.co.uk or your custom domain)
+frontend_domain         = "app.neuroflow.co.uk"
+
+# ── Auth0 ──────────────────────────────────────────────────────────────────────
+# Create a free account at https://auth0.com, then fill these in.
+# Leave blank until you are ready to switch from JWT to Auth0.
+
+# Applications → Your App → Domain
+auth0_domain            = "your-tenant.eu.auth0.com"
+
+# APIs → Create API → set Identifier to this value
+auth0_audience          = "https://neuroaccess-api"
+
+# Applications → Your App → Client ID
+auth0_client_id         = "replace-me"
+
+# Applications → Your App → Client Secret
+auth0_client_secret     = "replace-me"
+
+# Next.js session encryption key — generate with: openssl rand -hex 32
+auth0_secret            = "replace-me-run-openssl-rand-hex-32"

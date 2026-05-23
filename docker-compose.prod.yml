@@ -1,0 +1,62 @@
+# Neuro Flow — production-like stack (local smoke test)
+# Host ports 3004 / 8004 — same as ports.env. Do not run ./run_local.sh at the same time.
+# Usage: copy backend/.env and frontend/.env.local from env.example, then:
+#   docker compose -f docker-compose.prod.yml up --build
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: neuroflow
+      POSTGRES_PASSWORD: neuroflow
+      POSTGRES_DB: neuroflow
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U neuroflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8004:8000"
+    environment:
+      ENVIRONMENT: production
+      DATABASE_URL: postgresql+psycopg2://neuroflow:neuroflow@db:5432/neuroflow
+      AUTH0_DOMAIN: ${AUTH0_DOMAIN:?set AUTH0_DOMAIN}
+      AUTH0_AUDIENCE: ${AUTH0_AUDIENCE:?set AUTH0_AUDIENCE}
+      JWT_SECRET: ${JWT_SECRET:-dev-only-unused-in-prod}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3004}
+      PLATFORM_BASE_URL: ${PLATFORM_BASE_URL:-http://localhost:3004}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      ENABLE_LEGACY_WOOCOMMERCE_WEBHOOK: "false"
+      ALLOW_PUBLIC_SIGNUP: "true"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3004:3000"
+    environment:
+      NODE_ENV: production
+      BACKEND_URL: http://api:8000
+      AUTH0_SECRET: ${AUTH0_SECRET:?set AUTH0_SECRET}
+      AUTH0_BASE_URL: ${AUTH0_BASE_URL:-http://localhost:3004}
+      AUTH0_ISSUER_BASE_URL: ${AUTH0_ISSUER_BASE_URL:?set AUTH0_ISSUER_BASE_URL}
+      AUTH0_CLIENT_ID: ${AUTH0_CLIENT_ID:?set AUTH0_CLIENT_ID}
+      AUTH0_CLIENT_SECRET: ${AUTH0_CLIENT_SECRET:?set AUTH0_CLIENT_SECRET}
+      AUTH0_AUDIENCE: ${AUTH0_AUDIENCE:?set AUTH0_AUDIENCE}
+    depends_on:
+      - api
+
+volumes:
+  pgdata:

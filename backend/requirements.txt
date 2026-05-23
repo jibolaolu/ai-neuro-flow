@@ -1,0 +1,15 @@
+alembic==1.14.1
+anthropic>=0.40.0
+apscheduler==3.10.4
+bcrypt==4.2.1
+fastapi==0.115.5
+python-jose[cryptography]==3.3.0
+pydantic[email]==2.10.3
+pydantic-settings==2.6.1
+python-multipart==0.0.20
+pytest==8.3.3
+reportlab==4.2.5
+sendgrid==6.11.0
+sqlalchemy==2.0.36
+psycopg2-binary==2.9.10
+uvicorn[standard]==0.32.1

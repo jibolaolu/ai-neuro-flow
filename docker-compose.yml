@@ -1,0 +1,43 @@
+# Dev Docker stack — host ports match ports.env (Neuro Flow 3004 / 8004).
+# Do not run alongside ./run_local.sh on the same machine (same host ports).
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: ./backend
+    ports:
+      - "${NEUROFLOW_API_PORT:-8004}:8000"
+    environment:
+      DATABASE_URL: sqlite:///./neuro_flow.db
+      OPENAI_MODEL: gpt-4o-mini
+      ENVIRONMENT: development
+      JWT_SECRET: local-dev-jwt-secret-not-for-production
+      WEBHOOK_SECRET: local-dev-webhook-secret-not-for-production
+      FRONTEND_URL: http://localhost:${NEUROFLOW_WEB_PORT:-3004}
+      WORDPRESS_STAGING_URL: ""
+      WORDPRESS_PRODUCTION_URL: ""
+    volumes:
+      - ./backend:/app
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "${NEUROFLOW_WEB_PORT:-3004}:3000"
+    depends_on:
+      - backend
+    environment:
+      NEXT_PUBLIC_API_URL: http://backend:8000
+    volumes:
+      - ./frontend:/app
+
+  ai-workers:
+    build:
+      context: ./ai-workers
+    depends_on:
+      - backend
+    environment:
+      API_BASE_URL: http://backend:8000
+    volumes:
+      - ./ai-workers:/app
