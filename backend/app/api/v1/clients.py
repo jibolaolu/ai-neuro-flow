@@ -618,3 +618,93 @@ def regenerate_ai_report(
     profile.ai_clinical_report = _json.dumps(result)
     db.commit()
     return {"available": True, "report": result, "scores": scores}
+
+
+@router.get("/{client_id}/session-brief")
+def get_session_brief(
+    client_id: str,
+    db:   Session    = Depends(get_db),
+    user: UserRecord = Depends(require_roles("clinician", "senior-clinician", "clinic-admin", "clinical-admin")),
+):
+    """AI-generated pre-session brief for the assigned clinician."""
+    import json as _json
+    from app.services.session_brief_service import SessionBriefService
+
+    record  = get_client_for_user(db, user, client_id)
+    profile = db.query(ClientProfileRecord).filter(ClientProfileRecord.client_id == client_id).first()
+
+    scores = _json.loads(profile.scores or "{}") if profile else {}
+    clinician_name = getattr(record, "assigned_clinician_name", None) or "the assigned clinician"
+    session_time   = record.confirmed_session_at.isoformat() if record.confirmed_session_at else "TBC"
+
+    # Gather recent case notes
+    from app.models.client_case_note import ClientCaseNoteRecord
+    notes = [
+        n.body for n in
+        db.query(ClientCaseNoteRecord)
+        .filter(ClientCaseNoteRecord.client_id == client_id)
+        .order_by(ClientCaseNoteRecord.created_at.desc())
+        .limit(5)
+        .all()
+    ]
+
+    svc = SessionBriefService()
+    payload = svc.build_ai_payload(
+        case_id        = record.assessment_id or client_id,
+        client_name    = record.full_name,
+        clinician_name = clinician_name,
+        session_time   = session_time,
+        pathway        = record.pathway or "ADHD",
+        age_group      = record.age_group or "Adult",
+        scores         = scores or None,
+        case_notes     = notes or None,
+    )
+    return {"session_brief": payload.dict(), "client_id": client_id}
+
+
+@router.post("/{client_id}/follow-up/schedule", status_code=201)
+def schedule_client_follow_up(
+    client_id: str,
+    months_offsets: list[int] | None = None,
+    db:   Session    = Depends(get_db),
+    user: UserRecord = Depends(require_roles("clinician", "senior-clinician", "clinic-admin", "clinical-admin")),
+):
+    """Schedule post-assessment follow-up forms at 3, 6, 12 months."""
+    import uuid as _uuid
+    from datetime import timedelta
+    from app.models.follow_up_schedule import FollowUpScheduleRecord, FOLLOWUP_STATUS_PENDING
+    from app.services.tenant import effective_clinic_id
+
+    record    = get_client_for_user(db, user, client_id)
+    clinic_id = effective_clinic_id(user)
+    now       = __import__("datetime").datetime.now(__import__("datetime").timezone.utc)
+    offsets   = months_offsets or [3, 6, 12]
+
+    existing = {
+        r.months_offset for r in
+        db.query(FollowUpScheduleRecord).filter(
+            FollowUpScheduleRecord.client_id == client_id,
+            FollowUpScheduleRecord.status == FOLLOWUP_STATUS_PENDING,
+        ).all()
+    }
+
+    created = []
+    for months in sorted(set(offsets)):
+        if months not in {3, 6, 12} or months in existing:
+            continue
+        rec = FollowUpScheduleRecord(
+            id              = f"FUP-{_uuid.uuid4().hex[:8].upper()}",
+            client_id       = client_id,
+            clinic_id       = clinic_id,
+            assessment_id   = record.assessment_id,
+            recipient_email = record.email,
+            client_name     = record.full_name,
+            months_offset   = months,
+            due_at          = now + timedelta(days=months * 30),
+            created_by      = user.id,
+        )
+        db.add(rec)
+        created.append({"months_offset": months, "due_at": rec.due_at.isoformat()})
+
+    db.commit()
+    return {"scheduled": created, "total": len(created)}

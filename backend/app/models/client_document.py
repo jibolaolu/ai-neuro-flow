@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
 from pydantic import BaseModel
-from sqlalchemy import Column, DateTime, Integer, String
+from sqlalchemy import Column, DateTime, Integer, String, Text
 
 from app.db.base import Base
 
@@ -20,6 +20,8 @@ class ClientDocumentRecord(Base):
     uploaded_by_user_id = Column(String, nullable=False)
     uploaded_by_name = Column(String, nullable=False)
     audience = Column(String, nullable=False)
+    ocr_text = Column(Text, nullable=True)        # extracted text from OCR
+    indexed_at = Column(DateTime, nullable=True)  # when indexed in ChromaDB
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 

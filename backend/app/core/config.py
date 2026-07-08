@@ -58,6 +58,13 @@ class Settings(BaseSettings):
     # Client document uploads (PDF, images, DOCX). Relative paths resolve under backend dir.
     document_upload_dir: str = ""
 
+    # ChromaDB vector store — persists embeddings for RAG
+    chroma_persist_dir: str = ""          # defaults to {backend_dir}/chroma_db
+    embedding_model: str = "all-MiniLM-L6-v2"  # sentence-transformers model
+
+    # OCR
+    tesseract_cmd: str = ""               # override system tesseract path if needed
+
     # Optional: one URL used for all session confirmation emails (Zoom / Google Meet recurring link).
     static_video_meeting_url: str = ""
 

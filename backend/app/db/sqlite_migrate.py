@@ -202,3 +202,39 @@ def ensure_sqlite_columns(engine: Engine) -> None:
                         conn.commit()
         except Exception:
             conn.rollback()
+        # ── client_documents: OCR columns ────────────────────────────────────
+        try:
+            cd_tbl = conn.execute(
+                text("SELECT name FROM sqlite_master WHERE type='table' AND name='client_documents'"),
+            ).fetchone()
+            if cd_tbl:
+                cd_cols = _sqlite_columns(conn, "client_documents")
+                for col, sql_typ in [
+                    ("ocr_text",   "TEXT"),
+                    ("indexed_at", "DATETIME"),
+                ]:
+                    if col not in cd_cols:
+                        conn.execute(text(f"ALTER TABLE client_documents ADD COLUMN {col} {sql_typ}"))
+                        conn.commit()
+        except Exception:
+            conn.rollback()
+        # ── ai_jobs / client_outcomes: new tables — create_all handles these,
+        #    but guard additive columns for forward compatibility
+        try:
+            aj_tbl = conn.execute(
+                text("SELECT name FROM sqlite_master WHERE type='table' AND name='ai_jobs'"),
+            ).fetchone()
+            if aj_tbl:
+                aj_cols = _sqlite_columns(conn, "ai_jobs")
+                for col, sql_typ in [
+                    ("clinic_id",    "VARCHAR"),
+                    ("created_by",   "VARCHAR"),
+                    ("started_at",   "DATETIME"),
+                    ("completed_at", "DATETIME"),
+                    ("error",        "TEXT"),
+                ]:
+                    if col not in aj_cols:
+                        conn.execute(text(f"ALTER TABLE ai_jobs ADD COLUMN {col} {sql_typ}"))
+                        conn.commit()
+        except Exception:
+            conn.rollback()

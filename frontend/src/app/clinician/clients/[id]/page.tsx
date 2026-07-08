@@ -2,12 +2,14 @@
 import { cookies } from "next/headers";
 
 import { ClientCaseNotesPanel } from "../../../../components/client-case-notes-panel";
+import { CalendarSyncButtons } from "../../../../components/calendar-sync-buttons";
 import { PersonalDetailsEditor, ReferralDataPanel, RiskAssessmentPanel } from "../../../../components/client-record-panels";
 import { DocumentWorkbench } from "../../../../components/document-workbench";
 import { ClientFormsPanel } from "../../../../components/client-forms-panel";
 import { ReportEditor } from "../../../../components/report-editor";
 import { ConsentPanel } from "../../../../components/consent-panel";
 import { RoleDashboardShell } from "../../../../components/role-dashboard-shell";
+import { AIAssistantPanel } from "../../../../components/ai-assistant-panel";
 import { getClientForms } from "../../../../lib/api";
 import { getClientCareRecord } from "../../../../lib/api-server";
 import { getClinicalStaffNav } from "../../../../lib/clinical-staff-nav";
@@ -178,6 +180,16 @@ export default async function ClinicianClientDetailPage({
                   </article>
                 </div>
 
+                {client.confirmed_session_at && (
+                  <article className="mini-card" style={{ paddingBottom: 16 }}>
+                    <h3>Assessment appointment</h3>
+                    <p style={{ fontSize: 13, color: "var(--ink)", marginTop: 0 }}>
+                      <strong>{new Date(client.confirmed_session_at).toLocaleString("en-GB", { dateStyle: "full", timeStyle: "short" })}</strong>
+                    </p>
+                    <CalendarSyncButtons clientId={client.id} />
+                  </article>
+                )}
+
                 <article className="mini-card">
                   <h3>Patient record</h3>
                   <div className="detail-metadata portal-summary-grid operational-record-grid">
@@ -258,7 +270,13 @@ export default async function ClinicianClientDetailPage({
             {activeTab === "risk-assessment" && <RiskAssessmentPanel client={client} />}
 
             {activeTab === "reports" && (
-              <ReportEditor client={client} userRole={staffRole} currentUserId={null} />
+              <>
+                <AIAssistantPanel
+                  clientId={client.id}
+                  tools={["report", "soap", "qa", "synthesis", "risk"]}
+                />
+                <ReportEditor client={client} userRole={staffRole} />
+              </>
             )}
 
             {activeTab === "consents" && <ConsentPanel client={client} />}

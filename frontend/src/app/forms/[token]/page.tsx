@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 
 import { FormShell } from "../../../components/form-shell";
+import { ClientAIChat } from "../../../components/client-ai-chat";
+import { ClientProgressTracker } from "../../../components/client-progress-tracker";
 import { serverApiUrl } from "../../../lib/get-api-base";
 import { FormRouter } from "./FormRouter";
 
@@ -60,6 +62,9 @@ export default async function FormPage({
         )}
       </div>
 
+      {/* Progress tracker — always visible so client can see their journey */}
+      <ClientProgressTracker formToken={params.token} />
+
       {info.status === "submitted" ? (
         <div
           style={{
@@ -87,13 +92,21 @@ export default async function FormPage({
           </p>
         </div>
       ) : (
-        <FormRouter
-          token={params.token}
-          formType={info.form_type}
-          clientName={info.client_name}
-          clientEmail={info.client_email}
-          prefill={info.prefill ?? {}}
-        />
+        <>
+          <FormRouter
+            token={params.token}
+            formType={info.form_type}
+            clientName={info.client_name}
+            clientEmail={info.client_email}
+            prefill={info.prefill ?? {}}
+          />
+          <div style={{ marginTop: "2rem" }}>
+            <ClientAIChat
+              formToken={params.token}
+              assessmentType={info.form_type ?? "Assessment"}
+            />
+          </div>
+        </>
       )}
     </FormShell>
   );

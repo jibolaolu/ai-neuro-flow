@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { ClinicSubscriptionPanelLazy } from "../../components/clinic-subscription-panel-lazy";
 import { RoleDashboardShell } from "../../components/role-dashboard-shell";
+import { RevenueWidget } from "../../components/revenue-widget";
 import { getClinicAdminNav } from "../../lib/clinic-admin-nav";
 import { getClientForms, getClients, type FormTokenRecord } from "../../lib/api";
 
@@ -80,6 +81,7 @@ export default async function ClinicAdminPage() {
     >
       <div className="page-shell dashboard-page-shell compact-shell">
         <ClinicSubscriptionPanelLazy compact />
+        <RevenueWidget />
         <section className="admin-dashboard-grid" style={{ marginTop: "1rem" }}>
 
           {/* ── Metric strip ──────────────────────────────────────────────── */}

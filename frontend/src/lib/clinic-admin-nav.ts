@@ -44,6 +44,57 @@ export function getClinicAdminNav(activeHref: string): AdminNavGroup[] {
       ],
     },
     {
+      label: "NHS / Referrals",
+      items: [
+        {
+          href: "/clinic-admin/referrals",
+          label: "Right to Choose",
+          icon: "RTC",
+          active: activeHref.startsWith("/clinic-admin/referrals"),
+        },
+        {
+          href: "/clinic-admin/triage",
+          label: "Waiting List Triage",
+          icon: "WL",
+          active: activeHref.startsWith("/clinic-admin/triage"),
+        },
+        {
+          href: "/clinic-admin/nhs-connect",
+          label: "NHS / EMIS Connect",
+          icon: "NHS",
+          active: activeHref.startsWith("/clinic-admin/nhs-connect"),
+        },
+      ],
+    },
+    {
+      label: "Clinical",
+      items: [
+        {
+          href: "/clinic-admin/prescriptions",
+          label: "Prescribing & Titration",
+          icon: "Rx",
+          active: activeHref.startsWith("/clinic-admin/prescriptions"),
+        },
+      ],
+    },
+    {
+      label: "Governance",
+      items: [
+        {
+          href: "/clinic-admin/compliance",
+          label: "CQC Compliance",
+          icon: "CQC",
+          active: activeHref.startsWith("/clinic-admin/compliance"),
+        },
+        {
+          href: "/clinic-admin/ig-workflow",
+          label: "Caldicott / IG",
+          icon: "IG",
+          active: activeHref.startsWith("/clinic-admin/ig-workflow"),
+        },
+      ],
+    },
+    {
       label: "Finance",
       items: [
         {
@@ -51,6 +102,12 @@ export function getClinicAdminNav(activeHref: string): AdminNavGroup[] {
           label: "Contractor invoices",
           icon: "FN",
           active: activeHref.startsWith("/clinic-admin/finance"),
+        },
+        {
+          href: "/clinic-admin/invoices",
+          label: "Client invoices",
+          icon: "INV",
+          active: activeHref.startsWith("/clinic-admin/invoices"),
         },
       ],
     },

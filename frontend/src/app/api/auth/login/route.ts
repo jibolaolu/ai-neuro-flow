@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { handleLogin } from "@auth0/nextjs-auth0";
+import { initAuth0 } from "@auth0/nextjs-auth0";
 
 import { authCookieOptions, displayCookieOptions } from "../../../../lib/cookie-options";
 import { isAuth0Configured } from "../../../../lib/auth0-config";
@@ -19,23 +19,68 @@ const ROLE_MAP: Record<string, string> = {
   "clinician": "clinician",
 };
 
+const AUTH_ORIGIN_COOKIE = "_a0_origin";
+const COOKIE_OPTS = "HttpOnly; SameSite=Lax; Secure; Max-Age=600; Path=/";
+
 const audience = process.env.AUTH0_AUDIENCE;
+
+/**
+ * Derive the public-facing origin from request context.
+ *
+ * Priority:
+ *  1. Referer header — present when user navigated from an app page (e.g. /login).
+ *     For Cloudflare requests the Referer contains the eaglesoncloude.com origin.
+ *  2. X-Forwarded-Host — cloudflared sets this; nginx preserves when map is configured.
+ *  3. Host header — always the localtest.me hostname after nginx normalisation.
+ */
+function detectBaseUrl(req: NextRequest): string {
+  const proto = req.headers.get("x-forwarded-proto")?.split(",")[0]?.trim() || "https";
+
+  const referer = req.headers.get("referer");
+  if (referer) {
+    try {
+      const refOrigin = new URL(referer).origin;
+      if (
+        refOrigin &&
+        !refOrigin.includes("localtest.me") &&
+        !refOrigin.includes("localhost") &&
+        !refOrigin.includes("127.0.0.1") &&
+        !refOrigin.includes("auth0.com")
+      ) {
+        return refOrigin;
+      }
+    } catch {}
+  }
+
+  const fwdHost = req.headers.get("x-forwarded-host")?.split(",")[0]?.trim();
+  if (fwdHost && !fwdHost.includes("localtest.me") && !fwdHost.includes("localhost")) {
+    return `${proto}://${fwdHost}`;
+  }
+
+  const host = fwdHost || req.headers.get("host") || req.nextUrl.host;
+  return `${proto}://${host}`;
+}
 
 // Auth0 sign-in (GET) — redirects to Auth0 hosted login page.
 // This must live here because Next.js routes static segments before [auth0].
 // prompt=login forces Auth0 to always show the login screen even when an
 // existing Auth0 session is present (e.g. after our app session is cleared).
-const auth0Login = handleLogin({
-  returnTo: "/api/auth/sync",
-  authorizationParams: {
-    scope: "openid profile email",
-    prompt: "login",
-    ...(audience ? { audience } : {}),
-  },
-}) as unknown as (request: NextRequest) => Promise<Response>;
-
-export function GET(request: NextRequest) {
-  return auth0Login(request);
+export async function GET(request: NextRequest) {
+  const baseURL = detectBaseUrl(request);
+  const auth0 = initAuth0({ baseURL });
+  const loginRes = await auth0.handleLogin({
+    returnTo: "/api/auth/sync",
+    authorizationParams: {
+      scope: "openid profile email",
+      prompt: "login",
+      ...(audience ? { audience } : {}),
+    },
+  })(request);
+  // Store the detected origin so the callback handler (/api/auth/[auth0]) uses
+  // the same baseURL for the token exchange redirect_uri.
+  const headers = new Headers(loginRes.headers);
+  headers.append("Set-Cookie", `${AUTH_ORIGIN_COOKIE}=${encodeURIComponent(baseURL)}; ${COOKIE_OPTS}`);
+  return new Response(loginRes.body, { status: loginRes.status, headers });
 }
 
 // JWT password login (POST) — dev-only fallback when Auth0 is not configured

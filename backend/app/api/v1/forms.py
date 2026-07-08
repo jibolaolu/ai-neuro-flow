@@ -856,6 +856,92 @@ class ClientFormsResponse(BaseModel):
     all_submitted: bool
 
 
+@router.get("/progress/{token}")
+def get_form_progress(token: str, db: Session = Depends(get_db)) -> dict:
+    """Returns the client's overall assessment journey progress for the forms portal."""
+    record = db.query(FormToken).filter(FormToken.token == token).first()
+    if not record:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Token not found")
+
+    client = db.query(ClientRecord).filter(ClientRecord.id == record.client_id).first()
+    if not client:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Client not found")
+
+    # All tokens for this client — ordered by sent_at
+    all_tokens = (
+        db.query(FormToken)
+        .filter(FormToken.client_id == record.client_id)
+        .order_by(FormToken.sent_at)
+        .all()
+    )
+
+    steps = []
+    any_active_seen = False
+    for t in all_tokens:
+        if t.status == STATUS_SUBMITTED:
+            status_val = "complete"
+        elif not any_active_seen:
+            status_val = "active"
+            any_active_seen = True
+        else:
+            status_val = "pending"
+
+        steps.append({
+            "key": t.id,
+            "label": FORM_TYPE_LABELS.get(t.form_type, t.form_type),
+            "status": status_val,
+            "completed_at": t.submitted_at.isoformat() if t.submitted_at else None,
+            "detail": f"Sent to {t.recipient_email}" if t.recipient_email else None,
+        })
+
+    # Add appointment step
+    session_status = "pending"
+    session_detail = None
+    if client.confirmed_session_at:
+        session_status = "complete" if not any_active_seen else "pending"
+        session_detail = f"Booked: {client.confirmed_session_at[:10]}"
+
+    steps.append({
+        "key": "appointment",
+        "label": "Assessment appointment",
+        "status": session_status,
+        "completed_at": client.confirmed_session_at,
+        "detail": session_detail,
+    })
+
+    # Add report step
+    from app.models.clinical_report import ClinicalReportRecord  # lazy import
+    reports = db.query(ClinicalReportRecord).filter(ClinicalReportRecord.client_id == record.client_id).all()
+    report_status = "pending"
+    report_detail = None
+    if reports:
+        issued = [r for r in reports if r.status == "issued"]
+        if issued:
+            report_status = "complete"
+            report_detail = f"Report issued {issued[0].updated_at.strftime('%d %b %Y') if issued[0].updated_at else ''}"
+        else:
+            report_status = "active"
+            report_detail = f"Status: {reports[0].status}"
+
+    steps.append({
+        "key": "report",
+        "label": "Assessment report",
+        "status": report_status,
+        "completed_at": None,
+        "detail": report_detail,
+    })
+
+    complete_count = sum(1 for s in steps if s["status"] == "complete")
+    overall_percent = round((complete_count / len(steps)) * 100) if steps else 0
+
+    return {
+        "client_name": client.full_name or client.child_name or "Client",
+        "pathway": client.pathway or "Assessment",
+        "steps": steps,
+        "overall_percent": overall_percent,
+    }
+
+
 @router.get("/client/{client_id}", response_model=ClientFormsResponse)
 def list_client_forms(
     client_id: str,

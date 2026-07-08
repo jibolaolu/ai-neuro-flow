@@ -11,6 +11,8 @@ import { ReportEditor } from "../../../../components/report-editor";
 import { ConsentPanel } from "../../../../components/consent-panel";
 import { RoleDashboardShell } from "../../../../components/role-dashboard-shell";
 import { AiClinicalReportCard } from "../../../../components/ai-clinical-report-card";
+import { AIAssistantPanel } from "../../../../components/ai-assistant-panel";
+import { CalendarSyncButtons } from "../../../../components/calendar-sync-buttons";
 import { getClinicAdminNav } from "../../../../lib/clinic-admin-nav";
 import { getClient, getClientForms } from "../../../../lib/api";
 import { getClientAuthedForAdmin, getClientEmailLogAuthed } from "../../../../lib/api-server";
@@ -270,6 +272,11 @@ export default async function ClinicAdminClientDetailPage({
                                 ? new Date(client.confirmed_session_at!).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
                                 : "Not yet booked"}
                             </p>
+                            {isAssessmentScheduled && (
+                              <div style={{ marginTop: 8 }}>
+                                <CalendarSyncButtons clientId={client.id} />
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -532,7 +539,10 @@ export default async function ClinicAdminClientDetailPage({
 
             {/* REPORTS */}
             {activeTab === "reports" && (
-              <ReportEditor client={client} userRole="clinic-admin" currentUserId={null} />
+              <>
+                <AIAssistantPanel clientId={client.id} tools={["report", "qa", "synthesis", "risk"]} />
+                <ReportEditor client={client} userRole="clinic-admin" />
+              </>
             )}
 
             {/* CONSENTS */}

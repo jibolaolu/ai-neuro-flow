@@ -106,10 +106,55 @@ export function ClientSlotBooking({ token }: { token: string }) {
           </p>
 
           {ctx.already_booked ? (
-            <p className="inline-badge status-good">
-              You already have a time booked
-              {ctx.confirmed_session_at ? ` (${new Date(ctx.confirmed_session_at).toLocaleString("en-GB")})` : ""}.
-            </p>
+            <>
+              <p className="inline-badge status-good">
+                You already have a time booked
+                {ctx.confirmed_session_at ? ` (${new Date(ctx.confirmed_session_at).toLocaleString("en-GB")})` : ""}.
+              </p>
+              {/* Calendar sync buttons */}
+              <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <a
+                  href={browserApiUrl(`/api/v1/public/appointment-links?token=${encodeURIComponent(token)}`).replace("/appointment-links", "/appointment-links")}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="ghost-chip"
+                  style={{ fontSize: 12 }}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    void fetch(browserApiUrl(`/api/v1/public/appointment-links?token=${encodeURIComponent(token)}`))
+                      .then((r) => r.json())
+                      .then((d: { google?: string; outlook?: string }) => {
+                        if (d.google) window.open(d.google, "_blank");
+                      });
+                  }}
+                >
+                  + Google Calendar
+                </a>
+                <a
+                  href="#"
+                  className="ghost-chip"
+                  style={{ fontSize: 12 }}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    void fetch(browserApiUrl(`/api/v1/public/appointment-links?token=${encodeURIComponent(token)}`))
+                      .then((r) => r.json())
+                      .then((d: { google?: string; outlook?: string }) => {
+                        if (d.outlook) window.open(d.outlook, "_blank");
+                      });
+                  }}
+                >
+                  + Outlook
+                </a>
+                <a
+                  href={browserApiUrl(`/api/v1/public/appointment-links?token=${encodeURIComponent(token)}`).replace("appointment-links", "calendar.ics")}
+                  download="appointment.ics"
+                  className="ghost-chip"
+                  style={{ fontSize: 12 }}
+                >
+                  Download .ics
+                </a>
+              </div>
+            </>
           ) : (
             <>
               <p style={{ color: "var(--text-muted)", fontSize: 14 }}>

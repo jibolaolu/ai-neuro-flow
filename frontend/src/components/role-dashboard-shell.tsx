@@ -4,6 +4,11 @@ import type { ReactNode } from "react";
 
 import { ClinicalSidebarIcon } from "./clinical-sidebar-icons";
 import { InactivityGuard } from "./inactivity-guard";
+import { MobileBottomNav } from "./mobile-bottom-nav";
+import { MobileNavDrawer } from "./mobile-nav-drawer";
+import { PushNotificationManager } from "./push-notification-manager";
+import { PwaInstallPrompt } from "./pwa-install-prompt";
+import { SwUpdateBanner } from "./sw-update-banner";
 import { SESSION_START_COOKIE, type MockRoleKey } from "../lib/mock-auth";
 import { BRAND } from "../lib/branding";
 
@@ -110,13 +115,23 @@ export async function RoleDashboardShell({
         </aside>
 
         <section className="dashboard-main">
+          <SwUpdateBanner />
+          <PwaInstallPrompt />
           <header className={`dashboard-topbar ${clinicalPortal ? "dashboard-topbar--clinical" : ""}`}>
-            <div style={{ minWidth: 0 }}>
-              <span className="dashboard-breadcrumb">
-                {BRAND.name} / {sectionLabel}
-              </span>
-              <span className="dashboard-date">{today}</span>
-              {title && <h1>{title}</h1>}
+            <div style={{ minWidth: 0, display: "flex", alignItems: "center", gap: 10 }}>
+              <MobileNavDrawer
+                navGroups={navGroups}
+                brandName={BRAND.name}
+                userName={userName}
+                logoutHref="/api/auth/logout"
+              />
+              <div>
+                <span className="dashboard-breadcrumb">
+                  {BRAND.name} / {sectionLabel}
+                </span>
+                <span className="dashboard-date">{today}</span>
+                {title && <h1>{title}</h1>}
+              </div>
             </div>
             <div className="dashboard-topbar-side">
               {clinicalPortal ? (
@@ -160,7 +175,11 @@ export async function RoleDashboardShell({
             </div>
           )}
 
-          <div className="dashboard-content">{children}</div>
+          <div className="dashboard-content">
+            <PushNotificationManager />
+            {children}
+          </div>
+          <MobileBottomNav role={role as "clinician" | "senior-clinician" | "clinic-admin" | "super-platform-admin"} />
         </section>
       </section>
     </main>

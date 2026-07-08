@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { browserApiUrl } from "../lib/get-api-base";
+import { VoiceNoteButton } from "./voice-note-button";
 
 export type CaseNoteRow = {
   id: string;
@@ -11,11 +12,16 @@ export type CaseNoteRow = {
   created_at: string | null;
 };
 
+type SafeguardFlag = { category: string; match: string; excerpt: string };
+
 export function ClientCaseNotesPanel({ clientId }: { clientId: string }) {
   const [items, setItems] = useState<CaseNoteRow[]>([]);
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [safeguardFlags, setSafeguardFlags] = useState<SafeguardFlag[]>([]);
+  const [safeguardSeverity, setSafeguardSeverity] = useState<"none"|"low"|"medium"|"high">("none");
+  const sgDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const load = useCallback(async () => {
     setErr(null);
@@ -37,6 +43,27 @@ export function ClientCaseNotesPanel({ clientId }: { clientId: string }) {
   useEffect(() => {
     void load();
   }, [load]);
+
+  function handleBodyChange(text: string) {
+    setBody(text);
+    if (sgDebounce.current) clearTimeout(sgDebounce.current);
+    if (text.length < 20) { setSafeguardFlags([]); setSafeguardSeverity("none"); return; }
+    sgDebounce.current = setTimeout(async () => {
+      try {
+        const r = await fetch(browserApiUrl("/api/v1/ai/safeguarding-check"), {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text }),
+        });
+        if (r.ok) {
+          const d = await r.json() as { severity: "none"|"low"|"medium"|"high"; flags: SafeguardFlag[] };
+          setSafeguardFlags(d.flags);
+          setSafeguardSeverity(d.severity);
+        }
+      } catch { /* silent */ }
+    }, 1200);
+  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -79,16 +106,52 @@ export function ClientCaseNotesPanel({ clientId }: { clientId: string }) {
 
       <form onSubmit={(e) => void onSubmit(e)} style={{ marginBottom: "1.25rem" }}>
         <label className="key-value-item" style={{ display: "block", marginBottom: 8 }}>
-          <span>New note</span>
+          <span style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <span>New note</span>
+            <VoiceNoteButton
+              disabled={busy}
+              onTranscript={(t) => setBody((prev) => prev ? `${prev} ${t}` : t)}
+            />
+          </span>
           <textarea
             className="patient-table-textarea"
-            style={{ minHeight: 100, width: "100%", marginTop: 6 }}
+            style={{ minHeight: 100, width: "100%", marginTop: 6, borderColor: safeguardSeverity === "high" ? "#ef4444" : safeguardSeverity === "medium" ? "#f59e0b" : undefined }}
             value={body}
-            onChange={(e) => setBody(e.target.value)}
-            placeholder="Record contact, clinical update, or handoff…"
+            onChange={(e) => handleBodyChange(e.target.value)}
+            placeholder="Record contact, clinical update, or handoff… or click Dictate to speak"
             disabled={busy}
           />
         </label>
+        {/* Safeguarding alert banner */}
+        {safeguardSeverity !== "none" && safeguardFlags.length > 0 && (
+          <div style={{
+            marginTop: 8,
+            marginBottom: 4,
+            padding: "10px 14px",
+            borderRadius: 8,
+            background: safeguardSeverity === "high" ? "#fef2f2" : safeguardSeverity === "medium" ? "#fffbeb" : "#f8fafc",
+            border: `1px solid ${safeguardSeverity === "high" ? "#fca5a5" : safeguardSeverity === "medium" ? "#fcd34d" : "#e2e8f0"}`,
+          }}>
+            <div style={{
+              fontSize: "0.72rem",
+              fontWeight: 800,
+              textTransform: "uppercase" as const,
+              letterSpacing: "0.07em",
+              color: safeguardSeverity === "high" ? "#dc2626" : safeguardSeverity === "medium" ? "#d97706" : "#64748b",
+              marginBottom: 4,
+            }}>
+              ⚠ Safeguarding indicator detected — {safeguardSeverity} priority
+            </div>
+            {safeguardFlags.slice(0, 3).map((f, i) => (
+              <div key={i} style={{ fontSize: "0.75rem", color: "#475569", marginBottom: 2 }}>
+                <strong style={{ textTransform: "capitalize" as const }}>{f.category.replace("-", " ")}</strong>: {f.excerpt}
+              </div>
+            ))}
+            <div style={{ fontSize: "0.7rem", color: "#94a3b8", marginTop: 4 }}>
+              Please follow your safeguarding protocol and consult your designated safeguarding lead if appropriate.
+            </div>
+          </div>
+        )}
         <button type="submit" className="primary-action button-reset" disabled={busy || !body.trim()}>
           {busy ? "Saving…" : "Save note"}
         </button>

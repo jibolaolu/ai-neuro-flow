@@ -1,19 +1,34 @@
 "use client";
 
 import {
-  SUBSCRIBERS,
   INFRA_SERVICES,
-  REVENUE_MONTHS,
-  PLATFORM_ALERTS,
   AUTH0_METRICS,
-  platformKpis,
-  type Subscriber,
   type InfraService,
-  type PlatformAlert,
 } from "../lib/super-admin-data";
 import type { SystemStatus } from "../lib/api";
 
-/* ── Inline SVG icons (no lucide-react dependency) ───────────────── */
+/* ── Types for real data ─────────────────────────────────────────── */
+export type LiveSubscriber = {
+  id: string; name: string; plan: string; status: string;
+  active_seats: number; active_clients: number; mrr_gbp: number;
+  open_support_tickets: number; joined_date: string | null; contact_email: string;
+};
+
+export type LiveRevenueMonth = {
+  month: string; mrr_gbp: number; new_mrr: number; churned_mrr: number; expansion_mrr: number;
+};
+
+export type LiveKpis = {
+  total_orgs: number; total_users: number; total_clients: number;
+  total_mrr_gbp: number; open_tickets: number;
+};
+
+type DerivedAlert = {
+  id: string; severity: "critical" | "warning" | "info";
+  title: string; detail: string; tag?: string;
+};
+
+/* ── Inline SVG icons ────────────────────────────────────────────── */
 function Svg({ children, size = 14 }: { children: React.ReactNode; size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
@@ -46,15 +61,12 @@ function fmtGbp(n: number) {
 
 function HealthDot({ status }: { status: InfraService["status"] }) {
   const cls: Record<string, string> = {
-    healthy:  "platDotGreen",
-    degraded: "platDotAmber",
-    down:     "platDotRed",
-    unknown:  "platDotGrey",
+    healthy: "platDotGreen", degraded: "platDotAmber", down: "platDotRed", unknown: "platDotGrey",
   };
   return <span className={`platDot ${cls[status] ?? "platDotGrey"}`} />;
 }
 
-function StatusBadge({ status }: { status: Subscriber["status"] }) {
+function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; cls: string }> = {
     active:    { label: "Active",    cls: "platBadgeGreen" },
     trial:     { label: "Trial",     cls: "platBadgeBlue" },
@@ -66,7 +78,7 @@ function StatusBadge({ status }: { status: Subscriber["status"] }) {
   return <span className={`platBadge ${cls}`}>{label}</span>;
 }
 
-function PlanBadge({ plan }: { plan: Subscriber["plan"] }) {
+function PlanBadge({ plan }: { plan: string }) {
   const map: Record<string, { label: string; cls: string }> = {
     enterprise:   { label: "Enterprise",   cls: "platBadgePurple" },
     professional: { label: "Professional", cls: "platBadgeIndigo" },
@@ -77,7 +89,7 @@ function PlanBadge({ plan }: { plan: Subscriber["plan"] }) {
   return <span className={`platBadge ${cls}`}>{label}</span>;
 }
 
-function AlertIcon({ severity }: { severity: PlatformAlert["severity"] }) {
+function AlertIcon({ severity }: { severity: DerivedAlert["severity"] }) {
   if (severity === "critical") return <span className="platAlertIconRed"><IcoX /></span>;
   if (severity === "warning")  return <span className="platAlertIconAmber"><IcoAlert /></span>;
   return <span className="platAlertIconBlue"><IcoBell /></span>;
@@ -110,19 +122,20 @@ function PlatKpi({
 }
 
 /* ── Revenue sparkline ───────────────────────────────────────────── */
-function RevenueChart() {
-  const max = Math.max(...REVENUE_MONTHS.map((m) => m.mrrGbp));
+function RevenueChart({ months }: { months: LiveRevenueMonth[] }) {
+  if (!months.length) return null;
+  const max = Math.max(...months.map((m) => m.mrr_gbp), 1);
   return (
     <div className="platRevenueChart">
-      {REVENUE_MONTHS.map((m) => {
-        const pct = Math.round((m.mrrGbp / max) * 100);
-        const isLast = m.month === REVENUE_MONTHS[REVENUE_MONTHS.length - 1].month;
+      {months.map((m) => {
+        const pct = Math.round((m.mrr_gbp / max) * 100);
+        const isLast = m.month === months[months.length - 1].month;
         return (
           <div key={m.month} className="platRevenueBar">
             <div
               className={`platRevenueBarFill${isLast ? " platRevenueBarCurrent" : ""}`}
-              style={{ height: `${pct}%` }}
-              title={`${m.month}: ${fmtGbp(m.mrrGbp)}`}
+              style={{ height: `${Math.max(pct, 4)}%` }}
+              title={`${m.month}: ${fmtGbp(m.mrr_gbp)}`}
             />
             <span className="platRevenueBarLabel">{m.month.slice(5)}</span>
           </div>
@@ -132,7 +145,7 @@ function RevenueChart() {
   );
 }
 
-/* ── Infra card — merges real backend status with mock metrics ────── */
+/* ── Infra card ──────────────────────────────────────────────────── */
 function InfraGrid({ systemStatus }: { systemStatus: SystemStatus | null }) {
   const services = INFRA_SERVICES.map((mock) => {
     const live = systemStatus?.services.find(
@@ -143,9 +156,7 @@ function InfraGrid({ systemStatus }: { systemStatus: SystemStatus | null }) {
       ? { ...mock, status: live.status === "ok" ? "healthy" as const : live.status === "degraded" ? "degraded" as const : "down" as const, notes: live.detail !== "Connected" && live.detail !== "OK" ? live.detail : mock.notes }
       : mock;
   });
-
   const degradedCount = services.filter((s) => s.status !== "healthy").length;
-
   return (
     <div className="platCard">
       <div className="platCardHeader">
@@ -176,27 +187,82 @@ function InfraGrid({ systemStatus }: { systemStatus: SystemStatus | null }) {
   );
 }
 
-/* ── Main component ──────────────────────────────────────────────── */
-export function SuperAdminDashboard({ name, systemStatus }: { name: string; systemStatus: SystemStatus | null }) {
-  const kpis = platformKpis;
-  const openAlerts = PLATFORM_ALERTS.filter((a) => !a.resolved);
-  const latestRevenue = REVENUE_MONTHS[REVENUE_MONTHS.length - 1];
-  const prevRevenue   = REVENUE_MONTHS[REVENUE_MONTHS.length - 2];
-  const mrrChange     = latestRevenue.mrrGbp - prevRevenue.mrrGbp;
+/* ── Derive alerts from live data ────────────────────────────────── */
+function deriveAlerts(subscribers: LiveSubscriber[], kpis: LiveKpis): DerivedAlert[] {
+  const alerts: DerivedAlert[] = [];
+  const pastDue = subscribers.filter((s) => s.status === "past_due");
+  if (pastDue.length > 0) {
+    alerts.push({
+      id: "billing-past-due",
+      severity: "critical",
+      title: `${pastDue.length} past-due account${pastDue.length > 1 ? "s" : ""}`,
+      detail: `Clinics with failed billing: ${pastDue.map((s) => s.name).join(", ")}`,
+      tag: "Billing",
+    });
+  }
+  if (kpis.open_tickets > 5) {
+    alerts.push({
+      id: "tickets-high",
+      severity: "warning",
+      title: `${kpis.open_tickets} open support tickets`,
+      detail: "High ticket volume — platform team attention required.",
+      tag: "Support",
+    });
+  }
+  const highTicketClinics = subscribers.filter((s) => s.open_support_tickets > 3);
+  highTicketClinics.forEach((s) => {
+    alerts.push({
+      id: `tickets-${s.id}`,
+      severity: "info",
+      title: `${s.open_support_tickets} tickets from ${s.name}`,
+      detail: "This clinic has multiple unresolved support tickets.",
+      tag: "Support",
+    });
+  });
+  return alerts;
+}
 
-  const liveUptime = systemStatus ? `${Math.round(systemStatus.uptime_seconds / 3600)}h` : `${kpis.systemUptime}%`;
+/* ── Main component ──────────────────────────────────────────────── */
+export function SuperAdminDashboard({
+  name,
+  systemStatus,
+  kpis,
+  subscribers,
+  revenueMonths,
+}: {
+  name: string;
+  systemStatus: SystemStatus | null;
+  kpis: LiveKpis | null;
+  subscribers: LiveSubscriber[];
+  revenueMonths: LiveRevenueMonth[];
+}) {
+  const safeKpis = kpis ?? {
+    total_orgs: 0, total_users: 0, total_clients: 0, total_mrr_gbp: 0, open_tickets: 0,
+  };
+
+  const activeCount  = subscribers.filter((s) => s.status === "active").length;
+  const trialCount   = subscribers.filter((s) => s.status === "trial").length;
+  const pastDueCount = subscribers.filter((s) => s.status === "past_due").length;
+
+  const latestRevenue = revenueMonths[revenueMonths.length - 1];
+  const prevRevenue   = revenueMonths[revenueMonths.length - 2];
+  const mrrChange     = latestRevenue && prevRevenue ? latestRevenue.mrr_gbp - prevRevenue.mrr_gbp : 0;
+
+  const openAlerts = deriveAlerts(subscribers, safeKpis);
+  const hasCritical = openAlerts.some((a) => a.severity === "critical");
 
   return (
     <div className="platShell">
-      {/* ── Header ── */}
+      {/* Header */}
       <div className="platHeader">
         <div>
           <h2 className="platHeaderTitle">Control Plane</h2>
           <p className="platHeaderSub">
-            Welcome back, {name.split(" ")[0]} — {new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+            Welcome back, {name.split(" ")[0]} —{" "}
+            {new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
           </p>
         </div>
-        {openAlerts.some((a) => a.severity === "critical") && (
+        {hasCritical && (
           <div className="platHeaderAlert">
             <IcoX />
             {openAlerts.filter((a) => a.severity === "critical").length} critical alert{openAlerts.filter((a) => a.severity === "critical").length !== 1 ? "s" : ""} require attention
@@ -204,71 +270,61 @@ export function SuperAdminDashboard({ name, systemStatus }: { name: string; syst
         )}
       </div>
 
-      {/* ── KPI row ── */}
+      {/* KPIs */}
       <div className="platKpiGrid">
-        <PlatKpi label="Subscriber clinics" value={kpis.totalOrgs} sub={`${kpis.activeOrgs} active · ${kpis.trialOrgs} trial`} icon={IcoGlobe} accent="#5b4df2" />
-        <PlatKpi label="Monthly recurring revenue" value={fmtGbp(kpis.totalMrrGbp)} sub={`${mrrChange >= 0 ? "+" : ""}${fmtGbp(mrrChange)} vs last month`} icon={IcoCard} accent="#12a594" />
-        <PlatKpi label="Total licensed seats" value={kpis.totalSeats.toLocaleString()} sub={`${kpis.activeOrgs} orgs enrolled`} icon={IcoUsers} accent="#f59e0b" />
-        <PlatKpi label="System uptime" value={systemStatus ? liveUptime : `${kpis.systemUptime}%`} sub={`${kpis.openAlerts} open alert${kpis.openAlerts !== 1 ? "s" : ""}`} icon={IcoActivity} accent="#3b82f6" urgent={kpis.openAlerts > 0} />
-        <PlatKpi label="Reports this month" value={kpis.totalReportsThisMonth.toLocaleString()} sub="Across all tenants" icon={IcoShield} accent="#8b5cf6" />
-        <PlatKpi label="Past-due accounts" value={kpis.pastDueOrgs} sub={kpis.pastDueOrgs > 0 ? "Requires billing action" : "All accounts current"} icon={IcoAlert} accent="#dc2626" urgent={kpis.pastDueOrgs > 0} />
+        <PlatKpi label="Subscriber clinics"      value={safeKpis.total_orgs}    sub={`${activeCount} active · ${trialCount} trial`}                icon={IcoGlobe}    accent="#5b4df2" />
+        <PlatKpi label="Monthly recurring revenue" value={fmtGbp(safeKpis.total_mrr_gbp)} sub={`${mrrChange >= 0 ? "+" : ""}${fmtGbp(mrrChange)} vs last month`} icon={IcoCard}    accent="#12a594" />
+        <PlatKpi label="Active platform users"   value={safeKpis.total_users}   sub={`Across ${activeCount} active orgs`}                          icon={IcoUsers}    accent="#f59e0b" />
+        <PlatKpi label="Total clients"           value={safeKpis.total_clients} sub="All pathways"                                                  icon={IcoShield}   accent="#8b5cf6" />
+        <PlatKpi label="Open support tickets"    value={safeKpis.open_tickets}  sub={safeKpis.open_tickets > 0 ? "Requires attention" : "All clear"} icon={IcoActivity} accent="#3b82f6" urgent={safeKpis.open_tickets > 3} />
+        <PlatKpi label="Past-due accounts"       value={pastDueCount}           sub={pastDueCount > 0 ? "Requires billing action" : "All accounts current"} icon={IcoAlert} accent="#dc2626" urgent={pastDueCount > 0} />
       </div>
 
-      {/* ── Main grid ── */}
+      {/* Main grid */}
       <div className="platGrid">
-        {/* ── Left: subscriber table + infra ── */}
         <div className="platMain">
-
-          {/* Subscriber accounts */}
+          {/* Subscriber table */}
           <div className="platCard">
             <div className="platCardHeader">
               <IcoGlobe />
               <h3>Subscriber clinics</h3>
-              <span className="platCardCount">{SUBSCRIBERS.length}</span>
+              <span className="platCardCount">{subscribers.length}</span>
             </div>
             <div className="platTableWrap">
               <table className="platTable">
                 <colgroup>
-                  <col style={{ width: "22%" }} />
-                  <col style={{ width: "11%" }} />
-                  <col style={{ width: "9%" }} />
-                  <col style={{ width: "9%" }} />
-                  <col style={{ width: "10%" }} />
-                  <col style={{ width: "10%" }} />
-                  <col style={{ width: "8%" }} />
+                  <col style={{ width: "24%" }} /><col style={{ width: "12%" }} />
+                  <col style={{ width: "9%" }} /><col style={{ width: "9%" }} />
+                  <col style={{ width: "10%" }} /><col style={{ width: "10%" }} />
+                  <col style={{ width: "8%" }} /><col style={{ width: "9%" }} />
                   <col style={{ width: "9%" }} />
                 </colgroup>
                 <thead>
                   <tr>
-                    <th>Clinic</th>
-                    <th>Plan</th>
-                    <th>Status</th>
-                    <th>Health</th>
+                    <th>Clinic</th><th>Plan</th><th>Status</th>
                     <th style={{ textAlign: "right" }}>MRR</th>
-                    <th style={{ textAlign: "right" }}>Seats</th>
+                    <th style={{ textAlign: "right" }}>Users</th>
+                    <th style={{ textAlign: "right" }}>Clients</th>
                     <th style={{ textAlign: "right" }}>Tickets</th>
-                    <th style={{ textAlign: "right" }}>Reports</th>
+                    <th>Joined</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {SUBSCRIBERS.map((s) => (
-                    <tr key={s.id} className={s.status === "past_due" ? "platRowUrgent" : s.health === "down" ? "platRowDown" : ""}>
+                  {subscribers.length === 0 ? (
+                    <tr><td colSpan={8} style={{ textAlign: "center", color: "var(--muted)", padding: "2rem" }}>No subscriber clinics yet.</td></tr>
+                  ) : subscribers.map((s) => (
+                    <tr key={s.id} className={s.status === "past_due" ? "platRowUrgent" : s.status === "churned" ? "platRowDown" : ""}>
                       <td>
                         <span className="platSubName">{s.name}</span>
-                        <span className="platSubMeta">{s.country} · {s.industry}</span>
+                        <span className="platSubMeta">{s.contact_email}</span>
                       </td>
                       <td><PlanBadge plan={s.plan} /></td>
                       <td><StatusBadge status={s.status} /></td>
-                      <td>
-                        <div className="platHealthCell">
-                          <HealthDot status={s.health} />
-                          <span>{s.health}</span>
-                        </div>
-                      </td>
-                      <td className="platNumCell">{fmtGbp(s.mrrGbp)}</td>
-                      <td className="platNumCell">{s.activeSeats}/{s.seats}</td>
-                      <td className="platNumCell">{s.openSupportTickets > 0 ? <span className="platTicketBadge">{s.openSupportTickets}</span> : "—"}</td>
-                      <td className="platNumCell">{s.reportsThisMonth.toLocaleString()}</td>
+                      <td className="platNumCell">{fmtGbp(s.mrr_gbp)}</td>
+                      <td className="platNumCell">{s.active_seats}</td>
+                      <td className="platNumCell">{s.active_clients}</td>
+                      <td className="platNumCell">{s.open_support_tickets > 0 ? <span className="platTicketBadge">{s.open_support_tickets}</span> : "—"}</td>
+                      <td style={{ fontSize: "0.78rem", color: "var(--muted)", whiteSpace: "nowrap" }}>{s.joined_date ?? "—"}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -276,45 +332,39 @@ export function SuperAdminDashboard({ name, systemStatus }: { name: string; syst
             </div>
           </div>
 
-          {/* Infrastructure health */}
           <InfraGrid systemStatus={systemStatus} />
         </div>
 
-        {/* ── Right rail ── */}
+        {/* Right rail */}
         <div className="platRail">
-
           {/* MRR trend */}
           <div className="platCard">
-            <div className="platCardHeader">
-              <IcoTrend />
-              <h3>MRR trend</h3>
-            </div>
+            <div className="platCardHeader"><IcoTrend /><h3>MRR trend</h3></div>
             <div className="platRevenueSummary">
               <div className="platRevenueCurrent">
-                <span className="platRevenueFig">{fmtGbp(latestRevenue.mrrGbp)}</span>
+                <span className="platRevenueFig">{fmtGbp(latestRevenue?.mrr_gbp ?? 0)}</span>
                 <span className={`platRevenueChange ${mrrChange >= 0 ? "platRevenueUp" : "platRevenueDown"}`}>
                   {mrrChange >= 0 ? <IcoArrowUp /> : <IcoArrowDown />}
                   {fmtGbp(Math.abs(mrrChange))} MoM
                 </span>
               </div>
               <div className="platRevenueStat">
-                <span>New MRR</span><strong>{fmtGbp(latestRevenue.newMrr)}</strong>
+                <span>New MRR</span><strong>{fmtGbp(latestRevenue?.new_mrr ?? 0)}</strong>
               </div>
               <div className="platRevenueStat">
-                <span>Churn</span><strong className="platRevenueDown">−{fmtGbp(latestRevenue.churnedMrr)}</strong>
+                <span>Churn</span><strong className="platRevenueDown">−{fmtGbp(latestRevenue?.churned_mrr ?? 0)}</strong>
               </div>
               <div className="platRevenueStat">
-                <span>Expansion</span><strong className="platRevenueUp">+{fmtGbp(latestRevenue.expansionMrr)}</strong>
+                <span>Expansion</span><strong className="platRevenueUp">+{fmtGbp(latestRevenue?.expansion_mrr ?? 0)}</strong>
               </div>
             </div>
-            <RevenueChart />
+            <RevenueChart months={revenueMonths} />
           </div>
 
           {/* Alerts */}
           <div className="platCard">
             <div className="platCardHeader">
-              <IcoBell />
-              <h3>Active alerts</h3>
+              <IcoBell /><h3>Active alerts</h3>
               {openAlerts.length > 0 && <span className="platCardCountRed">{openAlerts.length}</span>}
             </div>
             <div className="platAlertList">
@@ -323,28 +373,22 @@ export function SuperAdminDashboard({ name, systemStatus }: { name: string; syst
                   <span className="platAlertIconGreen"><IcoCheck /></span>
                   <span>All clear — no active alerts</span>
                 </div>
-              ) : (
-                openAlerts.map((alert) => (
-                  <div key={alert.id} className={`platAlertItem platAlertItem--${alert.severity}`}>
-                    <AlertIcon severity={alert.severity} />
-                    <div className="platAlertContent">
-                      <p className="platAlertTitle">{alert.title}</p>
-                      <p className="platAlertDetail">{alert.detail}</p>
-                      {alert.service && <span className="platAlertTag">{alert.service}</span>}
-                    </div>
-                    <span className="platAlertTime">{new Date(alert.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}</span>
+              ) : openAlerts.map((alert) => (
+                <div key={alert.id} className={`platAlertItem platAlertItem--${alert.severity}`}>
+                  <AlertIcon severity={alert.severity} />
+                  <div className="platAlertContent">
+                    <p className="platAlertTitle">{alert.title}</p>
+                    <p className="platAlertDetail">{alert.detail}</p>
+                    {alert.tag && <span className="platAlertTag">{alert.tag}</span>}
                   </div>
-                ))
-              )}
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* Auth0 metrics */}
+          {/* Auth0 metrics — static reference data */}
           <div className="platCard">
-            <div className="platCardHeader">
-              <IcoActivity />
-              <h3>Auth0 tenant</h3>
-            </div>
+            <div className="platCardHeader"><IcoActivity /><h3>Auth0 tenant</h3></div>
             <div className="platAuth0Grid">
               {AUTH0_METRICS.map((m) => (
                 <div key={m.label} className="platAuth0Card">
@@ -356,29 +400,6 @@ export function SuperAdminDashboard({ name, systemStatus }: { name: string; syst
                   {m.trendLabel && <p className="platAuth0Trend">{m.trendLabel}</p>}
                 </div>
               ))}
-            </div>
-          </div>
-
-          {/* Resolved alerts */}
-          <div className="platCard">
-            <div className="platCardHeader">
-              <IcoCheck />
-              <h3>Recently resolved</h3>
-            </div>
-            <div className="platAlertList">
-              {PLATFORM_ALERTS.filter((a) => a.resolved).map((alert) => (
-                <div key={alert.id} className="platAlertItem platAlertItem--resolved">
-                  <span className="platAlertIconGreen"><IcoCheck /></span>
-                  <div className="platAlertContent">
-                    <p className="platAlertTitle">{alert.title}</p>
-                    <p className="platAlertDetail">{alert.detail}</p>
-                  </div>
-                  <span className="platAlertIconGrey"><IcoClock /></span>
-                </div>
-              ))}
-              {PLATFORM_ALERTS.filter((a) => a.resolved).length === 0 && (
-                <p className="platAlertEmpty">No recently resolved alerts.</p>
-              )}
             </div>
           </div>
         </div>

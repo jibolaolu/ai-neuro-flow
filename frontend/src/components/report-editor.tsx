@@ -14,6 +14,7 @@ import {
   reviewReport,
   submitReport,
 } from "../lib/clinical-reports-api";
+import { suggestReportSection } from "../lib/ai-api";
 import type { ClientRecord } from "../lib/api";
 import {
   ALL_TEMPLATES,
@@ -1279,6 +1280,33 @@ export function ReportEditor({ client, userRole, currentUserId }: Props) {
   const autoSaveTimer = useRef<NodeJS.Timeout | null>(null);
   const pendingSave = useRef(false);
 
+  // ── Real-time AI suggestions ─────────────────────────────────────────────
+  const [aiHint, setAiHint] = useState<{ sectionKey: string; suggestion: string } | null>(null);
+  const [aiHintLoading, setAiHintLoading] = useState(false);
+  const aiDebounceTimer = useRef<NodeJS.Timeout | null>(null);
+
+  // ── Diagnostic AI support ─────────────────────────────────────────────────
+  const [diagSupport, setDiagSupport] = useState<{
+    suggestion: string | null;
+    confidence: string;
+    reasoning: string;
+    next_steps: string[];
+  } | null>(null);
+  const [diagLoading, setDiagLoading] = useState(false);
+
+  async function runDiagnosticSupport() {
+    setDiagLoading(true);
+    try {
+      const r = await fetch(`/api/v1/ai/diagnostic-support`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ client_id: client.id }),
+      });
+      if (r.ok) setDiagSupport(await r.json() as typeof diagSupport);
+    } finally { setDiagLoading(false); }
+  }
+
   // ── Load reports ──────────────────────────────────────────────────────────
 
   const loadReports = useCallback(async () => {
@@ -1344,6 +1372,23 @@ export function ReportEditor({ client, userRole, currentUserId }: Props) {
     setLocalSections((s) => ({ ...s, [key]: value }));
     setSaveStatus("idle");
     triggerAutoSave();
+
+    // Debounced AI suggestion: fire after 2.5s of inactivity on sections with enough content
+    if (aiDebounceTimer.current) clearTimeout(aiDebounceTimer.current);
+    if (value.trim().length >= 40) {
+      aiDebounceTimer.current = setTimeout(() => {
+        setAiHint(null);
+        setAiHintLoading(true);
+        void suggestReportSection(client.id, key, value)
+          .then((res) => {
+            if (res?.draft) {
+              setAiHint({ sectionKey: key, suggestion: res.draft });
+            }
+          })
+          .catch(() => {/* silently skip on error */})
+          .finally(() => setAiHintLoading(false));
+      }, 2500);
+    }
   }
 
   async function doSave() {
@@ -1763,6 +1808,64 @@ export function ReportEditor({ client, userRole, currentUserId }: Props) {
                 </div>
               </div>
 
+              {/* ── Diagnostic AI support panel ─────────────────────────────── */}
+              {canEdit && (
+                <div style={{ marginBottom: 16 }}>
+                  {!diagSupport ? (
+                    <button
+                      type="button"
+                      onClick={() => { void runDiagnosticSupport(); }}
+                      disabled={diagLoading}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 8,
+                        padding: "8px 14px", borderRadius: 8,
+                        border: "1px solid var(--brand)", background: "transparent",
+                        color: "var(--brand)", cursor: "pointer", fontSize: "0.82rem", fontWeight: 700,
+                      }}
+                    >
+                      {diagLoading ? "Analysing scores…" : "🧠 AI Diagnostic Support"}
+                    </button>
+                  ) : (
+                    <div style={{
+                      padding: "14px 16px", borderRadius: 10,
+                      border: `1px solid ${diagSupport.confidence === "high" ? "#86efac" : diagSupport.confidence === "medium" ? "#fcd34d" : "#e2e8f0"}`,
+                      background: diagSupport.confidence === "high" ? "#f0fdf4" : diagSupport.confidence === "medium" ? "#fffbeb" : "#f8fafc",
+                    }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+                        <div>
+                          <div style={{ fontSize: "0.7rem", fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.07em", color: "var(--muted)", marginBottom: 2 }}>AI Diagnostic Direction</div>
+                          <div style={{ fontSize: "1rem", fontWeight: 800, color: "var(--ink)" }}>
+                            {diagSupport.suggestion ?? "Insufficient data"}
+                          </div>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={{
+                            fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em",
+                            padding: "2px 8px", borderRadius: 6,
+                            background: diagSupport.confidence === "high" ? "#dcfce7" : diagSupport.confidence === "medium" ? "#fef9c3" : "#f1f5f9",
+                            color: diagSupport.confidence === "high" ? "#16a34a" : diagSupport.confidence === "medium" ? "#a16207" : "#64748b",
+                          }}>
+                            {diagSupport.confidence} confidence
+                          </span>
+                          <button type="button" onClick={() => setDiagSupport(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)", fontSize: "0.9rem" }}>✕</button>
+                        </div>
+                      </div>
+                      <div style={{ fontSize: "0.82rem", color: "var(--ink-700)", marginBottom: 10, lineHeight: 1.5 }}>
+                        {diagSupport.reasoning}
+                      </div>
+                      {diagSupport.next_steps.length > 0 && (
+                        <div>
+                          <div style={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>Suggested next steps</div>
+                          <ul style={{ margin: 0, paddingLeft: 16, fontSize: "0.8rem", color: "var(--ink-700)" }}>
+                            {diagSupport.next_steps.map((s, i) => <li key={i}>{s}</li>)}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* ── Template sections ───────────────────────────────────────── */}
               {isAdultADHDReport(selectedReport.report_type) ? (
                 <NHSAdultADHDForm
@@ -1783,6 +1886,51 @@ export function ReportEditor({ client, userRole, currentUserId }: Props) {
                       onChange={onSectionChange}
                     />
                   ))}
+                </div>
+              )}
+
+              {/* ── Real-time AI writing hint ───────────────────────────────── */}
+              {canEdit && (aiHintLoading || aiHint) && (
+                <div className="rah-panel">
+                  <div className="rah-header">
+                    <span className="rah-label">AI writing suggestion</span>
+                    {aiHintLoading && <span style={{ fontSize: "0.72rem", color: "var(--muted)" }}>Generating…</span>}
+                    {aiHint && (
+                      <button
+                        type="button"
+                        className="button-reset"
+                        style={{ fontSize: "0.72rem", color: "var(--muted)" }}
+                        onClick={() => setAiHint(null)}
+                        aria-label="Dismiss suggestion"
+                      >
+                        ✕ dismiss
+                      </button>
+                    )}
+                  </div>
+                  {aiHint && (
+                    <>
+                      <div className="rah-body">{aiHint.suggestion}</div>
+                      <div className="rah-actions">
+                        <button
+                          type="button"
+                          className="rah-apply-btn"
+                          onClick={() => {
+                            onSectionChange(aiHint.sectionKey, aiHint.suggestion);
+                            setAiHint(null);
+                          }}
+                        >
+                          Apply to section
+                        </button>
+                        <button
+                          type="button"
+                          className="rah-dismiss-btn"
+                          onClick={() => setAiHint(null)}
+                        >
+                          Keep mine
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
 

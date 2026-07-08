@@ -2,6 +2,9 @@ from fastapi import APIRouter
 
 from app.core.config import settings
 from app.api.v1 import (
+    ai_features,
+    ai_jobs,
+    analytics,
     api_keys,
     assessments,
     assignments,
@@ -9,20 +12,33 @@ from app.api.v1 import (
     availability,
     billing,
     bookings,
+    calendar_export,
     checkout,
     clinical_reports,
     clinician_finance,
     clinicians,
     clients,
+    compliance,
     consent,
+    fhir,
+    follow_up,
     forms,
+    invoices,
     organizations,
+    outcomes,
     public_booking,
+    referrals,
     reports,
     subscriptions,
     support_tickets,
     system,
     team,
+    emis_connect,
+    ig_workflow,
+    prescriptions,
+    push,
+    telehealth,
+    triage,
     webhooks,
 )
 
@@ -52,3 +68,19 @@ if not settings.is_production():
 api_router.include_router(clinical_reports.router, prefix="/clinical-reports", tags=["clinical-reports"])
 api_router.include_router(consent.router, prefix="/consent", tags=["consent"])
 api_router.include_router(support_tickets.router, prefix="/support-tickets", tags=["support-tickets"])
+api_router.include_router(ai_features.router, prefix="/ai", tags=["ai"])
+api_router.include_router(ai_jobs.router, prefix="/ai-jobs", tags=["ai-jobs"])
+api_router.include_router(outcomes.router, prefix="/outcomes", tags=["outcomes"])
+api_router.include_router(analytics.router, prefix="/analytics", tags=["analytics"])
+api_router.include_router(follow_up.router, prefix="/follow-up", tags=["follow-up"])
+api_router.include_router(calendar_export.router, prefix="", tags=["calendar"])
+api_router.include_router(referrals.router, prefix="/referrals", tags=["referrals"])
+api_router.include_router(invoices.router, prefix="/invoices", tags=["invoices"])
+api_router.include_router(triage.router, prefix="/triage", tags=["triage"])
+api_router.include_router(fhir.router, prefix="/fhir", tags=["fhir"])
+api_router.include_router(compliance.router, prefix="/compliance", tags=["compliance"])
+api_router.include_router(push.router, prefix="/push", tags=["push"])
+api_router.include_router(prescriptions.router, prefix="/prescriptions", tags=["prescriptions"])
+api_router.include_router(ig_workflow.router, prefix="/ig", tags=["ig-workflow"])
+api_router.include_router(emis_connect.router, prefix="/nhs", tags=["nhs-emis"])
+api_router.include_router(telehealth.router, prefix="/telehealth", tags=["telehealth"])

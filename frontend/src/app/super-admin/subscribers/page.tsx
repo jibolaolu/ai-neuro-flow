@@ -1,6 +1,24 @@
 import { RoleDashboardShell } from "../../../components/role-dashboard-shell";
 import { getSuperAdminNav } from "../../../lib/super-admin-nav";
-import { SUBSCRIBERS } from "../../../lib/super-admin-data";
+import { serverAuthedGetJson } from "../../../lib/api-server";
+
+type SubscriberRow = {
+  id: string;
+  name: string;
+  plan: string;
+  status: string;
+  active_seats: number;
+  active_clients: number;
+  mrr_gbp: number;
+  open_support_tickets: number;
+  joined_date: string | null;
+  contact_email: string;
+};
+
+type SubscribersResponse = {
+  subscribers: SubscriberRow[];
+  totals: { total: number; active: number; trial: number; past_due: number; churned: number; total_mrr: number };
+};
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
@@ -30,12 +48,10 @@ function fmtGbp(n: number) {
   return new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP", maximumFractionDigits: 0 }).format(n);
 }
 
-export default function SubscribersPage() {
-  const active   = SUBSCRIBERS.filter((s) => s.status === "active").length;
-  const trial    = SUBSCRIBERS.filter((s) => s.status === "trial").length;
-  const pastDue  = SUBSCRIBERS.filter((s) => s.status === "past_due").length;
-  const churned  = SUBSCRIBERS.filter((s) => s.status === "churned").length;
-  const totalMrr = SUBSCRIBERS.filter((s) => s.status === "active").reduce((acc, s) => acc + s.mrrGbp, 0);
+export default async function SubscribersPage() {
+  const data = await serverAuthedGetJson<SubscribersResponse>("/api/v1/analytics/subscribers");
+  const subscribers = data?.subscribers ?? [];
+  const totals = data?.totals ?? { total: 0, active: 0, trial: 0, past_due: 0, churned: 0, total_mrr: 0 };
 
   return (
     <RoleDashboardShell
@@ -50,16 +66,19 @@ export default function SubscribersPage() {
           <div className="platHeader">
             <div>
               <h2 className="platHeaderTitle">Subscriber Clinics</h2>
-              <p className="platHeaderSub">{SUBSCRIBERS.length} total · {active} active · {trial} trial · {pastDue} past due · {churned} churned</p>
+              <p className="platHeaderSub">
+                {totals.total} total · {totals.active} active · {totals.trial} trial ·{" "}
+                {totals.past_due} past due · {totals.churned} churned
+              </p>
             </div>
           </div>
 
           <div className="platKpiGrid" style={{ gridTemplateColumns: "repeat(4, minmax(0,1fr))" }}>
             {[
-              { label: "Active", value: active, color: "#059669" },
-              { label: "Trial",  value: trial,  color: "#3b82f6" },
-              { label: "Past due", value: pastDue, color: "#dc2626" },
-              { label: "Total MRR", value: fmtGbp(totalMrr), color: "#2a4db7" },
+              { label: "Active",    value: totals.active,          color: "#059669" },
+              { label: "Trial",     value: totals.trial,           color: "#3b82f6" },
+              { label: "Past due",  value: totals.past_due,        color: "#dc2626" },
+              { label: "Total MRR", value: fmtGbp(totals.total_mrr), color: "#2a4db7" },
             ].map((k) => (
               <div key={k.label} className="platKpiCard" style={{ "--plat-accent": k.color } as React.CSSProperties}>
                 <div className="platKpiAccent" />
@@ -74,7 +93,7 @@ export default function SubscribersPage() {
           <div className="platCard">
             <div className="platCardHeader">
               <h3>All clinics</h3>
-              <span className="platCardCount">{SUBSCRIBERS.length}</span>
+              <span className="platCardCount">{totals.total}</span>
             </div>
             <div className="platTableWrap">
               <table className="platTable">
@@ -84,9 +103,9 @@ export default function SubscribersPage() {
                   <col style={{ width: "10%" }} />
                   <col style={{ width: "10%" }} />
                   <col style={{ width: "10%" }} />
-                  <col style={{ width: "8%" }} />
-                  <col style={{ width: "11%" }} />
-                  <col style={{ width: "11%" }} />
+                  <col style={{ width: "10%" }} />
+                  <col style={{ width: "10%" }} />
+                  <col style={{ width: "10%" }} />
                 </colgroup>
                 <thead>
                   <tr>
@@ -94,26 +113,28 @@ export default function SubscribersPage() {
                     <th>Plan</th>
                     <th>Status</th>
                     <th style={{ textAlign: "right" }}>MRR</th>
-                    <th style={{ textAlign: "right" }}>Seats</th>
-                    <th style={{ textAlign: "right" }}>Reports</th>
+                    <th style={{ textAlign: "right" }}>Users</th>
+                    <th style={{ textAlign: "right" }}>Clients</th>
+                    <th style={{ textAlign: "right" }}>Tickets</th>
                     <th>Joined</th>
-                    <th>Renewal</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {SUBSCRIBERS.map((s) => (
+                  {subscribers.length === 0 ? (
+                    <tr><td colSpan={8} style={{ textAlign: "center", color: "var(--muted)", padding: "2rem" }}>No clinics registered yet.</td></tr>
+                  ) : subscribers.map((s) => (
                     <tr key={s.id} className={s.status === "past_due" ? "platRowUrgent" : s.status === "churned" ? "platRowDown" : ""}>
                       <td>
                         <span className="platSubName">{s.name}</span>
-                        <span className="platSubMeta">{s.contactEmail}</span>
+                        <span className="platSubMeta">{s.contact_email}</span>
                       </td>
                       <td><PlanBadge plan={s.plan} /></td>
                       <td><StatusBadge status={s.status} /></td>
-                      <td className="platNumCell">{fmtGbp(s.mrrGbp)}</td>
-                      <td className="platNumCell">{s.activeSeats}/{s.seats}</td>
-                      <td className="platNumCell">{s.reportsThisMonth}</td>
-                      <td style={{ fontSize: "0.78rem", color: "var(--muted)", whiteSpace: "nowrap" }}>{s.joinedDate}</td>
-                      <td style={{ fontSize: "0.78rem", color: "var(--muted)", whiteSpace: "nowrap" }}>{s.nextRenewalDate}</td>
+                      <td className="platNumCell">{fmtGbp(s.mrr_gbp)}</td>
+                      <td className="platNumCell">{s.active_seats}</td>
+                      <td className="platNumCell">{s.active_clients}</td>
+                      <td className="platNumCell">{s.open_support_tickets}</td>
+                      <td style={{ fontSize: "0.78rem", color: "var(--muted)", whiteSpace: "nowrap" }}>{s.joined_date ?? "—"}</td>
                     </tr>
                   ))}
                 </tbody>

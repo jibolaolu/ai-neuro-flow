@@ -34,6 +34,12 @@ export function getSuperAdminNav(activeHref: string): SuperAdminNavGroup[] {
       ],
     },
     {
+      label: "Analytics",
+      items: [
+        { href: "/super-admin/population-insights", label: "Population insights", icon: "PI", active: activeHref.startsWith("/super-admin/population-insights") },
+      ],
+    },
+    {
       label: "Operations",
       items: [
         { href: "/super-admin/alerts", label: "Alerts", icon: "AL", active: activeHref.startsWith("/super-admin/alerts") },

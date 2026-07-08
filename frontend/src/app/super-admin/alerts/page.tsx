@@ -1,6 +1,8 @@
 import { RoleDashboardShell } from "../../../components/role-dashboard-shell";
 import { getSuperAdminNav } from "../../../lib/super-admin-nav";
-import { PLATFORM_ALERTS } from "../../../lib/super-admin-data";
+import { serverAuthedGetJson } from "../../../lib/api-server";
+import type { SupportTicket, SupportTicketList } from "../../../lib/support-ticket-api";
+import type { LiveKpis, LiveSubscriber } from "../../../components/super-admin-dashboard";
 
 function SeverityBadge({ severity }: { severity: string }) {
   const map: Record<string, string> = {
@@ -13,9 +15,66 @@ function SeverityBadge({ severity }: { severity: string }) {
   );
 }
 
-export default function AlertsPage() {
-  const open     = PLATFORM_ALERTS.filter((a) => !a.resolved);
-  const resolved = PLATFORM_ALERTS.filter((a) => a.resolved);
+type Alert = { id: string; severity: "critical" | "warning" | "info"; title: string; detail: string; tag: string; time: string; resolved: boolean };
+
+function buildAlerts(tickets: SupportTicket[], subs: LiveSubscriber[], kpis: LiveKpis | null): Alert[] {
+  const alerts: Alert[] = [];
+
+  // High-priority open tickets → critical/warning
+  tickets.filter((t) => ["open", "in_progress"].includes(t.status)).forEach((t) => {
+    const severity: Alert["severity"] = t.priority === "urgent" ? "critical" : t.priority === "high" ? "warning" : "info";
+    alerts.push({
+      id:       `ticket-${t.id}`,
+      severity,
+      title:    t.title,
+      detail:   `Raised by ${t.raised_by_name} (${t.clinic_name ?? "Platform"}) · ${t.category}`,
+      tag:      "Support ticket",
+      time:     t.created_at ?? "",
+      resolved: false,
+    });
+  });
+
+  // Past-due billing
+  subs.filter((s) => s.status === "past_due").forEach((s) => {
+    alerts.push({
+      id:       `billing-${s.id}`,
+      severity: "critical",
+      title:    `Past-due billing — ${s.name}`,
+      detail:   `Contact: ${s.contact_email}. Expected MRR: £${s.mrr_gbp ?? 0}/mo`,
+      tag:      "Billing",
+      time:     "",
+      resolved: false,
+    });
+  });
+
+  // Resolved tickets (awaiting_info → resolved → closed)
+  tickets.filter((t) => ["resolved", "closed"].includes(t.status)).slice(0, 10).forEach((t) => {
+    alerts.push({
+      id:       `resolved-${t.id}`,
+      severity: "info",
+      title:    t.title,
+      detail:   `Resolved · ${t.clinic_name ?? "Platform"}`,
+      tag:      "Support ticket",
+      time:     t.resolved_at ?? t.updated_at ?? "",
+      resolved: true,
+    });
+  });
+
+  return alerts;
+}
+
+export default async function AlertsPage() {
+  const [ticketData, subData, kpisData] = await Promise.all([
+    serverAuthedGetJson<SupportTicketList>("/api/v1/support-tickets"),
+    serverAuthedGetJson<{ subscribers: LiveSubscriber[] }>("/api/v1/analytics/subscribers"),
+    serverAuthedGetJson<LiveKpis>("/api/v1/analytics/platform-kpis"),
+  ]);
+
+  const tickets = ticketData?.items ?? [];
+  const subs    = subData?.subscribers ?? [];
+  const all     = buildAlerts(tickets, subs, kpisData ?? null);
+  const open    = all.filter((a) => !a.resolved);
+  const resolved = all.filter((a) => a.resolved);
 
   return (
     <RoleDashboardShell
@@ -53,11 +112,13 @@ export default function AlertsPage() {
                         <p className="platAlertTitle" style={{ margin: 0 }}>{alert.title}</p>
                       </div>
                       <p className="platAlertDetail">{alert.detail}</p>
-                      {alert.service && <span className="platAlertTag">{alert.service}</span>}
+                      <span className="platAlertTag">{alert.tag}</span>
                     </div>
-                    <span className="platAlertTime">
-                      {new Date(alert.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
-                    </span>
+                    {alert.time && (
+                      <span className="platAlertTime">
+                        {new Date(alert.time).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                      </span>
+                    )}
                   </div>
                 ))}
               </div>
@@ -74,9 +135,11 @@ export default function AlertsPage() {
                       <p className="platAlertTitle">{alert.title}</p>
                       <p className="platAlertDetail">{alert.detail}</p>
                     </div>
-                    <span className="platAlertTime">
-                      {new Date(alert.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
-                    </span>
+                    {alert.time && (
+                      <span className="platAlertTime">
+                        {new Date(alert.time).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                      </span>
+                    )}
                   </div>
                 ))}
               </div>

@@ -1,4 +1,10 @@
+"""Booking service — DB-backed (SQLite via SQLAlchemy)."""
+
+import uuid
+from sqlalchemy.orm import Session
+
 from app.models.booking import BookingRecord, BookingWebhookPayload, BookingWorkflowStep
+from app.models.booking_record import BookingDBRecord
 from app.services.form_service import FormService
 from app.services.notification_service import NotificationService
 from app.services.report_workflow_service import ReportWorkflowService
@@ -11,193 +17,117 @@ class BookingService:
         self.form_service = FormService()
         self.session_brief_service = SessionBriefService()
         self.report_workflow_service = ReportWorkflowService()
-        self._bookings: list[BookingRecord] = [
-            BookingRecord(
-                id="booking-001",
-                case_id="case-1001",
-                client_id="client-001",
-                client_name="Alex Taylor",
-                client_email="alex@example.com",
+
+    # ── DB helpers ─────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _get_db() -> Session:
+        from app.db.session import SessionLocal  # lazy to avoid circular import
+        return SessionLocal()
+
+    # ── Public API ─────────────────────────────────────────────────────────
+
+    def list_bookings(self, db: Session | None = None) -> list[dict]:
+        """Return all bookings, most recent first."""
+        _own_db = db is None
+        if _own_db:
+            db = self._get_db()
+        try:
+            rows = db.query(BookingDBRecord).order_by(BookingDBRecord.created_at.desc()).all()
+            return [r.to_dict() for r in rows]
+        finally:
+            if _own_db:
+                db.close()
+
+    def get_booking(self, booking_id: str, db: Session | None = None) -> BookingRecord | None:
+        _own_db = db is None
+        if _own_db:
+            db = self._get_db()
+        try:
+            row = db.query(BookingDBRecord).filter(BookingDBRecord.id == booking_id).first()
+            if not row:
+                return None
+            return self._row_to_model(row)
+        finally:
+            if _own_db:
+                db.close()
+
+    def process_payment_webhook(self, payload: BookingWebhookPayload, db: Session | None = None) -> BookingRecord:
+        _own_db = db is None
+        if _own_db:
+            db = self._get_db()
+        try:
+            existing_count = db.query(BookingDBRecord).count()
+            sequence = existing_count + 1
+            new_id = f"booking-{uuid.uuid4().hex[:8]}"
+            case_id = f"case-{1000 + sequence}"
+
+            form_task = self.form_service.build_welcome_pack_task(payload.client_name, payload.pathway)
+            brief_task = self.session_brief_service.build_task("Dr Jordan Lee", payload.preferred_slot)
+            handoff_task = self.report_workflow_service.build_task("drafting")
+
+            steps = [
+                {"key": "slot_resolver", "title": "Slot resolver", "status": "complete",
+                 "detail": "Availability store and clinician match resolved the slot."},
+                {"key": "payment_gate", "title": "Stripe payment gate", "status": "complete",
+                 "detail": f"PaymentIntent {payload.payment_intent_id} accepted."},
+                {"key": "case_creator", "title": "Case creator", "status": "complete",
+                 "detail": f"Client record created with case ID {case_id}."},
+                {"key": "confirmation_dispatch", "title": "Confirmation dispatch", "status": "complete",
+                 "detail": self.notification_service.build_calendar_invite_status(
+                     "Dr Jordan Lee", payload.preferred_slot)},
+                form_task.model_dump(),
+                brief_task.model_dump(),
+                handoff_task.model_dump(),
+            ]
+
+            row = BookingDBRecord(
+                id=new_id,
+                case_id=case_id,
+                client_id=f"client-{sequence:03d}",
+                client_name=payload.client_name,
+                client_email=str(payload.client_email),
                 clinician_id="clinician-001",
                 clinician_name="Dr Jordan Lee",
-                pathway="Adult ADHD",
+                pathway=payload.pathway,
                 booking_status="scheduled",
                 payment_status="paid",
                 room_status="provisioned",
                 confirmation_status="sent",
                 sla_status="on_track",
-                slot_time="2026-04-16T09:00:00",
-                source="WordPress widget",
-                workflow_steps=[
-                    BookingWorkflowStep(
-                        key="slot_resolver",
-                        title="Slot resolver",
-                        status="complete",
-                        detail="Clinician and room slot allocated.",
-                    ),
-                    BookingWorkflowStep(
-                        key="payment_gate",
-                        title="Stripe payment gate",
-                        status="complete",
-                        detail="PaymentIntent confirmed and webhook received.",
-                    ),
-                    BookingWorkflowStep(
-                        key="case_creator",
-                        title="Case creator",
-                        status="complete",
-                        detail="Client record and case ID created.",
-                    ),
-                    BookingWorkflowStep(
-                        key="confirmation_dispatch",
-                        title="Confirmation dispatch",
-                        status="complete",
-                        detail="Email and calendar invite queued.",
-                    ),
-                    BookingWorkflowStep(
-                        key="form_service",
-                        title="Form service triggered",
-                        status="complete",
-                        detail="Welcome pack and intake forms dispatched.",
-                    ),
-                    BookingWorkflowStep(
-                        key="session_brief",
-                        title="Session briefer",
-                        status="queued",
-                        detail="Pre-session briefing scheduled for clinician.",
-                    ),
-                    BookingWorkflowStep(
-                        key="assessment_report_handoff",
-                        title="Assessment + report handoff",
-                        status="in_progress",
-                        detail="Case routed into assessment and report pipeline.",
-                    ),
-                ],
-            ),
-            BookingRecord(
-                id="booking-002",
-                case_id="case-1002",
-                client_id="client-002",
-                client_name="Maya Singh",
-                client_email="maya@example.com",
-                clinician_id="clinician-002",
-                clinician_name="Dr Samir Patel",
-                pathway="Adult Autism",
-                booking_status="awaiting_confirmation",
-                payment_status="paid",
-                room_status="pending",
-                confirmation_status="pending",
-                sla_status="watch",
-                slot_time="2026-04-18T13:30:00",
-                source="Client portal",
-                workflow_steps=[
-                    BookingWorkflowStep(
-                        key="slot_resolver",
-                        title="Slot resolver",
-                        status="complete",
-                        detail="Slot reserved with clinician preference match.",
-                    ),
-                    BookingWorkflowStep(
-                        key="payment_gate",
-                        title="Stripe payment gate",
-                        status="complete",
-                        detail="PaymentIntent confirmed and booking unlocked.",
-                    ),
-                    BookingWorkflowStep(
-                        key="case_creator",
-                        title="Case creator",
-                        status="complete",
-                        detail="Case record created and workflow tracked.",
-                    ),
-                    BookingWorkflowStep(
-                        key="confirmation_dispatch",
-                        title="Confirmation dispatch",
-                        status="in_progress",
-                        detail="Waiting for room provisioning before send.",
-                    ),
-                    BookingWorkflowStep(
-                        key="form_service",
-                        title="Form service triggered",
-                        status="pending",
-                        detail="Welcome pack will dispatch after confirmation send.",
-                    ),
-                    BookingWorkflowStep(
-                        key="session_brief",
-                        title="Session briefer",
-                        status="pending",
-                        detail="Briefing remains blocked until booking confirmation completes.",
-                    ),
-                    BookingWorkflowStep(
-                        key="assessment_report_handoff",
-                        title="Assessment + report handoff",
-                        status="pending",
-                        detail="Assessment workflow will start after pre-session readiness is complete.",
-                    ),
-                ],
-            ),
-        ]
+                slot_time=payload.preferred_slot,
+                source=payload.source,
+            )
+            row.workflow_steps = steps
 
-    def list_bookings(self) -> list[dict[str, object]]:
-        return [booking.model_dump() for booking in self._bookings]
+            db.add(row)
+            db.commit()
+            db.refresh(row)
 
-    def get_booking(self, booking_id: str) -> BookingRecord | None:
-        for booking in self._bookings:
-            if booking.id == booking_id:
-                return booking
-        return None
+            return self._row_to_model(row)
+        finally:
+            if _own_db:
+                db.close()
 
-    def process_payment_webhook(self, payload: BookingWebhookPayload) -> BookingRecord:
-        sequence = len(self._bookings) + 1
-        form_task = self.form_service.build_welcome_pack_task(payload.client_name, payload.pathway)
-        brief_task = self.session_brief_service.build_task("Dr Jordan Lee", payload.preferred_slot)
-        handoff_task = self.report_workflow_service.build_task("drafting")
-        booking = BookingRecord(
-            id=f"booking-{sequence:03d}",
-            case_id=f"case-{1000 + sequence}",
-            client_id=f"client-{sequence:03d}",
-            client_name=payload.client_name,
-            client_email=payload.client_email,
-            clinician_id="clinician-001",
-            clinician_name="Dr Jordan Lee",
-            pathway=payload.pathway,
-            booking_status="scheduled",
-            payment_status="paid",
-            room_status="provisioned",
-            confirmation_status="sent",
-            sla_status="on_track",
-            slot_time=payload.preferred_slot,
-            source=payload.source,
-            workflow_steps=[
-                BookingWorkflowStep(
-                    key="slot_resolver",
-                    title="Slot resolver",
-                    status="complete",
-                    detail="Availability store and clinician match resolved the slot.",
-                ),
-                BookingWorkflowStep(
-                    key="payment_gate",
-                    title="Stripe payment gate",
-                    status="complete",
-                    detail=f"PaymentIntent {payload.payment_intent_id} accepted.",
-                ),
-                BookingWorkflowStep(
-                    key="case_creator",
-                    title="Case creator",
-                    status="complete",
-                    detail=f"Client record created with case ID case-{1000 + sequence}.",
-                ),
-                BookingWorkflowStep(
-                    key="confirmation_dispatch",
-                    title="Confirmation dispatch",
-                    status="complete",
-                    detail=self.notification_service.build_calendar_invite_status(
-                        "Dr Jordan Lee",
-                        payload.preferred_slot,
-                    ),
-                ),
-                BookingWorkflowStep(**form_task.model_dump()),
-                BookingWorkflowStep(**brief_task.model_dump()),
-                BookingWorkflowStep(**handoff_task.model_dump()),
-            ],
+    # ── Private ────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _row_to_model(row: BookingDBRecord) -> BookingRecord:
+        return BookingRecord(
+            id=row.id,
+            case_id=row.case_id,
+            client_id=row.client_id,
+            client_name=row.client_name,
+            client_email=row.client_email,
+            clinician_id=row.clinician_id or "",
+            clinician_name=row.clinician_name or "",
+            pathway=row.pathway,
+            booking_status=row.booking_status,
+            payment_status=row.payment_status,
+            room_status=row.room_status,
+            confirmation_status=row.confirmation_status,
+            sla_status=row.sla_status,
+            slot_time=row.slot_time or "",
+            source=row.source or "",
+            workflow_steps=[BookingWorkflowStep(**s) for s in row.workflow_steps],
         )
-        self._bookings.insert(0, booking)
-        return booking
