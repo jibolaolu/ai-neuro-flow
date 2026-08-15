@@ -442,13 +442,38 @@ async function getOrCreateApplications(api) {
 
 async function getOrCreateRoles(api) {
   console.log("🔍 Roles...");
-  const existing = asArray(await api.get("/roles"));
-  const results  = [];
+
+  // per_page=100 avoids pagination gaps. If the M2M token lacks read:roles scope
+  // this throws; we fall back to pure-create with conflict handling below.
+  let existing = [];
+  try {
+    existing = asArray(await api.get("/roles?per_page=100"));
+  } catch (e) {
+    console.warn(`   ⚠️  Could not list existing roles: ${e.message}`);
+    console.warn(`      Add read:roles to M2M scopes, or conflicts will be handled on create.`);
+  }
+
+  const results = [];
   for (const roleDef of ROLES) {
     let role = existing.find((r) => r.name === roleDef.name);
     if (!role) {
-      role = await api.post("/roles", roleDef);
-      console.log(`   ✅ Created role: ${role.name}`);
+      try {
+        role = await api.post("/roles", roleDef);
+        console.log(`   ✅ Created role: ${role.name}`);
+      } catch (err) {
+        if (err.message && /^HTTP 409/.test(err.message)) {
+          // Role already exists — refetch to get its id.
+          const fresh = asArray(await api.get("/roles?per_page=100"));
+          role = fresh.find((r) => r.name === roleDef.name);
+          if (role) {
+            console.log(`   ✅ Role already exists: ${role.name}`);
+          } else {
+            throw new Error(`Role "${roleDef.name}" reported as duplicate but could not be retrieved — check read:roles M2M scope`);
+          }
+        } else {
+          throw err;
+        }
+      }
     } else {
       console.log(`   ✅ Role: ${role.name}`);
     }

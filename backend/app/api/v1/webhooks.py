@@ -1,18 +1,13 @@
 ﻿"""
-WordPress / WooCommerce payment webhook.
+ARCHIVED — NeurAccess / EverythingADHD WooCommerce + Stripe patient-checkout webhooks.
 
-WordPress calls POST /api/v1/webhooks/payment when a WooCommerce order is
-completed. Neuro Flow validates the shared secret, parses the order data,
-creates a client record and triggers the intake workflow.
+This module is NOT mounted in the NeuroFlow router. NeuroFlow is a standalone
+clinic platform; clients are added manually or via referral import, not through
+WordPress/WooCommerce shop payments.
 
-Setup steps for WordPress (SiteGround):
-  1. Install WooCommerce Webhooks or use native WooCommerce → Settings →
-     Advanced → Webhooks.
-  2. Create a new webhook:
-     - Topic:   Order completed  (woocommerce.order.completed)
-     - Delivery URL: https://<your-neuroflow-domain>/api/v1/webhooks/payment
-     - Secret:  value of WEBHOOK_SECRET in your backend .env
-  3. Set Content-Type to application/json.
+This code is retained for reference in case the EverythingADHD / NeurAccess
+integration is needed again. To re-enable, add this router back to
+backend/app/api/router.py AND set enable_legacy_woocommerce_webhook=True in .env.
 """
 
 import hashlib

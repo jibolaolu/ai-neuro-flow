@@ -112,10 +112,11 @@ class Settings(BaseSettings):
                     "http://127.0.0.1:3004",
                 ]
             )
-            if self.wordpress_staging_url:
-                origins.append(self.wordpress_staging_url)
-            if self.wordpress_production_url:
-                origins.append(self.wordpress_production_url)
+            if self.enable_legacy_woocommerce_webhook:
+                if self.wordpress_staging_url:
+                    origins.append(self.wordpress_staging_url)
+                if self.wordpress_production_url:
+                    origins.append(self.wordpress_production_url)
         for part in self.extra_cors_origins.split(","):
             p = part.strip()
             if p:

@@ -20,10 +20,10 @@ class ClientRecord(Base):
     child_dob = Column(String, nullable=True)          # ISO date YYYY-MM-DD (child bookings only)
     status = Column(String, default="New")            # New → Intake → Booked → Assessment → Report → Complete
     stage = Column(String, default="Intake")
-    source = Column(String, default="stripe")         # stripe | manual | woocommerce
-    stripe_session_id = Column(String, nullable=True, unique=True)
-    payment_amount = Column(String, nullable=True)
-    payment_currency = Column(String, nullable=True)
+    source = Column(String, default="manual")          # manual | referral | rtc | import
+    stripe_session_id = Column(String, nullable=True, unique=True)  # legacy field — not used by NeuroFlow standalone
+    payment_amount = Column(String, nullable=True)    # legacy field
+    payment_currency = Column(String, nullable=True)  # legacy field
     assessment_id = Column(String, nullable=True)     # ASS-XXXXXXXX
     paid_service_name = Column(String, nullable=True)  # From checkout line items / metadata
     # Clinician caseload: who is responsible for the assessment (UUID from users.id)

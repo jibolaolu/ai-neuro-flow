@@ -13,8 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.db.session import get_db
-from app.core.security import get_current_user
+from app.api.deps import get_db, get_current_user
 
 logger = logging.getLogger(__name__)
 router = APIRouter()

@@ -39,7 +39,6 @@ from app.api.v1 import (
     push,
     telehealth,
     triage,
-    webhooks,
 )
 
 api_router = APIRouter()
@@ -55,7 +54,6 @@ api_router.include_router(bookings.router, prefix="/bookings", tags=["bookings"]
 api_router.include_router(clients.router, prefix="/clients", tags=["clients"])
 api_router.include_router(clinicians.router, prefix="/clinicians", tags=["clinicians"])
 api_router.include_router(reports.router, prefix="/reports", tags=["reports"])
-api_router.include_router(webhooks.router, prefix="/webhooks", tags=["webhooks"])
 api_router.include_router(system.router, prefix="/system", tags=["system"])
 api_router.include_router(forms.router, prefix="/forms", tags=["forms"])
 

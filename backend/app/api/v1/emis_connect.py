@@ -19,6 +19,7 @@ import hmac
 import json
 import logging
 import os
+import uuid
 from datetime import datetime
 from typing import Any, Optional
 
@@ -27,9 +28,8 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Header
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.db.session import get_db
-from app.core.security import get_current_user
-from app.core.tenant import effective_clinic_id
+from app.api.deps import get_db, get_current_user
+from app.services.tenant import effective_clinic_id
 from app.models.client import ClientRecord
 
 logger = logging.getLogger(__name__)
@@ -136,19 +136,14 @@ async def emis_webhook(
     ).first() if payload.email else None
 
     if not existing:
-        # Route to clinic by ODS code mapping (simplified: use org 1 as default)
-        clinic_id = 1  # production: lookup clinic by clinic_ods_code
         client = ClientRecord(
-            clinic_id=clinic_id,
-            first_name=payload.first_name,
-            last_name=payload.last_name,
-            email=payload.email,
+            id=f"CLI-{uuid.uuid4().hex[:8].upper()}",
+            full_name=f"{payload.first_name} {payload.last_name}".strip(),
+            email=payload.email or f"{payload.emis_guid}@emis.nhs.uk",
             phone=payload.phone,
-            date_of_birth=payload.date_of_birth,
-            nhs_number=payload.nhs_number,
-            gp_name=payload.gp_name,
             source="emis-webhook",
-            status="referral-received",
+            status="New",
+            stage="Intake",
         )
         db.add(client)
         db.commit()

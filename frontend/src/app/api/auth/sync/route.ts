@@ -1,4 +1,4 @@
-import { getAccessToken } from "@auth0/nextjs-auth0";
+import { initAuth0 } from "@auth0/nextjs-auth0";
 import { NextRequest, NextResponse } from "next/server";
 
 import { authCookieOptions, displayCookieOptions } from "../../../../lib/cookie-options";
@@ -28,7 +28,8 @@ const ROLE_PATHS: Record<string, string> = {
 export async function GET(request: NextRequest) {
   let accessToken: string | undefined;
   try {
-    const tokenRes = await getAccessToken();
+    const auth0 = initAuth0();
+    const tokenRes = await auth0.getAccessToken();
     accessToken = tokenRes.accessToken;
   } catch {
     accessToken = undefined;
@@ -44,8 +45,7 @@ export async function GET(request: NextRequest) {
   });
 
   if (!meRes.ok) {
-    const baseUrl = process.env.AUTH0_BASE_URL ?? new URL(request.url).origin;
-    const loginUrl = new URL("/login", baseUrl);
+    const loginUrl = getSafeRedirectUrl(request, "/login");
     loginUrl.searchParams.set("error", "no_account");
     return NextResponse.redirect(loginUrl);
   }

@@ -53,7 +53,7 @@ function Write-NestLog {
         "ERROR" { $levelColor = "Red";     $label = "  ERROR" }
         default { $levelColor = "Green";   $label = "    LOG" }
     }
-    Write-Host "[NeuroAccess]" -ForegroundColor Green -NoNewline
+    Write-Host "[NeuroFlow]" -ForegroundColor Green -NoNewline
     Write-Host "  $pid_str  " -ForegroundColor DarkGreen -NoNewline
     Write-Host "-  $ts  " -ForegroundColor DarkGray -NoNewline
     Write-Host $label -ForegroundColor $levelColor -NoNewline
@@ -186,8 +186,7 @@ function Start-CloudflareTunnel {
         Write-Host "│  Cloudflare tunnel active                                   │" -ForegroundColor Green
         Write-Host "│  Public URL:  $tunnelUrl" -ForegroundColor Green
         Write-Host "│                                                             │" -ForegroundColor Green
-        Write-Host "│  WooCommerce webhook delivery URL:                          │" -ForegroundColor Green
-        Write-Host "│  $tunnelUrl/api/v1/webhooks/payment" -ForegroundColor Green
+        Write-Host "│  Set PLATFORM_BASE_URL to the URL above in backend/.env     │" -ForegroundColor Green
         Write-Host "└─────────────────────────────────────────────────────────────┘" -ForegroundColor Green
         Write-Host ""
     } else {
@@ -285,16 +284,18 @@ if ($BackendPort -eq $FrontendPort) {
 }
 
 Write-Banner
-Write-Step "Preparing NeuroAccess local environment"
+Write-Step "Preparing NeuroFlow local environment"
 
 Ensure-EnvFile -Path $backendEnvFile -Label "backend" -Content @"
-DATABASE_URL=sqlite:///./neuroaccess.db
-OPENAI_MODEL=gpt-4o-mini
-LOG_LEVEL=INFO
+DATABASE_URL=sqlite:///./neuro_flow.db
 ENVIRONMENT=development
+LOG_LEVEL=INFO
+PLATFORM_DISPLAY_NAME=Neuro Flow
+PLATFORM_BASE_URL=http://localhost:$FrontendPort
 FRONTEND_URL=http://localhost:$FrontendPort
-WORDPRESS_STAGING_URL=
-WORDPRESS_PRODUCTION_URL=
+SUPPORT_EMAIL=support@neuroflow.app
+ENABLE_LEGACY_WOOCOMMERCE_WEBHOOK=false
+SIGNUP_TRIAL_DAYS=14
 "@
 
 # Auto-generate secrets if missing
@@ -390,7 +391,7 @@ if ($IncludeWorkers) {
 Write-Ok "All services started"
 Write-Host ""
 Write-Host "  ┌──────────────────────────────────────────────────────────────┐" -ForegroundColor Green
-Write-Host "  │                  NeuroAccess  —  Running                     │" -ForegroundColor Green
+Write-Host "  │                   NeuroFlow  —  Running                      │" -ForegroundColor Green
 Write-Host "  ├──────────────────────────────────────────────────────────────┤" -ForegroundColor Green
 Write-Host "  │  " -NoNewline -ForegroundColor Green
 Write-Host "Frontend         " -NoNewline -ForegroundColor DarkGray

@@ -15,8 +15,6 @@ services:
       JWT_SECRET: local-dev-jwt-secret-not-for-production
       WEBHOOK_SECRET: local-dev-webhook-secret-not-for-production
       FRONTEND_URL: http://localhost:${NEUROFLOW_WEB_PORT:-3004}
-      WORDPRESS_STAGING_URL: ""
-      WORDPRESS_PRODUCTION_URL: ""
     volumes:
       - ./backend:/app
 

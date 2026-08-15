@@ -17,9 +17,6 @@ export default function ClientPortalLandingPage() {
           <Link className="primary-action" href="/login">
             Staff portal sign in
           </Link>
-          <Link className="ghost-chip" href="/everything-adhd">
-            Neuro Flow integration
-          </Link>
         </div>
       </main>
     </SiteShell>

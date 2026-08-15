@@ -18,7 +18,11 @@ const AUTH_ORIGIN_COOKIE = "_a0_origin";
  *  3. Host header — always the localtest.me hostname after nginx normalisation.
  */
 function detectBaseUrl(req: NextRequest): string {
-  const proto = req.headers.get("x-forwarded-proto")?.split(",")[0]?.trim() || "https";
+  const rawProto = req.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
+  const fwdHost  = req.headers.get("x-forwarded-host")?.split(",")[0]?.trim();
+  const hostHdr  = fwdHost || req.headers.get("host") || req.nextUrl.host;
+  // localtest.me always expects https; everything else follows the real protocol.
+  const proto = rawProto ?? (hostHdr.includes("localtest.me") ? "https" : req.nextUrl.protocol.replace(":", ""));
 
   const referer = req.headers.get("referer");
   if (referer) {
@@ -36,13 +40,11 @@ function detectBaseUrl(req: NextRequest): string {
     } catch {}
   }
 
-  const fwdHost = req.headers.get("x-forwarded-host")?.split(",")[0]?.trim();
   if (fwdHost && !fwdHost.includes("localtest.me") && !fwdHost.includes("localhost")) {
     return `${proto}://${fwdHost}`;
   }
 
-  const host = fwdHost || req.headers.get("host") || req.nextUrl.host;
-  return `${proto}://${host}`;
+  return `${proto}://${hostHdr}`;
 }
 
 function clearCookie(res: Response, name: string): Response {

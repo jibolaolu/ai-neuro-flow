@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
 import { SiteShell } from "../../components/site-shell";
@@ -14,13 +13,6 @@ type Props = {
 export default async function LoginPage({ searchParams }: Props) {
   const auth0 = isAuth0Configured();
   const params = await searchParams;
-
-  // When Auth0 is configured and there is no error to display, go straight to
-  // the Auth0 hosted login page — no intermediate "Sign in with Auth0" button needed.
-  if (auth0 && !params.error) {
-    const returnTo = params.returnTo ?? "/api/auth/sync";
-    redirect(`/api/auth/login?returnTo=${encodeURIComponent(returnTo)}`);
-  }
 
   return (
     <SiteShell accent="slate">

@@ -1,4 +1,4 @@
-import { getAccessToken } from "@auth0/nextjs-auth0";
+import { initAuth0 } from "@auth0/nextjs-auth0";
 import { cookies } from "next/headers";
 
 import { isAuth0Configured } from "./auth0-config";
@@ -13,7 +13,7 @@ export async function getServerAccessToken(): Promise<string | null> {
   if (!isAuth0Configured()) return null;
 
   try {
-    const { accessToken } = await getAccessToken();
+    const { accessToken } = await initAuth0().getAccessToken();
     return accessToken ?? null;
   } catch {
     return null;

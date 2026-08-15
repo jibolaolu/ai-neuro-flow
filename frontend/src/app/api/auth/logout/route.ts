@@ -1,4 +1,4 @@
-import { handleLogout } from "@auth0/nextjs-auth0";
+import { initAuth0 } from "@auth0/nextjs-auth0";
 import { NextRequest, NextResponse } from "next/server";
 
 import { isAuth0Configured } from "../../../../lib/auth0-config";
@@ -28,16 +28,11 @@ function clearAppCookies(response: Response): void {
 }
 
 export async function GET(request: NextRequest) {
-  const baseUrl = process.env.AUTH0_BASE_URL ?? "http://localhost:3004";
-
   if (isAuth0Configured()) {
-    // After Auth0 logout, send the user back to /api/auth/login so they land
-    // directly on the Auth0 hosted sign-in page (login/page.tsx auto-redirects
-    // there when no error param is present).
-    const returnTo = new URL("/api/auth/login", baseUrl).toString();
-    // Call Auth0 SDK logout directly — avoids redirect loop that happens when
-    // redirecting to /api/auth/logout (this same static route shadows [auth0]).
-    const response = await handleLogout(request, { params: {} }, { returnTo });
+    // After Auth0 logout, land on the NeuroFlow /login page (not /api/auth/login,
+    // which would immediately trigger a new Auth0 login flow).
+    const returnTo = getSafeRedirectUrl(request, "/login").toString();
+    const response = await initAuth0().handleLogout(request, { params: {} }, { returnTo });
     clearAppCookies(response);
     return response;
   }
