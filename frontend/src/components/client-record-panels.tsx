@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import type { ClientRecord } from "../lib/api";
+import { BRAND } from "../lib/branding";
 
 // ── Personal Details Editor ────────────────────────────────────────────────
 
@@ -219,7 +220,7 @@ export function ReferralDataPanel({ client }: { client: ClientRecord }) {
       title: "Dates & Service",
       rows: [
         ["Date Received", receivedDate],
-        ["Service", "Neuro Flow ADHD / Autism Pathway"],
+        ["Service", `${BRAND.name} ADHD / Autism Pathway`],
         ["Team", "Neurodevelopment Team"],
         ["Team Type", client.age_group === "Child" ? "Child ADHD & Autism" : "Adult ADHD & Autism"],
       ],

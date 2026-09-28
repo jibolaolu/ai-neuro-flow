@@ -587,7 +587,7 @@ export const NHS_ADULT_ADHD_SCHEMA: NHSAdhdReportSchema = {
             "explore other ADHD treatment services with their GP.\n" +
             "• {clientName} can learn more about the medication titration process and check " +
             "up-to-date wait times here:\n" +
-            "https://www.neuroflow.app/resources/nhs-right-to-choose",
+            "[Insert clinic medication waiting list link here]",
         } satisfies AutoTextField,
 
         // ── 2.4 Plan ──────────────────────────────────────────────────────
@@ -622,7 +622,7 @@ export const NHS_ADULT_ADHD_SCHEMA: NHSAdhdReportSchema = {
           depth: 1,
           description: "Auto-generated assessment methodology paragraph.",
           content:
-            "The ADHD Assessment carried out by Neuro Flow involves combining information " +
+            "The ADHD Assessment carried out by {clinicName} involves combining information " +
             "about {clientName} from a number of sources, including the use of structured and " +
             "highly regarded diagnostic tools.\n\n" +
             "The assessment comprised of:\n" +

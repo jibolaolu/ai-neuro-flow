@@ -319,7 +319,7 @@ function BasicIntakeForm({
         <div style={sectionTitle}>Your details</div>
         <p style={mutedText}>
           Please check your name and contact details. You can edit anything that needs updating.
-          This helps us prepare your assessment for Neuro Flow.
+          This helps us prepare your assessment.
         </p>
         <div
           style={{
@@ -647,11 +647,15 @@ function AdultSelfForm({
   clientName,
   prefill = {},
   onSuccess,
+  clinicName = "",
+  clinicSupportEmail = "",
 }: {
   token: string;
   clientName: string;
   prefill?: Record<string, string | undefined>;
   onSuccess: () => void;
+  clinicName?: string;
+  clinicSupportEmail?: string;
 }) {
   const taStyle: React.CSSProperties = {
     ...input, minHeight: 80, resize: "vertical" as const, fontFamily: "inherit",
@@ -697,7 +701,7 @@ function AdultSelfForm({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!consentAssessment) {
-      setError("You must give consent for Neuro Flow to carry out the assessment before submitting.");
+      setError(`You must give consent for ${clinicName || "the clinic"} to carry out the assessment before submitting.`);
       return;
     }
     if (asrs.some((r) => r === -1)) {
@@ -769,7 +773,7 @@ function AdultSelfForm({
             onChange={(e) => setConsentAssessment(e.target.checked)}
             style={{ width: 20, height: 20, marginTop: 2, accentColor: "var(--brand)", cursor: "pointer", flexShrink: 0 }} />
           <label htmlFor="adult_consent_assessment" style={{ fontSize: 15, color: "var(--ink)", lineHeight: 1.5, cursor: "pointer" }}>
-            <strong>I give consent for Neuro Flow to carry out a neurodevelopmental assessment for me.</strong>
+            <strong>I give consent for {clinicName || "the clinic"} to carry out a neurodevelopmental assessment for me.</strong>
             <span style={{ color: "var(--danger)", marginLeft: 4 }}>*</span>
           </label>
         </div>
@@ -778,7 +782,7 @@ function AdultSelfForm({
             onChange={(e) => setConsentComms(e.target.checked)}
             style={{ width: 20, height: 20, marginTop: 2, accentColor: "var(--brand)", cursor: "pointer", flexShrink: 0 }} />
           <label htmlFor="adult_consent_comms" style={{ fontSize: 15, color: "var(--ink)", lineHeight: 1.5, cursor: "pointer" }}>
-            I give consent for Neuro Flow to communicate with and provide letters/reports in relation to my assessment, treatment and progress to other relevant healthcare services or professionals.
+            I give consent for {clinicName || "the clinic"} to communicate with and provide letters/reports in relation to my assessment, treatment and progress to other relevant healthcare services or professionals.
           </label>
         </div>
       </div>
@@ -934,7 +938,7 @@ function AdultSelfForm({
       {/* ── Privacy notice ── */}
       <div style={{ ...card, background: "var(--muted-50, #f8f9fc)", border: "1px solid var(--muted-100)" }}>
         <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.7, margin: 0 }}>
-          Neuro Flow handles your personal information in accordance with the Data Protection Act 2018 and the General Data Protection Regulations 2018. For more information please see the Privacy Notice on our website or email <strong>support@neuroflow.app</strong>.
+          {clinicName || "This service"} handles your personal information in accordance with the Data Protection Act 2018 and the General Data Protection Regulations 2018. For more information please see the Privacy Notice on our website or email <strong>{clinicSupportEmail || "our support team"}</strong>.
         </p>
       </div>
 
@@ -1162,11 +1166,15 @@ function ChildParentForm({
   clientName,
   prefill = {},
   onSuccess,
+  clinicName = "",
+  clinicSupportEmail = "",
 }: {
   token: string;
   clientName: string;
   prefill?: Record<string, string | undefined>;
   onSuccess: () => void;
+  clinicName?: string;
+  clinicSupportEmail?: string;
 }) {
   const taStyle: React.CSSProperties = {
     ...input, minHeight: 100, resize: "vertical" as const, fontFamily: "inherit",
@@ -1230,7 +1238,7 @@ function ChildParentForm({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!consentAssessment) {
-      setError("You must give consent for Neuro Flow to carry out the neurodevelopmental assessment before submitting.");
+      setError(`You must give consent for ${clinicName || "the clinic"} to carry out the neurodevelopmental assessment before submitting.`);
       return;
     }
     if (sdq.some((r) => r === -1)) {
@@ -1306,7 +1314,7 @@ function ChildParentForm({
             style={{ width: 20, height: 20, marginTop: 2, accentColor: "var(--brand)", cursor: "pointer", flexShrink: 0 }}
           />
           <label htmlFor="consent_assessment" style={{ fontSize: 15, color: "var(--ink)", lineHeight: 1.5, cursor: "pointer" }}>
-            <strong>I give consent for Neuro Flow to carry out a neurodevelopmental assessment for my child.</strong>
+            <strong>I give consent for {clinicName || "the clinic"} to carry out a neurodevelopmental assessment for my child.</strong>
             <span style={{ color: "var(--danger)", marginLeft: 4 }}>*</span>
           </label>
         </div>
@@ -1320,7 +1328,7 @@ function ChildParentForm({
             style={{ width: 20, height: 20, marginTop: 2, accentColor: "var(--brand)", cursor: "pointer", flexShrink: 0 }}
           />
           <label htmlFor="consent_comms" style={{ fontSize: 15, color: "var(--ink)", lineHeight: 1.5, cursor: "pointer" }}>
-            I give consent for Neuro Flow to communicate with and provide letters/reports in relation to my child&apos;s assessment, treatment and progress to other relevant healthcare services or professionals.
+            I give consent for {clinicName || "the clinic"} to communicate with and provide letters/reports in relation to my child&apos;s assessment, treatment and progress to other relevant healthcare services or professionals.
           </label>
         </div>
       </div>
@@ -1417,7 +1425,7 @@ function ChildParentForm({
           <textarea style={{ ...taStyle, minHeight: 80 }} name="safeguarding" value={questionnaire.safeguarding_concerns} onChange={(e) => setQ("safeguarding_concerns", e.target.value)} />
         </div>
         <div style={{ marginBottom: 16 }}>
-          <label style={label}>Is there anything else you would like to add that might be relevant to your child&apos;s neurodevelopmental assessment at Neuro Flow?</label>
+          <label style={label}>Is there anything else you would like to add that might be relevant to your child&apos;s neurodevelopmental assessment{clinicName ? ` at ${clinicName}` : ""}?</label>
           <textarea style={{ ...taStyle, minHeight: 80 }} name="anything_else" value={questionnaire.anything_else} onChange={(e) => setQ("anything_else", e.target.value)} />
         </div>
       </div>
@@ -1484,7 +1492,7 @@ function ChildParentForm({
       {/* ── Privacy notice ── */}
       <div style={{ ...card, background: "var(--muted-50, #f8f9fc)", border: "1px solid var(--muted-100)" }}>
         <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.7, margin: 0 }}>
-          Neuro Flow handles your personal information in accordance with the Data Protection Act 2018 and the General Data Protection Regulations 2018. We will process personal information in ways that respect your individual rights and in line with our company values, exercising the highest standards of confidentiality, integrity and trust. For more information please see the Privacy Notice on our website or email <strong>support@neuroflow.app</strong>.
+          {clinicName || "This service"} handles your personal information in accordance with the Data Protection Act 2018 and the General Data Protection Regulations 2018. We will process personal information in ways that respect your individual rights and in line with our company values, exercising the highest standards of confidentiality, integrity and trust. For more information please see the Privacy Notice on our website or email <strong>{clinicSupportEmail || "our support team"}</strong>.
         </p>
       </div>
 
@@ -1504,11 +1512,15 @@ function AdolescentSelfForm({
   clientName,
   prefill = {},
   onSuccess,
+  clinicName = "",
+  clinicSupportEmail = "",
 }: {
   token: string;
   clientName: string;
   prefill?: Record<string, string | undefined>;
   onSuccess: () => void;
+  clinicName?: string;
+  clinicSupportEmail?: string;
 }) {
   const taStyle: React.CSSProperties = {
     ...input, minHeight: 100, resize: "vertical" as const, fontFamily: "inherit",
@@ -1560,7 +1572,7 @@ function AdolescentSelfForm({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!consentAssessment) {
-      setError("You must give consent for Neuro Flow to carry out the neurodevelopmental assessment before submitting.");
+      setError(`You must give consent for ${clinicName || "the clinic"} to carry out the neurodevelopmental assessment before submitting.`);
       return;
     }
     if (sdqSelf.some((r) => r === -1)) {
@@ -1623,7 +1635,7 @@ function AdolescentSelfForm({
             onChange={(e) => setConsentAssessment(e.target.checked)}
             style={{ width: 20, height: 20, marginTop: 2, accentColor: "var(--brand)", cursor: "pointer", flexShrink: 0 }} />
           <label htmlFor="adol_consent_assessment" style={{ fontSize: 15, color: "var(--ink)", lineHeight: 1.5, cursor: "pointer" }}>
-            <strong>I give consent for Neuro Flow to carry out a neurodevelopmental assessment for my child.</strong>
+            <strong>I give consent for {clinicName || "the clinic"} to carry out a neurodevelopmental assessment for my child.</strong>
             <span style={{ color: "var(--danger)", marginLeft: 4 }}>*</span>
           </label>
         </div>
@@ -1632,7 +1644,7 @@ function AdolescentSelfForm({
             onChange={(e) => setConsentComms(e.target.checked)}
             style={{ width: 20, height: 20, marginTop: 2, accentColor: "var(--brand)", cursor: "pointer", flexShrink: 0 }} />
           <label htmlFor="adol_consent_comms" style={{ fontSize: 15, color: "var(--ink)", lineHeight: 1.5, cursor: "pointer" }}>
-            I give consent for Neuro Flow to communicate with and provide letters/reports in relation to my child&apos;s assessment, treatment and progress to other relevant healthcare services or professionals.
+            I give consent for {clinicName || "the clinic"} to communicate with and provide letters/reports in relation to my child&apos;s assessment, treatment and progress to other relevant healthcare services or professionals.
           </label>
         </div>
       </div>
@@ -1779,7 +1791,7 @@ function AdolescentSelfForm({
       {/* ── Privacy notice ── */}
       <div style={{ ...card, background: "var(--muted-50, #f8f9fc)", border: "1px solid var(--muted-100)" }}>
         <p style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.7, margin: 0 }}>
-          Neuro Flow handles your personal information in accordance with the Data Protection Act 2018 and the General Data Protection Regulations 2018. We will process personal information in ways that respect your individual rights and in line with our company values, exercising the highest standards of confidentiality, integrity and trust. For more information please see the Privacy Notice on our website or email <strong>support@neuroflow.app</strong>.
+          {clinicName || "This service"} handles your personal information in accordance with the Data Protection Act 2018 and the General Data Protection Regulations 2018. We will process personal information in ways that respect your individual rights and in line with our company values, exercising the highest standards of confidentiality, integrity and trust. For more information please see the Privacy Notice on our website or email <strong>{clinicSupportEmail || "our support team"}</strong>.
         </p>
       </div>
 
@@ -2051,17 +2063,24 @@ export function FormRouter({
   clientName,
   clientEmail,
   prefill = {},
+  clinicName = "",
+  clinicSupportEmail = "",
 }: {
   token: string;
   formType: string;
   clientName: string;
   clientEmail?: string | null;
   prefill?: Prefill;
+  clinicName?: string;
+  clinicSupportEmail?: string;
 }) {
   const router = useRouter();
 
   function onSuccess() {
-    router.push("/forms/submitted");
+    const params = clinicSupportEmail
+      ? `?support=${encodeURIComponent(clinicSupportEmail)}`
+      : "";
+    router.push(`/forms/submitted${params}`);
   }
 
   if (formType === "basic_intake")
@@ -2081,6 +2100,8 @@ export function FormRouter({
         clientName={clientName}
         prefill={prefill}
         onSuccess={onSuccess}
+        clinicName={clinicName}
+        clinicSupportEmail={clinicSupportEmail}
       />
     );
   if (formType === "child_parent")
@@ -2090,6 +2111,8 @@ export function FormRouter({
         clientName={clientName}
         prefill={prefill}
         onSuccess={onSuccess}
+        clinicName={clinicName}
+        clinicSupportEmail={clinicSupportEmail}
       />
     );
   if (formType === "adolescent_self")
@@ -2099,6 +2122,8 @@ export function FormRouter({
         clientName={clientName}
         prefill={prefill}
         onSuccess={onSuccess}
+        clinicName={clinicName}
+        clinicSupportEmail={clinicSupportEmail}
       />
     );
   if (

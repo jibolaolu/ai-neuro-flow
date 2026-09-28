@@ -4,34 +4,47 @@ from app.core.config import settings
 from app.api.v1 import (
     ai_features,
     ai_jobs,
+    ai_matrix,
+    portal_auth,
     analytics,
     api_keys,
     assessments,
     assignments,
+    audit_log,
     auth,
     availability,
     billing,
     bookings,
     calendar_export,
     checkout,
+    client_comms,
     clinical_reports,
     clinician_finance,
     clinicians,
     clients,
     compliance,
     consent,
+    email_triage,
     fhir,
     follow_up,
     forms,
+    hr,
     invoices,
+    messages,
+    newsfeed,
+    notifications,
     organizations,
     outcomes,
+    policies,
     public_booking,
     referrals,
     reports,
+    second_opinion,
     subscriptions,
     support_tickets,
+    surveys,
     system,
+    system_settings,
     team,
     emis_connect,
     ig_workflow,
@@ -39,6 +52,7 @@ from app.api.v1 import (
     push,
     telehealth,
     triage,
+    waitlist,
 )
 
 api_router = APIRouter()
@@ -82,3 +96,20 @@ api_router.include_router(prescriptions.router, prefix="/prescriptions", tags=["
 api_router.include_router(ig_workflow.router, prefix="/ig", tags=["ig-workflow"])
 api_router.include_router(emis_connect.router, prefix="/nhs", tags=["nhs-emis"])
 api_router.include_router(telehealth.router, prefix="/telehealth", tags=["telehealth"])
+# ── New features ported from NeuroAccess ──────────────────────────────────────
+api_router.include_router(notifications.router, prefix="/notifications", tags=["notifications"])
+api_router.include_router(audit_log.router, prefix="/audit-log", tags=["audit-log"])
+api_router.include_router(waitlist.router, prefix="/waitlist", tags=["waitlist"])
+api_router.include_router(messages.router, prefix="/messages", tags=["messages"])
+api_router.include_router(newsfeed.router, prefix="/newsfeed", tags=["newsfeed"])
+api_router.include_router(surveys.router, prefix="/surveys", tags=["surveys"])
+api_router.include_router(policies.router, prefix="/policies", tags=["policies"])
+api_router.include_router(hr.router, prefix="/hr", tags=["hr"])
+api_router.include_router(ai_matrix.router, prefix="/ai-matrix", tags=["ai-matrix"])
+api_router.include_router(email_triage.router, prefix="/email-triage", tags=["email-triage"])
+api_router.include_router(system_settings.router, prefix="/system-settings", tags=["system-settings"])
+api_router.include_router(client_comms.router, prefix="/client-comms", tags=["client-comms"])
+api_router.include_router(client_comms.public_router, prefix="/public", tags=["client-comms-public"])
+api_router.include_router(second_opinion.router, tags=["second-opinion"])
+api_router.include_router(portal_auth.staff_router, tags=["portal-auth"])
+api_router.include_router(portal_auth.public_router, prefix="/public", tags=["portal-auth-public"])

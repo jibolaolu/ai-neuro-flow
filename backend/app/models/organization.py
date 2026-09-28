@@ -23,9 +23,22 @@ class OrganizationRecord(Base):
     __tablename__ = "organizations"
 
     id = Column(String, primary_key=True)  # ORG-XXXXXXXX
-    name = Column(String, nullable=False)
+    name = Column(String, nullable=False)           # internal identifier
+    display_name = Column(String, nullable=True)    # shown on reports, forms, emails
     slug = Column(String, unique=True, nullable=False, index=True)
     is_active = Column(Boolean, default=True)
+
+    # Clinic contact branding — shown on reports/emails/invoices to clients
+    support_email = Column(String, nullable=True)
+    contact_phone = Column(String, nullable=True)
+    address = Column(String, nullable=True)
+    website = Column(String, nullable=True)
+    logo_url = Column(String, nullable=True)
+
+    # UK regulatory identifiers
+    registered_company_number = Column(String, nullable=True)
+    cqc_registration_number = Column(String, nullable=True)
+    ico_registration_number = Column(String, nullable=True)
 
     subscription_status = Column(String, default=SUB_TRIALING)
     subscription_plan = Column(String, nullable=True)
@@ -47,10 +60,19 @@ class OrganizationSignup(BaseModel):
 class OrganizationOut(BaseModel):
     id: str
     name: str
+    display_name: str | None = None
     slug: str
     is_active: bool
     subscription_status: str
     subscription_plan: str | None = None
+    support_email: str | None = None
+    contact_phone: str | None = None
+    address: str | None = None
+    website: str | None = None
+    logo_url: str | None = None
+    registered_company_number: str | None = None
+    cqc_registration_number: str | None = None
+    ico_registration_number: str | None = None
     trial_ends_at: datetime | None = None
 
     class Config:

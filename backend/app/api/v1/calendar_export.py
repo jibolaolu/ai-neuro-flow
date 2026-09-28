@@ -35,13 +35,14 @@ def _build_ical(
     location: str,
     start: datetime,
     end: datetime,
-    organizer_email: str = "noreply@neuroflow.app",
+    organizer_name: str = "Assessment Platform",
+    organizer_email: str = "noreply@example.com",
 ) -> str:
     now = datetime.now(timezone.utc)
     return "\r\n".join([
         "BEGIN:VCALENDAR",
         "VERSION:2.0",
-        "PRODID:-//Neuro Flow//Assessment Platform//EN",
+        f"PRODID:-//{organizer_name}//Assessment Platform//EN",
         "CALSCALE:GREGORIAN",
         "METHOD:REQUEST",
         "BEGIN:VEVENT",
@@ -101,9 +102,12 @@ def client_appointment_ical(
         start = start.replace(tzinfo=timezone.utc)
     end   = start + timedelta(hours=2)
 
+    from app.core.branding import get_clinic_branding
+    branding = get_clinic_branding(db, client.clinic_id)
+    clinic_name = branding.display_name
     clinician_name = getattr(client, "assigned_clinician_name", None) or "Your clinician"
     description = (
-        f"Neuro Flow assessment appointment\n"
+        f"{clinic_name} assessment appointment\n"
         f"Pathway: {client.pathway or 'ADHD/Autism'}\n"
         f"Clinician: {clinician_name}\n"
         f"Client: {client.full_name}\n"
@@ -111,12 +115,14 @@ def client_appointment_ical(
     )
 
     ical = _build_ical(
-        uid         = f"{client_id}-assessment@neuroflow.app",
-        summary     = f"Assessment — {client.full_name} ({client.pathway or 'ADHD'})",
-        description = description,
-        location    = "As confirmed in your booking email",
-        start       = start,
-        end         = end,
+        uid            = f"{client_id}-assessment@{client.clinic_id or 'clinic'}",
+        summary        = f"Assessment — {client.full_name} ({client.pathway or 'ADHD'})",
+        description    = description,
+        location       = "As confirmed in your booking email",
+        start          = start,
+        end            = end,
+        organizer_name = clinic_name,
+        organizer_email= branding.support_email or "noreply@example.com",
     )
     return PlainTextResponse(
         content = ical,
@@ -142,8 +148,10 @@ def client_calendar_links(
     if start.tzinfo is None:
         start = start.replace(tzinfo=timezone.utc)
     end   = start + timedelta(hours=2)
+    from app.core.branding import get_clinic_branding
+    clinic_name = get_clinic_branding(db, client.clinic_id).display_name
     summary = f"Assessment — {client.pathway or 'ADHD/Autism Assessment'}"
-    description = f"Neuro Flow assessment for {client.full_name}.\nPathway: {client.pathway or 'ADHD'}"
+    description = f"{clinic_name} assessment for {client.full_name}.\nPathway: {client.pathway or 'ADHD'}"
 
     return {
         "google": _google_link(summary=summary, description=description, location="As per booking confirmation", start=start, end=end),
@@ -176,9 +184,11 @@ def public_appointment_links(
         start = start.replace(tzinfo=timezone.utc)
     end = start + timedelta(hours=2)
 
+    from app.core.branding import get_clinic_branding
+    clinic_name = get_clinic_branding(db, client.clinic_id).display_name
     summary = f"Assessment Appointment — {client.pathway or 'ADHD/Autism'}"
     description = (
-        f"Your Neuro Flow {client.pathway or 'ADHD/Autism'} assessment.\n"
+        f"Your {clinic_name} {client.pathway or 'ADHD/Autism'} assessment.\n"
         f"Please ensure you attend on time and have completed all requested forms."
     )
 

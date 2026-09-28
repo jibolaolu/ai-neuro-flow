@@ -24,7 +24,15 @@ type Invoice = {
 export default function InvoicePrintPage({ params }: { params: { id: string } }) {
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(true);
+  const [clinicName, setClinicName] = useState("");
   const printRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    void fetch(browserApiUrl("/api/v1/organizations/me"), { credentials: "include" })
+      .then((r) => r.ok ? r.json() : null)
+      .then((d) => { if (d?.display_name || d?.name) setClinicName(d.display_name || d.name); })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     void fetch(browserApiUrl(`/api/v1/invoices/${params.id}`), { credentials: "include" })
@@ -73,7 +81,7 @@ export default function InvoicePrintPage({ params }: { params: { id: string } })
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 40 }}>
           <div>
             <div style={{ fontSize: 28, fontWeight: 900, color: "#1d4ed8", letterSpacing: "-0.02em", marginBottom: 4 }}>
-              Neuro Flow
+              {clinicName || "Clinic"}
             </div>
             <div style={{ fontSize: 12, color: "#64748b" }}>Clinical Platform</div>
           </div>
@@ -169,7 +177,7 @@ export default function InvoicePrintPage({ params }: { params: { id: string } })
         {/* Footer */}
         <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: 20, textAlign: "center" }}>
           <div style={{ fontSize: 12, color: "#94a3b8" }}>
-            Thank you for your business · Neuro Flow Clinical Platform
+            Thank you for your business · {clinicName || "Clinical Platform"}
           </div>
           <div style={{ fontSize: 11, color: "#cbd5e1", marginTop: 4 }}>
             Invoice ID: {invoice.id}

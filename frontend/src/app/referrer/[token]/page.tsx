@@ -5,6 +5,7 @@
  */
 
 import { serverApiUrl } from "../../../lib/get-api-base";
+import { BRAND } from "../../../lib/branding";
 
 type ReferralStatus = {
   id: string;
@@ -76,7 +77,7 @@ export default async function ReferrerPortalPage({ params }: { params: { token: 
     return (
       <div style={{ minHeight: "100vh", background: "#f8fafc", fontFamily: "Inter, system-ui, sans-serif" }}>
         <div style={brand}>
-          <div style={{ fontWeight: 900, fontSize: "1.2rem" }}>Neuro Flow</div>
+          <div style={{ fontWeight: 900, fontSize: "1.2rem" }}>{BRAND.name}</div>
           <div style={{ fontSize: "0.8rem", opacity: 0.7 }}>Referrer Portal</div>
         </div>
         <div style={{ maxWidth: 560, margin: "40px auto", padding: "0 16px", textAlign: "center" }}>
@@ -84,7 +85,7 @@ export default async function ReferrerPortalPage({ params }: { params: { token: 
           <h1 style={{ fontSize: "1.2rem", fontWeight: 800, color: "#0f172a" }}>Referral not found</h1>
           <p style={{ color: "#64748b", fontSize: "0.9rem" }}>
             The referral ID <strong>{params.token}</strong> was not found. Please check the ID and try again,
-            or contact our team at <a href="mailto:referrals@neuroflow.health" style={{ color: "#1d4ed8" }}>referrals@neuroflow.health</a>.
+            or contact our team{BRAND.supportEmail ? <> at <a href={`mailto:${BRAND.supportEmail}`} style={{ color: "#1d4ed8" }}>{BRAND.supportEmail}</a></> : ""}.
           </p>
         </div>
       </div>
@@ -98,7 +99,7 @@ export default async function ReferrerPortalPage({ params }: { params: { token: 
       {/* Header */}
       <div style={brand}>
         <div style={{ maxWidth: 640, margin: "0 auto" }}>
-          <div style={{ fontWeight: 900, fontSize: "1.2rem" }}>Neuro Flow</div>
+          <div style={{ fontWeight: 900, fontSize: "1.2rem" }}>{BRAND.name}</div>
           <div style={{ fontSize: "0.8rem", opacity: 0.7 }}>GP Referrer Portal</div>
         </div>
       </div>

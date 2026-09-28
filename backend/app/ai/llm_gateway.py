@@ -51,7 +51,7 @@ class LLMGateway:
         client = anthropic.Anthropic(api_key=api_key) if api_key else anthropic.Anthropic()
 
         sys_prompt = system or (
-            "You are a specialist clinical assistant for Neuro Flow, a UK-based "
+            "You are a specialist clinical assistant for a UK-based "
             "ADHD and Autism assessment service."
         )
         if json_mode:

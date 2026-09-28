@@ -99,8 +99,12 @@ def _create_stripe_payment_link(invoice: InvoiceRecord) -> str | None:
         return None
 
 
-def _send_invoice_email(invoice: InvoiceRecord) -> None:
+def _send_invoice_email(invoice: InvoiceRecord, db: Session | None = None) -> None:
     try:
+        from app.core.branding import get_clinic_branding
+        branding = get_clinic_branding(db, invoice.clinic_id) if db else None
+        clinic_name = branding.display_name if branding else "the clinic"
+
         payment_section = ""
         if invoice.stripe_payment_link:
             payment_section = f"\nPay securely online: {invoice.stripe_payment_link}\n"
@@ -111,7 +115,7 @@ def _send_invoice_email(invoice: InvoiceRecord) -> None:
 
         email_svc.send_generic_notification(
             to_email=invoice.client_email,
-            subject=f"Invoice {invoice.invoice_number} from Neuro Flow — £{invoice.total_gbp:.2f}",
+            subject=f"Invoice {invoice.invoice_number} from {clinic_name} — £{invoice.total_gbp:.2f}",
             body=(
                 f"Dear {invoice.client_name},\n\n"
                 f"Please find your invoice below.\n\n"
@@ -122,7 +126,7 @@ def _send_invoice_email(invoice: InvoiceRecord) -> None:
                 + due_str
                 + payment_section
                 + (f"\n\nNotes: {invoice.notes}" if invoice.notes else "")
-                + "\n\nThank you,\nNeuro Flow Clinical Team"
+                + f"\n\nThank you,\n{clinic_name} Clinical Team"
             ),
         )
     except Exception:  # noqa: BLE001
@@ -268,7 +272,7 @@ def send_invoice(
         if link:
             record.stripe_payment_link = link
 
-    _send_invoice_email(record)
+    _send_invoice_email(record, db)
 
     record.status = INV_STATUS_SENT
     record.sent_at = datetime.now(timezone.utc)

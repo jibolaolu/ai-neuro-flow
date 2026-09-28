@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 logger = logging.getLogger(__name__)
 
 _SYSTEM_PROMPT = (
-    "You are a specialist clinical assistant for Neuro Flow, a UK-based "
+    "You are a specialist clinical assistant for a UK-based "
     "ADHD and Autism assessment service. You produce structured pre-assessment "
     "overviews for senior clinicians. Always respond with valid JSON only - "
     "no markdown, no code fences, no extra text."
@@ -98,7 +98,7 @@ def _build_prompt(client_name: str, age: int | None, scores: dict, pathway: str 
         "",
         "TASK:",
         "You are a specialist ADHD/Autism clinical assistant producing a pre-assessment overview for a "
-        "senior clinician at Neuro Flow. Based solely on the scores above, produce:",
+        "senior clinician. Based solely on the scores above, produce:",
         "",
         "1. diagnostic_impression: An object with:",
         "   - likelihood: one of LOW / MODERATE / HIGH / VERY HIGH",

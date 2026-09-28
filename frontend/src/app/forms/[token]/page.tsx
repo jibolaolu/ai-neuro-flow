@@ -99,6 +99,8 @@ export default async function FormPage({
             clientName={info.client_name}
             clientEmail={info.client_email}
             prefill={info.prefill ?? {}}
+            clinicName={info.clinic_name ?? ""}
+            clinicSupportEmail={info.clinic_support_email ?? ""}
           />
           <div style={{ marginTop: "2rem" }}>
             <ClientAIChat

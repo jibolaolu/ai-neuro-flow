@@ -357,6 +357,13 @@ class FormInfoResponse(BaseModel):
     client_email: str | None = None
     status: str
     prefill: dict = {}
+    # Clinic branding — used in consent text, footer, and data protection notices
+    clinic_name: str = ""
+    clinic_support_email: str = ""
+    clinic_address: str | None = None
+    clinic_logo_url: str | None = None
+    clinic_cqc_number: str | None = None
+    clinic_registered_number: str | None = None
 
 
 def _dob_to_iso(dob_str: str) -> str:
@@ -471,6 +478,10 @@ def get_form_info(token: str, db: Session = Depends(get_db)) -> FormInfoResponse
         except Exception:  # noqa: BLE001
             pass
 
+    from app.core.branding import get_clinic_branding
+    clinic_id = client.clinic_id if client else None
+    branding = get_clinic_branding(db, clinic_id)
+
     return FormInfoResponse(
         token=token,
         form_type=record.form_type,
@@ -479,6 +490,12 @@ def get_form_info(token: str, db: Session = Depends(get_db)) -> FormInfoResponse
         client_email=client_email,
         status=record.status,
         prefill=prefill,
+        clinic_name=branding.display_name,
+        clinic_support_email=branding.support_email,
+        clinic_address=branding.address,
+        clinic_logo_url=branding.logo_url,
+        clinic_cqc_number=branding.cqc_registration_number,
+        clinic_registered_number=branding.registered_company_number,
     )
 
 

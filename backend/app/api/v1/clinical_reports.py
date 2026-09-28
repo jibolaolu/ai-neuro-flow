@@ -385,6 +385,23 @@ def download_pdf_authenticated(
 
 # ── Public token PDF access (client link) ─────────────────────────────────────
 
+@router.get("/token/{token}/info")
+def get_report_info_by_token(
+    token: str,
+    db: Session = Depends(get_db),
+) -> dict:
+    """Return minimal branding info for the report landing page (no auth required)."""
+    r = db.query(ClinicalReportRecord).filter(ClinicalReportRecord.pdf_token == token).first()
+    if not r:
+        raise HTTPException(status_code=404, detail="Invalid or expired link")
+    from app.core.branding import get_clinic_branding
+    branding = get_clinic_branding(db, r.clinic_id)
+    return {
+        "clinic_name": branding.display_name,
+        "clinic_support_email": branding.support_email,
+    }
+
+
 @router.get("/token/{token}/pdf")
 def download_pdf_by_token(
     token: str,

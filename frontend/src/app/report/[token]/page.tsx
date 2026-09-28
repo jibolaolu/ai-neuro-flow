@@ -8,26 +8,41 @@
  * Route: /report/[token]
  */
 
-import { browserApiUrl } from "../../../lib/get-api-base";
+import { serverApiUrl, browserApiUrl } from "../../../lib/get-api-base";
 
 // ── Metadata ──────────────────────────────────────────────────────────────────
 
 export const metadata = {
-  title: "Your Assessment Report – Neuro Flow",
-  description: "Securely access your clinical assessment report from Neuro Flow.",
+  title: "Your Assessment Report",
+  description: "Securely access your clinical assessment report.",
 };
+
+async function getReportInfo(token: string) {
+  try {
+    const res = await fetch(
+      serverApiUrl(`/api/v1/clinical-reports/token/${encodeURIComponent(token)}/info`),
+      { cache: "no-store" },
+    );
+    if (!res.ok) return null;
+    return res.json() as Promise<{ clinic_name: string; clinic_support_email: string }>;
+  } catch {
+    return null;
+  }
+}
 
 // ── Page component ────────────────────────────────────────────────────────────
 
-export default function PublicReportPage({
+export default async function PublicReportPage({
   params,
 }: {
   params: { token: string };
 }) {
   const { token } = params;
 
-  // Build the direct PDF URL. browserApiUrl returns a root-relative path when
-  // NEXT_PUBLIC_API_URL is unset (same-origin), or the full URL if configured.
+  const info = await getReportInfo(token);
+  const clinicName = info?.clinic_name ?? "";
+  const supportEmail = info?.clinic_support_email ?? "";
+
   const pdfUrl = browserApiUrl(`/api/v1/clinical-reports/token/${encodeURIComponent(token)}/pdf`);
 
   return (
@@ -35,8 +50,10 @@ export default function PublicReportPage({
       {/* Branding header */}
       <header className="public-report-header">
         <div className="public-report-brand">
-          <span className="public-report-brand-mark" aria-hidden>N</span>
-          <span className="public-report-brand-name">Neuro Flow</span>
+          <span className="public-report-brand-mark" aria-hidden>
+            {clinicName ? clinicName[0].toUpperCase() : "N"}
+          </span>
+          <span className="public-report-brand-name">{clinicName || "Assessment Portal"}</span>
         </div>
       </header>
 
@@ -61,7 +78,7 @@ export default function PublicReportPage({
 
         <h1 className="public-report-title">Your Assessment Report</h1>
         <p className="public-report-lead">
-          A clinical assessment report has been securely prepared for you by your Neuro Flow clinician.
+          A clinical assessment report has been securely prepared for you by your{clinicName ? ` ${clinicName}` : ""} clinician.
         </p>
 
         {/* Security note */}
@@ -69,7 +86,7 @@ export default function PublicReportPage({
           <span className="public-report-security-icon" aria-hidden>🔒</span>
           <p>
             This is a <strong>secure, time-limited link</strong>. It remains valid for <strong>5 days</strong> from the
-            date the report was issued. After that, please contact Neuro Flow to request a new copy.
+            date the report was issued. After that, please contact {clinicName || "the clinic"} to request a new copy.
           </p>
         </div>
 
@@ -90,7 +107,7 @@ export default function PublicReportPage({
           <h2>Tips for accessing your report</h2>
           <ul>
             <li>
-              <strong>On desktop:</strong> the PDF will open in your browser. Use your browser's save button
+              <strong>On desktop:</strong> the PDF will open in your browser. Use your browser&apos;s save button
               (or <kbd>Ctrl+S</kbd> / <kbd>⌘S</kbd>) to save a copy.
             </li>
             <li>
@@ -116,13 +133,15 @@ export default function PublicReportPage({
 
         {/* Footer */}
         <div className="public-report-footer">
-          <p>
-            Questions about your report? Contact us at{" "}
-            <a href="mailto:support@neuroflow.app">support@neuroflow.app</a>.
-          </p>
+          {supportEmail && (
+            <p>
+              Questions about your report? Contact us at{" "}
+              <a href={`mailto:${supportEmail}`}>{supportEmail}</a>.
+            </p>
+          )}
           <p className="public-report-legal">
-            This report was prepared by a qualified Neuro Flow clinician and is intended solely
-            for the named recipient. Neuro Flow is registered under the UK GDPR and Data Protection Act 2018.
+            This report was prepared by a qualified{clinicName ? ` ${clinicName}` : ""} clinician and is intended solely
+            for the named recipient. {clinicName || "This service"} is registered under the UK GDPR and Data Protection Act 2018.
           </p>
         </div>
       </div>

@@ -18,6 +18,7 @@ export function getClinicAdminNav(activeHref: string): AdminNavGroup[] {
         { href: "/clinic-admin", label: "Dashboard", icon: "DB", active: activeHref === "/clinic-admin" },
         { href: "/clinic-admin/calendar", label: "Calendar", icon: "CA", active: activeHref === "/clinic-admin/calendar" },
         { href: "/clinic-admin/clients", label: "Clients", icon: "CL", active: activeHref.startsWith("/clinic-admin/clients") },
+        { href: "/clinic-admin/waitlist", label: "Waitlist", icon: "WL2", active: activeHref.startsWith("/clinic-admin/waitlist") },
       ],
     },
     {
@@ -40,6 +41,18 @@ export function getClinicAdminNav(activeHref: string): AdminNavGroup[] {
           label: "Reports",
           icon: "RP",
           active: activeHref.startsWith("/clinic-admin/reports"),
+        },
+        {
+          href: "/clinic-admin/analytics",
+          label: "Analytics",
+          icon: "AN",
+          active: activeHref.startsWith("/clinic-admin/analytics"),
+        },
+        {
+          href: "/clinic-admin/nps",
+          label: "NPS & Feedback",
+          icon: "NP",
+          active: activeHref.startsWith("/clinic-admin/nps"),
         },
       ],
     },
@@ -92,6 +105,12 @@ export function getClinicAdminNav(activeHref: string): AdminNavGroup[] {
           icon: "IG",
           active: activeHref.startsWith("/clinic-admin/ig-workflow"),
         },
+        {
+          href: "/clinic-admin/audit-log",
+          label: "Audit Log",
+          icon: "AL",
+          active: activeHref.startsWith("/clinic-admin/audit-log"),
+        },
       ],
     },
     {
@@ -109,6 +128,26 @@ export function getClinicAdminNav(activeHref: string): AdminNavGroup[] {
           icon: "INV",
           active: activeHref.startsWith("/clinic-admin/invoices"),
         },
+      ],
+    },
+    {
+      label: "Communication",
+      items: [
+        { href: "/clinic-admin/newsfeed", label: "Newsfeed", icon: "NF", active: activeHref.startsWith("/clinic-admin/newsfeed") },
+        { href: "/clinic-admin/messages", label: "Messages", icon: "MS", active: activeHref.startsWith("/clinic-admin/messages") },
+        { href: "/clinic-admin/policies", label: "Policies", icon: "PL", active: activeHref.startsWith("/clinic-admin/policies") },
+        { href: "/clinic-admin/comms/email-triage", label: "Email Triage", icon: "ET", active: activeHref.startsWith("/clinic-admin/comms/email-triage") },
+      ],
+    },
+    {
+      label: "HR",
+      items: [
+        { href: "/clinic-admin/hr/leave", label: "Leave & Absence", icon: "LV", active: activeHref.startsWith("/clinic-admin/hr/leave") },
+        { href: "/clinic-admin/hr/timesheets", label: "Timesheets", icon: "TS", active: activeHref.startsWith("/clinic-admin/hr/timesheets") },
+        { href: "/clinic-admin/hr/supervision", label: "Supervision", icon: "SV", active: activeHref.startsWith("/clinic-admin/hr/supervision") },
+        { href: "/clinic-admin/hr/training", label: "Training", icon: "TR", active: activeHref.startsWith("/clinic-admin/hr/training") },
+        { href: "/clinic-admin/hr/incidents", label: "Incidents", icon: "IR", active: activeHref.startsWith("/clinic-admin/hr/incidents") },
+        { href: "/clinic-admin/hr/contracts", label: "Contracts", icon: "CT", active: activeHref.startsWith("/clinic-admin/hr/contracts") },
       ],
     },
     {

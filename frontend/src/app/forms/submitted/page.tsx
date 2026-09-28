@@ -1,6 +1,13 @@
-﻿import { FormShell } from "../../../components/form-shell";
+"use client";
 
-export default function FormSubmittedPage() {
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
+import { FormShell } from "../../../components/form-shell";
+
+function SubmittedContent() {
+  const params = useSearchParams();
+  const supportEmail = params.get("support") ?? "";
+
   return (
     <FormShell>
       <div
@@ -50,16 +57,26 @@ export default function FormSubmittedPage() {
           to arrange your assessment appointment. If you provided teacher or GP
           contact details, they will receive their forms automatically.
         </p>
-        <p style={{ marginTop: 32, fontSize: 13, color: "var(--muted)" }}>
-          Questions? Contact us at{" "}
-          <a
-            href="mailto:support@neuroflow.app"
-            style={{ color: "var(--brand)", fontWeight: 700 }}
-          >
-            support@neuroflow.app
-          </a>
-        </p>
+        {supportEmail && (
+          <p style={{ marginTop: 32, fontSize: 13, color: "var(--muted)" }}>
+            Questions? Contact us at{" "}
+            <a
+              href={`mailto:${supportEmail}`}
+              style={{ color: "var(--brand)", fontWeight: 700 }}
+            >
+              {supportEmail}
+            </a>
+          </p>
+        )}
       </div>
     </FormShell>
+  );
+}
+
+export default function FormSubmittedPage() {
+  return (
+    <Suspense>
+      <SubmittedContent />
+    </Suspense>
   );
 }

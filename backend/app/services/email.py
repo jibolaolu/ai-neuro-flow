@@ -209,7 +209,7 @@ def _invoice_html(
                   padding:24px;font-family:sans-serif;font-size:13px;color:#0f2147;">
       <tr><td colspan="2" style="padding-bottom:16px;border-bottom:2px solid #2a4db7;">
         <strong style="font-size:18px;color:#2a4db7;">{COMPANY_NAME}</strong><br>
-        <small>neuroflow.app</small>
+        <small>{COMPANY_NAME}</small>
       </td></tr>
       <tr><td colspan="2" style="padding:12px 0 4px;">
         <strong>INVOICE / PAYMENT CONFIRMATION</strong>

@@ -94,7 +94,7 @@ def _get_prescription(db: Session, clinic_id: int, rx_id: int) -> PrescriptionRe
     return rx
 
 
-def _generate_shared_care_letter(rx: PrescriptionRecord, gp_name: str) -> str:
+def _generate_shared_care_letter(rx: PrescriptionRecord, gp_name: str, clinic_name: str = "The Clinic") -> str:
     today = date.today().strftime("%d %B %Y")
     return f"""SHARED CARE AGREEMENT REQUEST
 Date: {today}
@@ -132,7 +132,7 @@ CONTACT
 Please contact our clinic team to confirm acceptance of shared care responsibility.
 
 Yours sincerely,
-NeuroFlow Clinical Team
+{clinic_name} Clinical Team
 """
 
 
@@ -264,7 +264,9 @@ def request_shared_care(
     """Generate and (mock) send a shared-care letter to the GP."""
     cid = effective_clinic_id(user)
     rx = _get_prescription(db, cid, rx_id)
-    letter = _generate_shared_care_letter(rx, body.gp_name)
+    from app.core.branding import get_clinic_branding
+    branding = get_clinic_branding(db, str(cid))
+    letter = _generate_shared_care_letter(rx, body.gp_name, branding.display_name)
     rx.shared_care_requested = True
     rx.shared_care_gp_name = body.gp_name
     rx.shared_care_gp_email = body.gp_email

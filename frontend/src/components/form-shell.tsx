@@ -1,6 +1,9 @@
-﻿import type { ReactNode } from "react";
+import type { ReactNode } from "react";
+import { BRAND } from "../lib/branding";
 
 export function FormShell({ children }: { children: ReactNode }) {
+  const initial = (BRAND.name || "C")[0].toUpperCase();
+
   return (
     <div
       style={{
@@ -47,11 +50,11 @@ export function FormShell({ children }: { children: ReactNode }) {
               boxShadow: "var(--shadow-brand)",
             }}
           >
-            N
+            {initial}
           </span>
           <div>
             <strong style={{ color: "var(--ink)", fontSize: 14, fontWeight: 800, letterSpacing: "-0.01em" }}>
-              Neuro Flow
+              {BRAND.name}
             </strong>
             <small
               style={{
@@ -61,7 +64,7 @@ export function FormShell({ children }: { children: ReactNode }) {
                 fontWeight: 500,
               }}
             >
-              Neuro Flow Clinical Platform
+              Clinical Platform
             </small>
           </div>
         </div>
@@ -84,8 +87,7 @@ export function FormShell({ children }: { children: ReactNode }) {
         }}
       >
         <p style={{ margin: 0, color: "var(--muted)", fontSize: 12 }}>
-          Neuro Flow Clinical Platform - Specialist ADHD and autism assessment
-          services
+          {BRAND.name} — Specialist ADHD and autism assessment services
         </p>
       </footer>
     </div>

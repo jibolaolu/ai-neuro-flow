@@ -3,7 +3,13 @@ import Link from "next/link";
 import { RoleDashboardShell } from "../../../components/role-dashboard-shell";
 import { getClinicAdminNav } from "../../../lib/clinic-admin-nav";
 
-const SETTINGS_SECTIONS: { title: string; description: string; slug: string }[] = [
+const SETTINGS_SECTIONS: { title: string; description: string; slug: string; href?: string }[] = [
+  {
+    slug: "branding",
+    title: "Clinic branding",
+    description: "Display name, support email, address, logo, and regulatory identifiers shown on reports and client communications.",
+    href: "/clinic-admin/settings/branding",
+  },
   {
     slug: "profile",
     title: "My profile",
@@ -67,7 +73,7 @@ export default function ClinicAdminSettingsPage({
               {settings.map((item) => (
                 <Link
                   className={`settings-card settings-link-card ${activeSection.slug === item.slug ? "settings-card-active" : ""}`}
-                  href={`/clinic-admin/settings?section=${item.slug}`}
+                  href={item.href ?? `/clinic-admin/settings?section=${item.slug}`}
                   key={item.slug}
                 >
                   <strong>{item.title}</strong>

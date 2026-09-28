@@ -33,6 +33,12 @@ class ClientRecord(Base):
     report_due_at = Column(DateTime, nullable=True)
     # Opaque token for client-facing slot booking (/book/{token}); set when forms complete.
     booking_access_token = Column(String, nullable=True, unique=True, index=True)
+    # Client portal magic-link auth (48-hour time-limited link → 7-day session cookie)
+    portal_magic_token = Column(String, nullable=True, unique=True, index=True)
+    portal_magic_token_expires_at = Column(DateTime, nullable=True)
+    portal_session_token = Column(String, nullable=True, unique=True, index=True)
+    portal_session_expires_at = Column(DateTime, nullable=True)
+    is_active = Column(String, default="true")
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 

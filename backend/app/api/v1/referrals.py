@@ -71,11 +71,14 @@ def _clinic_id_from_user(user: UserRecord) -> str:
     return user.clinic_id or user.organization_id or "unknown"
 
 
-def _send_acceptance_letter(referral: RTCReferralRecord) -> None:
+def _send_acceptance_letter(referral: RTCReferralRecord, db: "Session | None" = None) -> None:
     if not referral.gp_email and not referral.patient_email:
         return
     recipient = referral.gp_email or referral.patient_email
     try:
+        from app.core.branding import get_clinic_branding
+        branding = get_clinic_branding(db, referral.clinic_id) if db else None
+        clinic_name = branding.display_name if branding else "Clinical Team"
         email_svc.send_generic_notification(
             to_email=recipient,
             subject=f"Right to Choose Acceptance — {referral.patient_name}",
@@ -86,18 +89,21 @@ def _send_acceptance_letter(referral: RTCReferralRecord) -> None:
                 f"under the {referral.pathway} pathway.\n\n"
                 f"We will be in touch with the patient shortly to begin the intake process.\n\n"
                 f"Referral ID: {referral.id}\n\n"
-                f"Regards,\nNeuro Flow Clinical Team"
+                f"Regards,\n{clinic_name} Clinical Team"
             ),
         )
     except Exception:  # noqa: BLE001
         pass  # email send failure must not block the accept action
 
 
-def _send_rejection_letter(referral: RTCReferralRecord) -> None:
+def _send_rejection_letter(referral: RTCReferralRecord, db: "Session | None" = None) -> None:
     recipient = referral.gp_email or referral.patient_email
     if not recipient:
         return
     try:
+        from app.core.branding import get_clinic_branding
+        branding = get_clinic_branding(db, referral.clinic_id) if db else None
+        clinic_name = branding.display_name if branding else "Clinical Team"
         email_svc.send_generic_notification(
             to_email=recipient,
             subject=f"Right to Choose — Referral Update for {referral.patient_name}",
@@ -107,7 +113,7 @@ def _send_rejection_letter(referral: RTCReferralRecord) -> None:
                 f"Unfortunately, we are unable to accept this referral at this time.\n\n"
                 f"Reason: {referral.rejection_reason}\n\n"
                 f"Referral ID: {referral.id}\n\n"
-                f"Regards,\nNeuro Flow Clinical Team"
+                f"Regards,\n{clinic_name} Clinical Team"
             ),
         )
     except Exception:  # noqa: BLE001
@@ -304,7 +310,7 @@ def accept_referral(
     record.updated_at = datetime.now(timezone.utc)
 
     if body.send_letter:
-        _send_acceptance_letter(record)
+        _send_acceptance_letter(record, db)
         record.acceptance_letter_sent = True
 
     db.commit()
@@ -329,7 +335,7 @@ def reject_referral(
     record.rejected_at = datetime.now(timezone.utc)
     record.updated_at = datetime.now(timezone.utc)
 
-    _send_rejection_letter(record)
+    _send_rejection_letter(record, db)
 
     db.commit()
     db.refresh(record)

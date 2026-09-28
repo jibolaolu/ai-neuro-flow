@@ -113,6 +113,30 @@ def get_my_organization(
     return OrganizationOut.model_validate(org)
 
 
+@router.patch("/me", response_model=OrganizationOut)
+def update_my_organization(
+    body: dict,
+    db: Session = Depends(get_db),
+    user: UserRecord = Depends(require_roles("clinical-admin")),
+) -> OrganizationOut:
+    """Clinical admin updates their organization's branding/contact details."""
+    cid = require_clinic_member(user)
+    org = get_organization(db, cid)
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    allowed = {
+        "display_name", "support_email", "contact_phone",
+        "address", "website", "logo_url",
+        "registered_company_number", "cqc_registration_number", "ico_registration_number",
+    }
+    for key, value in body.items():
+        if key in allowed:
+            setattr(org, key, value)
+    db.commit()
+    db.refresh(org)
+    return OrganizationOut.model_validate(org)
+
+
 @router.post("/invite", response_model=UserOut, status_code=status.HTTP_201_CREATED)
 def invite_clinician(
     body: InviteClinicianBody,

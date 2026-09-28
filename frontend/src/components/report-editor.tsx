@@ -15,6 +15,7 @@ import {
   submitReport,
 } from "../lib/clinical-reports-api";
 import { suggestReportSection } from "../lib/ai-api";
+import { browserApiUrl } from "../lib/get-api-base";
 import type { ClientRecord } from "../lib/api";
 import {
   ALL_TEMPLATES,
@@ -116,12 +117,13 @@ function isAdultADHDReport(reportType: string): boolean {
 
 function subVars(
   template: string,
-  vars: { clientName: string; assessmentDate: string; assessedBy: string },
+  vars: { clientName: string; assessmentDate: string; assessedBy: string; clinicName?: string },
 ): string {
   return template
     .replace(/\{clientName\}/g, vars.clientName || "[Client]")
     .replace(/\{assessmentDate\}/g, vars.assessmentDate || "[Date]")
-    .replace(/\{assessedBy\}/g, vars.assessedBy || "[Assessor]");
+    .replace(/\{assessedBy\}/g, vars.assessedBy || "[Assessor]")
+    .replace(/\{clinicName\}/g, vars.clinicName || "[Clinic]");
 }
 
 /** Returns true when a sectionNumber like "3.1" or "4.12.1" should be shown as a sub-heading. */
@@ -1094,12 +1096,14 @@ function NHSAdultADHDForm({
   localMeta,
   canEdit,
   onChange,
+  clinicName = "",
 }: {
   sections: Record<string, string>;
   client: ClientRecord;
   localMeta: { place: string; date: string; assessed_by: string; report_type: string };
   canEdit: boolean;
   onChange: (key: string, val: string) => void;
+  clinicName?: string;
 }) {
   const clientName = client.child_name ?? client.full_name ?? "";
   const vars = {
@@ -1108,6 +1112,7 @@ function NHSAdultADHDForm({
       ? new Date(localMeta.date).toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" })
       : "",
     assessedBy: localMeta.assessed_by,
+    clinicName,
   };
 
   return (
@@ -1277,6 +1282,8 @@ export function ReportEditor({ client, userRole, currentUserId }: Props) {
   const [reviewComment, setReviewComment] = useState("");
   const [reviewAction, setReviewAction] = useState<"approve" | "reject" | null>(null);
 
+  const [clinicName, setClinicName] = useState("");
+
   const autoSaveTimer = useRef<NodeJS.Timeout | null>(null);
   const pendingSave = useRef(false);
 
@@ -1336,6 +1343,13 @@ export function ReportEditor({ client, userRole, currentUserId }: Props) {
     void loadReports();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [client.id]);
+
+  useEffect(() => {
+    fetch(browserApiUrl("/api/v1/organizations/me"), { credentials: "include" })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data?.display_name || data?.name) setClinicName(data.display_name || data.name); })
+      .catch(() => {});
+  }, []);
 
   // ── Auto-save every 5 minutes (draft only) ────────────────────────────────
 
@@ -1632,6 +1646,7 @@ export function ReportEditor({ client, userRole, currentUserId }: Props) {
                 localMeta={{ place: "", date: client.confirmed_session_at?.slice(0,10) ?? "", assessed_by: "", report_type: "NHS Adult ADHD" }}
                 canEdit={false}
                 onChange={() => {}}
+                clinicName={clinicName}
               />
             </div>
           )}
@@ -1874,6 +1889,7 @@ export function ReportEditor({ client, userRole, currentUserId }: Props) {
                   localMeta={localMeta}
                   canEdit={canEdit}
                   onChange={onSectionChange}
+                  clinicName={clinicName}
                 />
               ) : (
                 <div style={{ display: "flex", flexDirection: "column" }}>

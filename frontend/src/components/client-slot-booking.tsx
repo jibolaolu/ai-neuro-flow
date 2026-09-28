@@ -76,7 +76,7 @@ export function ClientSlotBooking({ token }: { token: string }) {
     <main className="page-shell compact-shell" style={{ maxWidth: 640, margin: "0 auto", padding: "2rem 1rem" }}>
       <header style={{ marginBottom: "1.5rem" }}>
         <span className="eyebrow" style={{ display: "block", marginBottom: 8 }}>
-          Neuro Flow · Neuro Flow
+          Assessment Booking
         </span>
         <h1 style={{ fontSize: "1.5rem", margin: 0 }}>Book your assessment</h1>
         <p style={{ color: "var(--text-muted)", marginTop: 8, lineHeight: 1.55 }}>
