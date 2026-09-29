@@ -135,3 +135,52 @@ def require_roles(*allowed: str) -> Callable:
         )
 
     return _inner
+
+
+def get_api_key_clinic(
+    request: Request,
+    db: Session = Depends(get_db),
+) -> str:
+    """
+    Dependency for API-key-authenticated endpoints.
+    Reads X-API-Key header, looks up by SHA-256 hash, returns clinic_id.
+    Updates usage counters in-place (best-effort — never fails the request).
+    """
+    from datetime import timezone as _tz
+
+    from app.models.api_key import ApiKeyRecord, hash_key
+
+    raw_key = request.headers.get("X-API-Key", "").strip()
+    if not raw_key:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="X-API-Key header required",
+        )
+    if not raw_key.startswith("nf_live_"):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid API key format",
+        )
+
+    key_hash = hash_key(raw_key)
+    record = (
+        db.query(ApiKeyRecord)
+        .filter(ApiKeyRecord.key_hash == key_hash)
+        .first()
+    )
+    if not record or not record.active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or revoked API key",
+        )
+
+    # Update usage counters (best-effort)
+    try:
+        record.requests_total = (record.requests_total or 0) + 1
+        record.last_used_at = __import__("datetime").datetime.now(_tz.utc)
+        db.add(record)
+        db.commit()
+    except Exception:
+        db.rollback()
+
+    return record.clinic_id

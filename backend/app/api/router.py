@@ -29,6 +29,7 @@ from app.api.v1 import (
     follow_up,
     forms,
     hr,
+    intake,
     invoices,
     messages,
     newsfeed,
@@ -71,11 +72,13 @@ api_router.include_router(reports.router, prefix="/reports", tags=["reports"])
 api_router.include_router(system.router, prefix="/system", tags=["system"])
 api_router.include_router(forms.router, prefix="/forms", tags=["forms"])
 
+api_router.include_router(api_keys.router, prefix="/api-keys", tags=["api-keys"])
+api_router.include_router(intake.router, prefix="/intake", tags=["intake"])
+
 # Demo / dev-only routes — not mounted in production
 if not settings.is_production():
     api_router.include_router(assessments.router, prefix="/assessments", tags=["assessments"])
     api_router.include_router(billing.router, prefix="/billing", tags=["billing"])
-    api_router.include_router(api_keys.router, prefix="/api-keys", tags=["api-keys"])
     api_router.include_router(checkout.router, prefix="/checkout", tags=["checkout"])
 api_router.include_router(clinical_reports.router, prefix="/clinical-reports", tags=["clinical-reports"])
 api_router.include_router(consent.router, prefix="/consent", tags=["consent"])

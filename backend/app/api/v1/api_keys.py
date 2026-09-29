@@ -1,95 +1,196 @@
-﻿"""
-Subscriber API key management.
+"""
+API key management for clinic integrations.
 
-Organisations that subscribe to the Neuro Flow API receive a key that
-grants them programmatic access to submit referrals, check assessment
-status, and receive webhook events. Keys are scoped by tier:
-  - basic  : submit referrals, check own records
-  - pro    : full read/write + webhook registration
-  - partner: all pro rights + white-label config
+Keys use the format  nf_live_<32hex>  and are stored as SHA-256 hashes.
+The raw key is returned ONCE at creation time and never retrievable again.
+
+Tiers:
+  basic   — submit clients via POST /intake/client only
+  pro     — full read/write on clients + forms + webhook registration
+  partner — all pro + white-label config
 """
 
-import secrets
-import uuid
 from datetime import datetime, timezone
+from typing import Optional
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
+
+from app.api.deps import get_current_user, get_db, require_roles
+from app.models.api_key import ApiKeyRecord, generate_api_key
+from app.models.user import UserRecord
+from app.services.tenant import effective_clinic_id
 
 router = APIRouter()
 
 
-class APIKey(BaseModel):
-    id: str
-    key: str
-    label: str
-    tier: str
-    created_at: str
-    active: bool
+# ── Response/request schemas ──────────────────────────────────────────────────
+
+class ApiKeyOut(BaseModel):
+    id:             str
+    label:          str
+    tier:           str
+    key_prefix:     str         # "nf_live_a1b2c3d4" — safe to display
+    active:         bool
+    requests_total: int
+    last_used_at:   Optional[datetime]
+    created_at:     datetime
+    created_by:     Optional[str]
+
+
+class ApiKeyCreated(ApiKeyOut):
+    raw_key: str    # returned ONCE — copy immediately
 
 
 class CreateKeyRequest(BaseModel):
     label: str
-    tier: str = "basic"  # basic | pro | partner
+    tier:  str = "basic"   # basic | pro | partner
 
 
-# In-memory store - replace with DB table in production
-_key_store: dict[str, APIKey] = {}
+class PatchKeyRequest(BaseModel):
+    label:  Optional[str] = None
+    active: Optional[bool] = None
 
 
-@router.post("/", response_model=APIKey, status_code=status.HTTP_201_CREATED)
-def create_api_key(payload: CreateKeyRequest) -> APIKey:
-    if payload.tier not in {"basic", "pro", "partner"}:
-        raise HTTPException(status_code=400, detail="tier must be basic, pro, or partner")
-
-    key_id = str(uuid.uuid4())
-    raw_key = f"na_{payload.tier}_{secrets.token_urlsafe(32)}"
-    record = APIKey(
-        id=key_id,
-        key=raw_key,
-        label=payload.label,
-        tier=payload.tier,
-        created_at=datetime.now(timezone.utc).isoformat(),
-        active=True,
-    )
-    _key_store[key_id] = record
-    return record
-
-
-@router.get("/", response_model=list[APIKey])
-def list_api_keys() -> list[APIKey]:
-    return list(_key_store.values())
-
-
-@router.delete("/{key_id}", status_code=status.HTTP_204_NO_CONTENT)
-def revoke_api_key(key_id: str) -> None:
-    record = _key_store.get(key_id)
-    if not record:
-        raise HTTPException(status_code=404, detail="API key not found")
-    _key_store[key_id] = record.model_copy(update={"active": False})
-
+# ── Tier catalogue (static — no DB needed) ────────────────────────────────────
 
 @router.get("/tiers")
 def list_tiers() -> dict:
     return {
         "tiers": [
             {
-                "id": "basic",
-                "label": "Basic",
-                "price_monthly_gbp": 49,
-                "features": ["Submit referrals", "Check own assessment status", "100 API calls/day"],
+                "id":                 "basic",
+                "label":              "Basic",
+                "price_monthly_gbp":  49,
+                "features": [
+                    "Submit new clients (POST /intake/client)",
+                    "100 API calls / day",
+                ],
             },
             {
-                "id": "pro",
-                "label": "Pro",
-                "price_monthly_gbp": 149,
-                "features": ["Full referral + status API", "Webhook registration", "Bulk uploads", "1,000 API calls/day"],
+                "id":                 "pro",
+                "label":              "Pro",
+                "price_monthly_gbp":  149,
+                "features": [
+                    "Full client read/write + form tracking",
+                    "Webhook registration and management",
+                    "Bulk uploads",
+                    "1 000 API calls / day",
+                ],
             },
             {
-                "id": "partner",
-                "label": "Partner",
-                "price_monthly_gbp": 399,
-                "features": ["All Pro features", "White-label config", "Priority support", "Unlimited API calls"],
+                "id":                 "partner",
+                "label":              "Partner",
+                "price_monthly_gbp":  399,
+                "features": [
+                    "All Pro features",
+                    "White-label configuration",
+                    "Priority support",
+                    "Unlimited API calls",
+                ],
             },
         ]
     }
+
+
+# ── CRUD ──────────────────────────────────────────────────────────────────────
+
+@router.get("/", response_model=list[ApiKeyOut])
+def list_api_keys(
+    db:   Session    = Depends(get_db),
+    user: UserRecord = Depends(require_roles(
+        "clinical-admin", "super-platform-admin",
+    )),
+) -> list[ApiKeyOut]:
+    clinic_id = effective_clinic_id(user)
+    keys = (
+        db.query(ApiKeyRecord)
+        .filter(ApiKeyRecord.clinic_id == clinic_id)
+        .order_by(ApiKeyRecord.created_at.desc())
+        .all()
+    )
+    return [ApiKeyOut.model_validate(k.__dict__) for k in keys]
+
+
+@router.post("/", response_model=ApiKeyCreated, status_code=201)
+def create_api_key(
+    body: CreateKeyRequest,
+    db:   Session    = Depends(get_db),
+    user: UserRecord = Depends(require_roles(
+        "clinical-admin", "super-platform-admin",
+    )),
+) -> ApiKeyCreated:
+    """
+    Create a new API key.  The raw key is returned in this response ONLY —
+    it cannot be recovered afterwards.
+    """
+    if body.tier not in {"basic", "pro", "partner"}:
+        raise HTTPException(status_code=400, detail="tier must be basic, pro, or partner")
+
+    clinic_id = effective_clinic_id(user)
+    raw, key_hash, key_prefix = generate_api_key()
+
+    record = ApiKeyRecord(
+        clinic_id=clinic_id,
+        label=body.label,
+        tier=body.tier,
+        key_hash=key_hash,
+        key_prefix=key_prefix,
+        active=True,
+        requests_total=0,
+        created_at=datetime.now(timezone.utc),
+        created_by=user.id,
+    )
+    db.add(record)
+    db.commit()
+    db.refresh(record)
+
+    out = ApiKeyOut.model_validate(record.__dict__)
+    return ApiKeyCreated(**out.model_dump(), raw_key=raw)
+
+
+@router.patch("/{key_id}", response_model=ApiKeyOut)
+def update_api_key(
+    key_id: str,
+    body:   PatchKeyRequest,
+    db:     Session    = Depends(get_db),
+    user:   UserRecord = Depends(require_roles(
+        "clinical-admin", "super-platform-admin",
+    )),
+) -> ApiKeyOut:
+    clinic_id = effective_clinic_id(user)
+    record = (
+        db.query(ApiKeyRecord)
+        .filter(ApiKeyRecord.id == key_id, ApiKeyRecord.clinic_id == clinic_id)
+        .first()
+    )
+    if not record:
+        raise HTTPException(status_code=404, detail="API key not found")
+    if body.label is not None:
+        record.label = body.label
+    if body.active is not None:
+        record.active = body.active
+    db.commit()
+    db.refresh(record)
+    return ApiKeyOut.model_validate(record.__dict__)
+
+
+@router.delete("/{key_id}", status_code=204)
+def revoke_api_key(
+    key_id: str,
+    db:     Session    = Depends(get_db),
+    user:   UserRecord = Depends(require_roles(
+        "clinical-admin", "super-platform-admin",
+    )),
+) -> None:
+    clinic_id = effective_clinic_id(user)
+    record = (
+        db.query(ApiKeyRecord)
+        .filter(ApiKeyRecord.id == key_id, ApiKeyRecord.clinic_id == clinic_id)
+        .first()
+    )
+    if not record:
+        raise HTTPException(status_code=404, detail="API key not found")
+    db.delete(record)
+    db.commit()
