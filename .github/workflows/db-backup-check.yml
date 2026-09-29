@@ -1,0 +1,155 @@
+name: DB Backup Validation
+
+on:
+  schedule:
+    # Run every day at 07:00 UTC — shortly after AWS automated backups complete
+    - cron: "0 7 * * *"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment to check"
+        required: true
+        default: "development"
+        type: choice
+        options:
+          - development
+          - staging
+          - production
+
+permissions:
+  id-token: write   # required for OIDC auth with AWS
+  contents: read
+
+jobs:
+  validate-backup:
+    name: Validate RDS Backup — ${{ inputs.environment || 'development' }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment || 'development' }}
+
+    env:
+      ENV: ${{ inputs.environment || 'development' }}
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-west-2
+
+      - name: Get RDS instance identifier
+        id: rds
+        run: |
+          set +e
+
+          # Map environment → Terraform env prefix
+          case "$ENV" in
+            development) TF_ENV="dev" ;;
+            staging)     TF_ENV="staging" ;;
+            production)  TF_ENV="prod" ;;
+            *)           TF_ENV="dev" ;;
+          esac
+
+          # Try SSM parameter first
+          DB_ID=$(aws ssm get-parameter \
+            --name "/neuroflow/${TF_ENV}/db_instance_identifier" \
+            --query "Parameter.Value" --output text 2>/dev/null)
+
+          # Fallback: RDS instance tagged Environment=TF_ENV and App=neuroflow
+          if [ -z "${DB_ID}" ] || [ "${DB_ID}" = "None" ]; then
+            echo "SSM parameter not found — discovering RDS instance by tags..."
+            DB_ID=$(aws rds describe-db-instances \
+              --query "DBInstances[?TagList[?Key=='Environment' && Value=='${TF_ENV}'] && TagList[?Key=='App' && Value=='neuroflow']].DBInstanceIdentifier | [0]" \
+              --output text 2>/dev/null)
+          fi
+
+          # Fallback: any RDS instance tagged Environment=TF_ENV
+          if [ -z "${DB_ID}" ] || [ "${DB_ID}" = "None" ]; then
+            DB_ID=$(aws rds describe-db-instances \
+              --query "DBInstances[?TagList[?Key=='Environment' && Value=='${TF_ENV}']].DBInstanceIdentifier | [0]" \
+              --output text 2>/dev/null)
+          fi
+
+          # Fallback: first RDS instance with "neuroflow" in the identifier
+          if [ -z "${DB_ID}" ] || [ "${DB_ID}" = "None" ]; then
+            DB_ID=$(aws rds describe-db-instances \
+              --query "DBInstances[?contains(DBInstanceIdentifier, 'neuroflow')].DBInstanceIdentifier | [0]" \
+              --output text 2>/dev/null)
+          fi
+
+          set -e
+
+          if [ -z "${DB_ID}" ] || [ "${DB_ID}" = "None" ]; then
+            echo "::error::Could not determine RDS instance identifier. Tag your RDS instance with Environment=${TF_ENV} and App=neuroflow, or create SSM parameter /neuroflow/${TF_ENV}/db_instance_identifier"
+            exit 1
+          fi
+
+          echo "Using DB_ID: ${DB_ID}"
+          echo "db_id=${DB_ID}" >> "$GITHUB_OUTPUT"
+          echo "tf_env=${TF_ENV}" >> "$GITHUB_OUTPUT"
+
+      - name: Check automated backup retention
+        id: backup_check
+        run: |
+          DB_ID="${{ steps.rds.outputs.db_id }}"
+          TF_ENV="${{ steps.rds.outputs.tf_env }}"
+
+          RETENTION=$(aws rds describe-db-instances \
+            --db-instance-identifier "${DB_ID}" \
+            --query "DBInstances[0].BackupRetentionPeriod" \
+            --output text)
+
+          echo "backup_retention=${RETENTION}" >> "$GITHUB_OUTPUT"
+          echo "Backup retention period: ${RETENTION} days"
+
+          MIN_RETENTION=7
+          if [ "${TF_ENV}" = "dev" ]; then
+            MIN_RETENTION=1
+          fi
+
+          if [ -z "${RETENTION}" ] || [ "${RETENTION}" = "None" ] || [ "${RETENTION}" -lt "${MIN_RETENTION}" ]; then
+            if [ "${TF_ENV}" = "dev" ]; then
+              echo "::warning::Backup retention is ${RETENTION} days — recommended ≥${MIN_RETENTION} for dev"
+            else
+              echo "::error::Backup retention is ${RETENTION} days — must be at least ${MIN_RETENTION}"
+              exit 1
+            fi
+          fi
+
+      - name: Verify a recent automated snapshot exists
+        run: |
+          DB_ID="${{ steps.rds.outputs.db_id }}"
+          TF_ENV="${{ steps.rds.outputs.tf_env }}"
+
+          if [ "${TF_ENV}" = "dev" ]; then
+            WINDOW_HOURS=72
+          else
+            WINDOW_HOURS=36
+          fi
+
+          CUTOFF=$(date -u -d "${WINDOW_HOURS} hours ago" +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || \
+                   date -u -v-${WINDOW_HOURS}H +"%Y-%m-%dT%H:%M:%SZ")
+
+          RECENT=$(aws rds describe-db-snapshots \
+            --db-instance-identifier "${DB_ID}" \
+            --snapshot-type automated \
+            --query "DBSnapshots[?SnapshotCreateTime>='${CUTOFF}'].DBSnapshotIdentifier" \
+            --output text 2>/dev/null)
+
+          if [ -z "${RECENT}" ]; then
+            if [ "${TF_ENV}" = "dev" ]; then
+              echo "::warning::No automated snapshot in the last ${WINDOW_HOURS}h for ${DB_ID} — ensure automated backups are enabled"
+            else
+              echo "::error::No automated snapshot found in the last ${WINDOW_HOURS} hours for ${DB_ID}"
+              exit 1
+            fi
+          else
+            echo "Recent snapshot(s) confirmed: ${RECENT}"
+          fi
+
+      - name: Report success
+        run: |
+          echo "✅ DB backup validation passed"
+          echo "  Environment : ${{ env.ENV }}"
+          echo "  DB          : ${{ steps.rds.outputs.db_id }}"
+          echo "  Retention   : ${{ steps.backup_check.outputs.backup_retention }} days"

@@ -1,0 +1,208 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Security Scan — runs on every push and PR
+#
+# Jobs:
+#   secret-scan        — TruffleHog (finds leaked secrets in git history)
+#   python-sast        — Bandit (Python static analysis for security issues)
+#   dependency-audit   — pip-audit (Python CVEs) + npm audit (JS CVEs)
+#   trivy-fs           — Trivy filesystem scan → SARIF uploaded to Security tab
+#   iac-security       — Checkov (Terraform IaC misconfigurations)
+#   dependency-review  — GitHub native action (PRs only: new vulnerable deps)
+#
+# None of these jobs need AWS credentials.
+# ─────────────────────────────────────────────────────────────────────────────
+name: Security Scan
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
+      - develop
+      - "feature/**"
+      - "fix/**"
+      - "release/**"
+
+jobs:
+
+# ── Secret scanning ───────────────────────────────────────────────────────────
+  secret-scan:
+    name: Secret scan — TruffleHog
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: TruffleHog OSS
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          head: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          extra_args: --only-verified
+
+# ── Python SAST ───────────────────────────────────────────────────────────────
+  python-sast:
+    name: Python SAST — Bandit
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Bandit
+        run: pip install "bandit[toml]"
+
+      - name: Run Bandit (HIGH + MEDIUM severity)
+        run: |
+          bandit -r app/ -f json -o bandit-report.json -ll \
+            --exclude app/seed.py \
+            || true
+          bandit -r app/ -f txt -ll \
+            --exclude app/seed.py
+
+      - name: Upload Bandit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-report
+          path: backend/bandit-report.json
+          retention-days: 14
+
+# ── Dependency audit ──────────────────────────────────────────────────────────
+  dependency-audit:
+    name: Dependency audit — pip-audit + npm audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: pip-audit — Python dependencies
+        working-directory: backend
+        run: |
+          pip install pip-audit
+          pip-audit -r requirements.txt \
+            --output json --output-file pip-audit-report.json \
+            || true
+          pip-audit -r requirements.txt \
+            --severity high \
+            --desc
+        continue-on-error: true
+
+      - name: npm audit — frontend dependencies
+        working-directory: frontend
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
+      - name: Upload pip-audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pip-audit-report
+          path: backend/pip-audit-report.json
+          retention-days: 14
+
+# ── Trivy filesystem scan ─────────────────────────────────────────────────────
+  trivy-fs:
+    name: Vulnerability scan — Trivy (filesystem)
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Trivy on repository
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: sarif
+          output: trivy-results.sarif
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+
+      - name: Upload SARIF to Security tab
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy-filesystem
+        continue-on-error: true
+
+      - name: Trivy summary (table)
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: table
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+
+# ── IaC security (Terraform) ──────────────────────────────────────────────────
+  iac-security:
+    name: IaC security — Checkov (Terraform)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Checkov
+        run: pip install checkov
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.8.x"
+
+      - name: terraform fmt -check
+        working-directory: terraform
+        run: terraform fmt -check -recursive -diff
+        continue-on-error: true
+
+      - name: Checkov — Terraform misconfigurations
+        working-directory: terraform
+        run: |
+          checkov -d . \
+            --framework terraform \
+            --soft-fail \
+            --compact \
+            --quiet \
+            --output cli \
+            --output-file-path console
+
+# ── Dependency review (PR only) ───────────────────────────────────────────────
+  dependency-review:
+    name: Dependency review (PR)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Dependency review
+        uses: actions/dependency-review-action@v4
+        continue-on-error: true   # requires GitHub Advanced Security; pip-audit + npm audit cover this
+        with:
+          fail-on-severity: high

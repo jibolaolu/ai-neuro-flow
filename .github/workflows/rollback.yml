@@ -1,0 +1,312 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Rollback — Re-deploy a specific image tag to an environment
+#
+# Use this to instantly revert to any previously built image.
+# ECR image naming: {account}.dkr.ecr.eu-west-2.amazonaws.com/neuroflow-{env}/{service}:{tag}
+#
+# How to find the tag to roll back to:
+#   1. GitHub → Actions → Deploy → pick the successful run → copy image tag
+#   2. AWS ECR console → neuroflow-dev/backend → image list
+# ─────────────────────────────────────────────────────────────────────────────
+name: Rollback
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        type: choice
+        required: true
+        options: [dev, staging, prod]
+      service:
+        description: 'Service to roll back'
+        type: choice
+        required: true
+        default: all
+        options: [all, backend, frontend, ai-workers]
+      image_tag:
+        description: |
+          Image tag to restore (e.g. abc123def012 or v1.0.0).
+          Leave blank to use the previous task definition from SSM.
+        type: string
+        required: false
+
+env:
+  AWS_REGION: eu-west-2
+  APP: neuroflow
+
+jobs:
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Resolve environment params
+# ─────────────────────────────────────────────────────────────────────────────
+  resolve:
+    name: Resolve parameters
+    runs-on: ubuntu-latest
+    outputs:
+      env-name:            ${{ steps.p.outputs.env-name }}
+      cluster:             ${{ steps.p.outputs.cluster }}
+      registry:            ${{ steps.p.outputs.registry }}
+      rollback-backend:    ${{ steps.p.outputs.rollback-backend }}
+      rollback-frontend:   ${{ steps.p.outputs.rollback-frontend }}
+      rollback-ai-workers: ${{ steps.p.outputs.rollback-ai-workers }}
+
+    steps:
+      - name: Compute params
+        id: p
+        run: |
+          ENV="${{ github.event.inputs.environment }}"
+          SVC="${{ github.event.inputs.service }}"
+          ACCOUNT="${{ vars.AWS_ACCOUNT_ID }}"
+
+          RB_BACKEND="true";  RB_FRONTEND="true";  RB_WORKERS="true"
+          [ "$SVC" = "backend"    ] && { RB_FRONTEND="false"; RB_WORKERS="false"; }
+          [ "$SVC" = "frontend"   ] && { RB_BACKEND="false";  RB_WORKERS="false"; }
+          [ "$SVC" = "ai-workers" ] && { RB_BACKEND="false";  RB_FRONTEND="false"; }
+
+          {
+            echo "env-name=${ENV}"
+            echo "cluster=neuroflow-${ENV}-cluster"
+            echo "registry=${ACCOUNT}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com"
+            echo "rollback-backend=${RB_BACKEND}"
+            echo "rollback-frontend=${RB_FRONTEND}"
+            echo "rollback-ai-workers=${RB_WORKERS}"
+          } >> "$GITHUB_OUTPUT"
+
+          {
+            echo "### Rollback — ${ENV}"
+            echo "| Field | Value |"
+            echo "|-------|-------|"
+            echo "| Service    | \`${SVC}\` |"
+            echo "| Image tag  | \`${{ github.event.inputs.image_tag || '(SSM previous)' }}\` |"
+            echo "| Triggered by | \`${{ github.actor }}\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Rollback backend
+# ─────────────────────────────────────────────────────────────────────────────
+  rollback-backend:
+    name: Rollback backend
+    runs-on: ubuntu-latest
+    needs: resolve
+    if: needs.resolve.outputs.rollback-backend == 'true'
+    environment: ${{ github.event.inputs.environment }}
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Roll back backend
+        run: |
+          ENV="${{ needs.resolve.outputs.env-name }}"
+          CLUSTER="${{ needs.resolve.outputs.cluster }}"
+          SERVICE="${{ env.APP }}-${ENV}-backend"
+          IMAGE_TAG="${{ github.event.inputs.image_tag }}"
+          REGISTRY="${{ needs.resolve.outputs.registry }}"
+
+          if [ -n "$IMAGE_TAG" ]; then
+            echo "Rolling back to image tag: $IMAGE_TAG"
+            IMAGE="${REGISTRY}/neuroflow-${ENV}/backend:${IMAGE_TAG}"
+
+            CURRENT_ARN=$(aws ecs describe-services \
+              --cluster "$CLUSTER" --services "$SERVICE" \
+              --query 'services[0].taskDefinition' --output text)
+
+            NEW_TD=$(aws ecs describe-task-definition \
+              --task-definition "$CURRENT_ARN" --query 'taskDefinition' | \
+            python3 -c "
+            import json, sys
+            td = json.load(sys.stdin)
+            for c in td['containerDefinitions']:
+                if c['name'] == 'backend':
+                    c['image'] = '${IMAGE}'
+            for k in ['taskDefinitionArn','revision','status','requiresAttributes',
+                      'placementConstraints','compatibilities','registeredAt','registeredBy']:
+                td.pop(k, None)
+            print(json.dumps(td))
+            ")
+
+            TARGET_ARN=$(aws ecs register-task-definition \
+              --cli-input-json "$NEW_TD" \
+              --query 'taskDefinition.taskDefinitionArn' --output text)
+          else
+            echo "Rolling back to SSM previous-task-def"
+            TARGET_ARN=$(aws ssm get-parameter \
+              --name "/${{ env.APP }}/${ENV}/backend/previous-task-def" \
+              --query 'Parameter.Value' --output text)
+          fi
+
+          echo "Target task definition: $TARGET_ARN"
+          aws ecs update-service \
+            --cluster "$CLUSTER" --service "$SERVICE" \
+            --task-definition "$TARGET_ARN" \
+            --force-new-deployment > /dev/null
+
+          echo "Waiting for $SERVICE to stabilise..."
+          aws ecs wait services-stable \
+            --cluster "$CLUSTER" --services "$SERVICE" \
+            --cli-read-timeout 900
+
+          echo "Backend rolled back to: \`$TARGET_ARN\`" >> "$GITHUB_STEP_SUMMARY"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Rollback frontend
+# ─────────────────────────────────────────────────────────────────────────────
+  rollback-frontend:
+    name: Rollback frontend
+    runs-on: ubuntu-latest
+    needs: resolve
+    if: needs.resolve.outputs.rollback-frontend == 'true'
+    environment: ${{ github.event.inputs.environment }}
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Roll back frontend
+        run: |
+          ENV="${{ needs.resolve.outputs.env-name }}"
+          CLUSTER="${{ needs.resolve.outputs.cluster }}"
+          SERVICE="${{ env.APP }}-${ENV}-frontend"
+          IMAGE_TAG="${{ github.event.inputs.image_tag }}"
+          REGISTRY="${{ needs.resolve.outputs.registry }}"
+
+          if [ -n "$IMAGE_TAG" ]; then
+            echo "Rolling back to image tag: $IMAGE_TAG"
+            IMAGE="${REGISTRY}/neuroflow-${ENV}/frontend:${IMAGE_TAG}"
+
+            CURRENT_ARN=$(aws ecs describe-services \
+              --cluster "$CLUSTER" --services "$SERVICE" \
+              --query 'services[0].taskDefinition' --output text)
+
+            NEW_TD=$(aws ecs describe-task-definition \
+              --task-definition "$CURRENT_ARN" --query 'taskDefinition' | \
+            python3 -c "
+            import json, sys
+            td = json.load(sys.stdin)
+            for c in td['containerDefinitions']:
+                if c['name'] == 'frontend':
+                    c['image'] = '${IMAGE}'
+            for k in ['taskDefinitionArn','revision','status','requiresAttributes',
+                      'placementConstraints','compatibilities','registeredAt','registeredBy']:
+                td.pop(k, None)
+            print(json.dumps(td))
+            ")
+
+            TARGET_ARN=$(aws ecs register-task-definition \
+              --cli-input-json "$NEW_TD" \
+              --query 'taskDefinition.taskDefinitionArn' --output text)
+          else
+            echo "Rolling back to SSM previous-task-def"
+            TARGET_ARN=$(aws ssm get-parameter \
+              --name "/${{ env.APP }}/${ENV}/frontend/previous-task-def" \
+              --query 'Parameter.Value' --output text)
+          fi
+
+          echo "Target task definition: $TARGET_ARN"
+          aws ecs update-service \
+            --cluster "$CLUSTER" --service "$SERVICE" \
+            --task-definition "$TARGET_ARN" \
+            --force-new-deployment > /dev/null
+
+          echo "Waiting for $SERVICE to stabilise..."
+          aws ecs wait services-stable \
+            --cluster "$CLUSTER" --services "$SERVICE" \
+            --cli-read-timeout 900
+
+          echo "Frontend rolled back to: \`$TARGET_ARN\`" >> "$GITHUB_STEP_SUMMARY"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Rollback ai-workers
+# ─────────────────────────────────────────────────────────────────────────────
+  rollback-ai-workers:
+    name: Rollback ai-workers
+    runs-on: ubuntu-latest
+    needs: resolve
+    if: needs.resolve.outputs.rollback-ai-workers == 'true'
+    environment: ${{ github.event.inputs.environment }}
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Roll back ai-workers
+        run: |
+          ENV="${{ needs.resolve.outputs.env-name }}"
+          CLUSTER="${{ needs.resolve.outputs.cluster }}"
+          SERVICE="${{ env.APP }}-${ENV}-ai-workers"
+          IMAGE_TAG="${{ github.event.inputs.image_tag }}"
+          REGISTRY="${{ needs.resolve.outputs.registry }}"
+
+          SVC_STATUS=$(aws ecs describe-services \
+            --cluster "$CLUSTER" --services "$SERVICE" \
+            --query 'services[0].status' --output text 2>/dev/null || echo "MISSING")
+
+          if [ "$SVC_STATUS" = "MISSING" ] || [ "$SVC_STATUS" = "None" ]; then
+            echo "⚠️ $SERVICE not found — skipping"
+            exit 0
+          fi
+
+          if [ -n "$IMAGE_TAG" ]; then
+            echo "Rolling back to image tag: $IMAGE_TAG"
+            IMAGE="${REGISTRY}/neuroflow-${ENV}/ai-workers:${IMAGE_TAG}"
+
+            CURRENT_ARN=$(aws ecs describe-services \
+              --cluster "$CLUSTER" --services "$SERVICE" \
+              --query 'services[0].taskDefinition' --output text)
+
+            NEW_TD=$(aws ecs describe-task-definition \
+              --task-definition "$CURRENT_ARN" --query 'taskDefinition' | \
+            python3 -c "
+            import json, sys
+            td = json.load(sys.stdin)
+            for c in td['containerDefinitions']:
+                c['image'] = '${IMAGE}'
+            for k in ['taskDefinitionArn','revision','status','requiresAttributes',
+                      'placementConstraints','compatibilities','registeredAt','registeredBy']:
+                td.pop(k, None)
+            print(json.dumps(td))
+            ")
+
+            TARGET_ARN=$(aws ecs register-task-definition \
+              --cli-input-json "$NEW_TD" \
+              --query 'taskDefinition.taskDefinitionArn' --output text)
+          else
+            echo "Rolling back to SSM previous-task-def"
+            TARGET_ARN=$(aws ssm get-parameter \
+              --name "/${{ env.APP }}/${ENV}/ai-workers/previous-task-def" \
+              --query 'Parameter.Value' --output text)
+          fi
+
+          aws ecs update-service \
+            --cluster "$CLUSTER" --service "$SERVICE" \
+            --task-definition "$TARGET_ARN" \
+            --force-new-deployment > /dev/null
+
+          echo "Waiting for $SERVICE to stabilise..."
+          aws ecs wait services-stable \
+            --cluster "$CLUSTER" --services "$SERVICE" \
+            --cli-read-timeout 900
+
+          echo "AI workers rolled back to: \`$TARGET_ARN\`" >> "$GITHUB_STEP_SUMMARY"

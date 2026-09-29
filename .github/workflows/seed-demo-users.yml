@@ -1,0 +1,186 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Seed demo users — NeuroFlow database bootstrap
+#
+# Runs backend/app/seed.py via an ECS one-off task.  Safe to re-run — the
+# seed script is idempotent (upserts by email).
+#
+# Seed user credentials:
+#
+#   PLATFORM ADMIN
+#   platform-admin@neuroflow.test   /  NeuroFlow@Admin1!   (Super Platform Admin)
+#
+#   DEMO CLINIC (ORG-001)
+#   demo-admin@demo.neuroflow.test  /  NeuroFlow@Test1!    (Clinical Admin)
+#   senior@demo.neuroflow.test      /  NeuroFlow@Test1!    (Senior Clinician)
+#   clinician@demo.neuroflow.test   /  NeuroFlow@Test1!    (Clinician)
+#
+#   BETA CLINIC (ORG-DEMO-BETA)
+#   beta-admin@beta.neuroflow.test  /  NeuroFlow@Test1!    (Clinical Admin)
+#   beta-clin@beta.neuroflow.test   /  NeuroFlow@Test1!    (Clinician)
+#
+# Required GitHub Secrets:
+#   AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY
+#
+# Required GitHub Variables:
+#   AWS_ACCOUNT_ID
+#
+# Trigger: manual only (workflow_dispatch).
+# ─────────────────────────────────────────────────────────────────────────────
+name: Seed demo users
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        type: choice
+        required: true
+        default: dev
+        options: [dev, staging, prod]
+      verbose:
+        description: 'Enable verbose seed output'
+        type: boolean
+        default: false
+
+env:
+  AWS_REGION: eu-west-2
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  seed:
+    name: Seed demo users — ${{ github.event.inputs.environment }}
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Resolve network config
+        id: net
+        run: |
+          ENV="${{ github.event.inputs.environment }}"
+          PREFIX="neuroflow-${ENV}"
+
+          # Find the first private app subnet
+          SUBNET=$(aws ec2 describe-subnets \
+            --filters "Name=tag:Name,Values=${PREFIX}-private-app*" \
+            --query 'Subnets[0].SubnetId' --output text 2>/dev/null)
+
+          # Fallback: any subnet tagged to this cluster
+          if [ -z "$SUBNET" ] || [ "$SUBNET" = "None" ]; then
+            SUBNET=$(aws ec2 describe-subnets \
+              --filters "Name=tag:Environment,Values=${ENV}" "Name=tag:Tier,Values=private" \
+              --query 'Subnets[0].SubnetId' --output text 2>/dev/null)
+          fi
+
+          SG=$(aws ec2 describe-security-groups \
+            --filters "Name=group-name,Values=${PREFIX}-backend-sg" \
+            --query 'SecurityGroups[0].GroupId' --output text 2>/dev/null)
+
+          echo "subnet=${SUBNET}" >> "$GITHUB_OUTPUT"
+          echo "sg=${SG}" >> "$GITHUB_OUTPUT"
+          echo "cluster=${PREFIX}-cluster" >> "$GITHUB_OUTPUT"
+          echo "task_def=${PREFIX}-backend" >> "$GITHUB_OUTPUT"
+
+      - name: Run seed via ECS one-off task
+        run: |
+          ENV="${{ github.event.inputs.environment }}"
+          VERBOSE="${{ github.event.inputs.verbose == 'true' && '1' || '0' }}"
+
+          TASK_ARN=$(aws ecs run-task \
+            --cluster "${{ steps.net.outputs.cluster }}" \
+            --task-definition "${{ steps.net.outputs.task_def }}" \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={
+              subnets=[${{ steps.net.outputs.subnet }}],
+              securityGroups=[${{ steps.net.outputs.sg }}],
+              assignPublicIp=DISABLED
+            }" \
+            --overrides "{
+              \"containerOverrides\": [{
+                \"name\": \"backend\",
+                \"command\": [\"python\", \"-m\", \"app.seed\"],
+                \"environment\": [{
+                  \"name\": \"SEED_VERBOSE\",
+                  \"value\": \"${VERBOSE}\"
+                }]
+              }]
+            }" \
+            --count 1 \
+            --query 'tasks[0].taskArn' --output text)
+
+          echo "Seed task ARN: $TASK_ARN"
+          echo "task_arn=${TASK_ARN}" >> "$GITHUB_ENV"
+
+          echo "Waiting for seed task to complete..."
+          aws ecs wait tasks-stopped \
+            --cluster "${{ steps.net.outputs.cluster }}" \
+            --tasks "$TASK_ARN" \
+            --cli-read-timeout 300
+
+          EXIT_CODE=$(aws ecs describe-tasks \
+            --cluster "${{ steps.net.outputs.cluster }}" \
+            --tasks "$TASK_ARN" \
+            --query 'tasks[0].containers[0].exitCode' --output text)
+
+          echo "Seed task exit code: ${EXIT_CODE}"
+          if [ "${EXIT_CODE}" != "0" ]; then
+            echo "::error::Seed task failed with exit code ${EXIT_CODE}"
+            exit 1
+          fi
+
+      - name: Print seed user summary
+        run: |
+          ENV="${{ github.event.inputs.environment }}"
+
+          if [ "$ENV" = "dev" ]; then
+            BASE_URL="https://neuroflow.development.eaglessolutions.co.uk"
+          elif [ "$ENV" = "staging" ]; then
+            BASE_URL="https://neuroflow.staging.eaglessolutions.co.uk"
+          else
+            BASE_URL="https://neuroflow.eaglessolutions.co.uk"
+          fi
+
+          echo ""
+          echo "=================================================================="
+          echo "  NEUROFLOW DEMO USERS — ${ENV^^}"
+          echo "=================================================================="
+          echo ""
+          echo "  All users authenticate via NeuroFlow's JWT login (no Auth0)."
+          echo "  Login URL: ${BASE_URL}/login"
+          echo ""
+          echo "  Role                  Email                              Password"
+          echo "  ─────────────────     ────────────────────────────────── ──────────────────────"
+          echo "  Super Platform Admin  platform-admin@neuroflow.test      NeuroFlow@Admin1!"
+          echo ""
+          echo "  DEMO CLINIC (ORG-001)"
+          echo "  Clinical Admin        demo-admin@demo.neuroflow.test     NeuroFlow@Test1!"
+          echo "  Senior Clinician      senior@demo.neuroflow.test         NeuroFlow@Test1!"
+          echo "  Clinician             clinician@demo.neuroflow.test      NeuroFlow@Test1!"
+          echo ""
+          echo "  BETA CLINIC (ORG-DEMO-BETA)"
+          echo "  Clinical Admin        beta-admin@beta.neuroflow.test     NeuroFlow@Test1!"
+          echo "  Clinician             beta-clin@beta.neuroflow.test      NeuroFlow@Test1!"
+          echo ""
+          echo "  STARTER CLINIC"
+          echo "  Clinical Admin        starter-admin@starter.neuroflow.test  NeuroFlow@Test1!"
+          echo ""
+          echo "  PROFESSIONAL CLINIC"
+          echo "  Clinical Admin        pro-admin@pro.neuroflow.test       NeuroFlow@Test1!"
+          echo "  Senior Clinician      pro-senior@pro.neuroflow.test      NeuroFlow@Test1!"
+          echo ""
+          echo "  ENTERPRISE CLINIC"
+          echo "  Clinical Admin        ent-admin@ent.neuroflow.test       NeuroFlow@Test1!"
+          echo "  Senior Clinician      ent-senior@ent.neuroflow.test      NeuroFlow@Test1!"
+          echo "  Clinician (×2)        ent-clin1@ent.neuroflow.test       NeuroFlow@Test1!"
+          echo "=================================================================="
