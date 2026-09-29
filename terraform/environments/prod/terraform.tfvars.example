@@ -1,36 +1,48 @@
-aws_region              = "eu-west-2"
-project_name            = "adhd-autism-platform"
-environment             = "prod"
-db_password             = "replace-me-strong-password"
-openai_api_key          = "sk-replace-me"
-frontend_image_tag      = "latest"
-backend_image_tag       = "latest"
-ai_workers_image_tag    = "latest"
+# Copy to terraform.tfvars (never commit secrets).
+# All TF_VAR_* values are injected by GitHub Actions from repository secrets.
 
-# JWT — generate with: openssl rand -hex 32
-jwt_secret              = "replace-me-run-openssl-rand-hex-32"
+aws_region   = "eu-west-2"
+environment  = "prod"
+project_name = "neuroflow"
 
-# WooCommerce webhook shared secret — must match WordPress webhook config
-webhook_secret          = "replace-me-run-openssl-rand-hex-32"
+# DNS
+frontend_domain = "neuroflow.eaglessolutions.co.uk"
+api_domain      = "neuroflow-api.eaglessolutions.co.uk"
+route53_zone_id = "Z02866112UE0M0NEAFMZO"
 
-# Public domain for the NeuroFlow frontend (e.g. app.neuroflow.co.uk or your custom domain)
-frontend_domain         = "app.neuroflow.co.uk"
+# ECS sizing (prod — 2 replicas for HA)
+frontend_desired_count = 2
+backend_desired_count  = 2
+workers_desired_count  = 1
+frontend_task_cpu      = 512
+frontend_task_memory   = 1024
+backend_task_cpu       = 1024
+backend_task_memory    = 2048
 
-# ── Auth0 ──────────────────────────────────────────────────────────────────────
-# Create a free account at https://auth0.com, then fill these in.
-# Leave blank until you are ready to switch from JWT to Auth0.
+# RDS
+db_name            = "neuroflow"
+db_username        = "neuroflow_admin"
+db_instance_class  = "db.t4g.small"
+db_allocated_storage = 20
 
-# Applications → Your App → Domain
-auth0_domain            = "your-tenant.eu.auth0.com"
+# Image tags — set by CI to the git SHA
+frontend_image_tag   = "latest"
+backend_image_tag    = "latest"
+ai_workers_image_tag = "latest"
 
-# APIs → Create API → set Identifier to this value
-auth0_audience          = "https://neuroaccess-api"
+# Platform branding
+platform_display_name = "NeuroFlow"
+platform_tagline      = "NICE-aligned neurodevelopmental assessment for clinics"
+support_email         = "support@neuroflow.eaglessolutions.co.uk"
+admin_notification_email = "admin@neuroflow.eaglessolutions.co.uk"
 
-# Applications → Your App → Client ID
-auth0_client_id         = "replace-me"
-
-# Applications → Your App → Client Secret
-auth0_client_secret     = "replace-me"
-
-# Next.js session encryption key — generate with: openssl rand -hex 32
-auth0_secret            = "replace-me-run-openssl-rand-hex-32"
+# Secrets — injected via TF_VAR_* in CI (never store here)
+# db_password                = ""
+# jwt_secret                 = ""   # openssl rand -hex 32
+# anthropic_api_key          = ""
+# sendgrid_api_key           = ""
+# stripe_secret_key          = ""
+# stripe_webhook_secret      = ""
+# stripe_price_starter       = ""
+# stripe_price_professional  = ""
+# stripe_price_enterprise    = ""

@@ -1,219 +1,250 @@
 variable "aws_region" {
-  description = "AWS region for production resources."
+  description = "AWS region."
   type        = string
   default     = "eu-west-2"
 }
 
 variable "project_name" {
-  description = "Project name used as a naming prefix."
+  description = "Project name prefix for all resources."
   type        = string
-  default     = "adhd-autism-platform"
+  default     = "neuroflow"
 }
 
 variable "environment" {
-  description = "Deployment environment name."
+  description = "Deployment environment."
   type        = string
   default     = "prod"
 }
 
+# ── Networking ────────────────────────────────────────────────────────────────
 variable "vpc_cidr" {
-  description = "CIDR range for the VPC."
-  type        = string
-  default     = "10.20.0.0/16"
+  type    = string
+  default = "10.30.0.0/16"
 }
 
 variable "availability_zones" {
-  description = "Availability zones for multi-AZ deployment."
-  type        = list(string)
-  default     = ["eu-west-2a", "eu-west-2b"]
+  type    = list(string)
+  default = ["eu-west-2a", "eu-west-2b"]
 }
 
 variable "public_subnet_cidrs" {
-  description = "Public subnet CIDRs."
-  type        = list(string)
-  default     = ["10.20.0.0/24", "10.20.1.0/24"]
+  type    = list(string)
+  default = ["10.30.0.0/24", "10.30.1.0/24"]
 }
 
 variable "private_app_subnet_cidrs" {
-  description = "Private subnet CIDRs for ECS services."
-  type        = list(string)
-  default     = ["10.20.10.0/24", "10.20.11.0/24"]
+  type    = list(string)
+  default = ["10.30.10.0/24", "10.30.11.0/24"]
 }
 
 variable "private_data_subnet_cidrs" {
-  description = "Private subnet CIDRs for data services."
-  type        = list(string)
-  default     = ["10.20.20.0/24", "10.20.21.0/24"]
+  type    = list(string)
+  default = ["10.30.20.0/24", "10.30.21.0/24"]
 }
 
+# ── Container ports ───────────────────────────────────────────────────────────
 variable "frontend_container_port" {
-  description = "Frontend container port."
-  type        = number
-  default     = 3000
+  type    = number
+  default = 3000
 }
 
 variable "backend_container_port" {
-  description = "Backend container port."
-  type        = number
-  default     = 8000
+  type    = number
+  default = 8000
 }
 
+# ── Image tags (overridden by CI) ─────────────────────────────────────────────
 variable "frontend_image_tag" {
-  description = "Frontend image tag."
-  type        = string
-  default     = "latest"
+  type    = string
+  default = "latest"
 }
 
 variable "backend_image_tag" {
-  description = "Backend image tag."
-  type        = string
-  default     = "latest"
+  type    = string
+  default = "latest"
 }
 
 variable "ai_workers_image_tag" {
-  description = "AI workers image tag."
-  type        = string
-  default     = "latest"
+  type    = string
+  default = "latest"
 }
 
+# ── ECS sizing ────────────────────────────────────────────────────────────────
 variable "frontend_task_cpu" {
-  description = "Frontend Fargate CPU units."
-  type        = number
-  default     = 256
+  type    = number
+  default = 512
 }
 
 variable "frontend_task_memory" {
-  description = "Frontend Fargate memory in MiB."
-  type        = number
-  default     = 512
+  type    = number
+  default = 1024
 }
 
 variable "backend_task_cpu" {
-  description = "Backend Fargate CPU units."
-  type        = number
-  default     = 512
+  type    = number
+  default = 512
 }
 
 variable "backend_task_memory" {
-  description = "Backend Fargate memory in MiB."
-  type        = number
-  default     = 1024
+  type    = number
+  default = 1024
 }
 
 variable "workers_task_cpu" {
-  description = "AI workers Fargate CPU units."
-  type        = number
-  default     = 256
+  type    = number
+  default = 256
 }
 
 variable "workers_task_memory" {
-  description = "AI workers Fargate memory in MiB."
-  type        = number
-  default     = 512
+  type    = number
+  default = 512
 }
 
 variable "frontend_desired_count" {
-  description = "Number of frontend tasks."
-  type        = number
-  default     = 2
+  type    = number
+  default = 2
 }
 
 variable "backend_desired_count" {
-  description = "Number of backend tasks."
-  type        = number
-  default     = 2
+  type    = number
+  default = 2
 }
 
 variable "workers_desired_count" {
-  description = "Number of worker tasks."
-  type        = number
-  default     = 1
+  type    = number
+  default = 1
 }
 
+# ── RDS ───────────────────────────────────────────────────────────────────────
 variable "db_name" {
-  description = "PostgreSQL database name."
-  type        = string
-  default     = "neuroaccess"
+  type    = string
+  default = "neuroflow"
 }
 
 variable "db_username" {
-  description = "PostgreSQL admin username."
-  type        = string
-  default     = "platform_admin"
+  type    = string
+  default = "neuroflow_admin"
 }
 
 variable "db_password" {
-  description = "PostgreSQL admin password."
-  type        = string
-  sensitive   = true
+  type      = string
+  sensitive = true
 }
 
 variable "db_instance_class" {
-  description = "RDS instance class."
-  type        = string
-  default     = "db.t4g.micro"
+  type    = string
+  default = "db.t4g.small"
 }
 
 variable "db_allocated_storage" {
-  description = "Initial RDS storage in GiB."
-  type        = number
-  default     = 20
+  type    = number
+  default = 20
 }
 
-variable "openai_api_key" {
-  description = "OpenAI API key injected into backend and worker tasks."
-  type        = string
-  sensitive   = true
-}
-
-variable "jwt_secret" {
-  description = "Secret key for signing JWT access tokens. Use: openssl rand -hex 32"
-  type        = string
-  sensitive   = true
-}
-
-variable "webhook_secret" {
-  description = "Shared secret for verifying WooCommerce webhook signatures (HMAC-SHA256)."
-  type        = string
-  sensitive   = true
-}
-
+# ── DNS ───────────────────────────────────────────────────────────────────────
 variable "frontend_domain" {
-  description = "Public domain name for the NeuroFlow frontend (e.g. app.neuroflow.co.uk or your custom domain)."
+  description = "Public hostname for the NeuroFlow app (e.g. neuroflow.eaglessolutions.co.uk)"
   type        = string
-  default     = "app.neuroflow.co.uk"
+  default     = "neuroflow.eaglessolutions.co.uk"
 }
 
-# ── Auth0 ──────────────────────────────────────────────────────────────────────
-# Dashboard → Applications → Your App
-variable "auth0_domain" {
-  description = "Auth0 tenant domain, e.g. your-tenant.eu.auth0.com"
+variable "api_domain" {
+  description = "Public hostname for the NeuroFlow API (e.g. neuroflow-api.eaglessolutions.co.uk)"
   type        = string
-  default     = ""
+  default     = "neuroflow-api.eaglessolutions.co.uk"
 }
 
-variable "auth0_audience" {
-  description = "Auth0 API audience identifier, e.g. https://neuroaccess-api"
+variable "route53_zone_id" {
+  description = "Route53 hosted zone ID for the eaglessolutions.co.uk domain."
   type        = string
-  default     = ""
+  default     = "Z02866112UE0M0NEAFMZO"
 }
 
-variable "auth0_client_id" {
-  description = "Auth0 application client ID"
+# ── App secrets (injected as TF_VAR_* by GitHub Actions) ─────────────────────
+variable "jwt_secret" {
+  description = "HS256 signing secret. Generate: openssl rand -hex 32"
   type        = string
-  default     = ""
+  sensitive   = true
 }
 
-variable "auth0_client_secret" {
-  description = "Auth0 application client secret"
+variable "anthropic_api_key" {
+  description = "Anthropic API key for Claude AI features."
+  type        = string
+  sensitive   = true
+}
+
+variable "anthropic_model" {
+  description = "Claude model ID."
+  type        = string
+  default     = "claude-sonnet-4-5"
+}
+
+variable "sendgrid_api_key" {
+  description = "SendGrid API key for transactional email."
   type        = string
   sensitive   = true
   default     = ""
 }
 
-variable "auth0_secret" {
-  description = "Random 32+ char secret for Next.js Auth0 SDK session encryption (AUTH0_SECRET)"
+variable "sendgrid_from_email" {
+  description = "From address used for all platform emails."
+  type        = string
+  default     = "noreply@neuroflow.eaglessolutions.co.uk"
+}
+
+variable "stripe_secret_key" {
+  description = "Stripe secret key for clinic subscription billing."
   type        = string
   sensitive   = true
   default     = ""
+}
+
+variable "stripe_webhook_secret" {
+  description = "Stripe webhook signing secret."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "stripe_price_starter" {
+  description = "Stripe Price ID for the Starter plan."
+  type        = string
+  default     = ""
+}
+
+variable "stripe_price_professional" {
+  description = "Stripe Price ID for the Professional plan."
+  type        = string
+  default     = ""
+}
+
+variable "stripe_price_enterprise" {
+  description = "Stripe Price ID for the Enterprise plan."
+  type        = string
+  default     = ""
+}
+
+# ── Platform branding ─────────────────────────────────────────────────────────
+variable "platform_display_name" {
+  description = "Platform name shown in the UI and emails when no clinic branding is set."
+  type        = string
+  default     = "NeuroFlow"
+}
+
+variable "platform_tagline" {
+  description = "Platform tagline shown in the UI."
+  type        = string
+  default     = "NICE-aligned neurodevelopmental assessment for clinics"
+}
+
+variable "support_email" {
+  description = "Platform-level support email (fallback when clinic has none set)."
+  type        = string
+  default     = "support@neuroflow.eaglessolutions.co.uk"
+}
+
+variable "admin_notification_email" {
+  description = "Internal admin email that receives platform alerts."
+  type        = string
+  default     = "admin@neuroflow.eaglessolutions.co.uk"
 }

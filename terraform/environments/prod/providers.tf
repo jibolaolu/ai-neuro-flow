@@ -7,8 +7,26 @@ terraform {
       version = "~> 5.0"
     }
   }
+
+  backend "s3" {
+    bucket         = "eagles-solutions-tfstate"
+    key            = "apps/neuroflow/prod.tfstate"
+    region         = "eu-west-2"
+    dynamodb_table = "eagles-solutions-tfstate-lock"
+    encrypt        = true
+  }
 }
 
 provider "aws" {
   region = var.aws_region
+
+  default_tags {
+    tags = {
+      Project     = "eagles-solutions"
+      App         = "neuroflow"
+      Environment = "prod"
+      ManagedBy   = "Terraform"
+      Layer       = "app"
+    }
+  }
 }

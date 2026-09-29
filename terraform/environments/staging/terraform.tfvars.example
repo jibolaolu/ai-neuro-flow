@@ -1,8 +1,21 @@
-aws_region           = "eu-west-2"
-project_name         = "adhd-autism-platform"
-environment          = "staging"
-db_password          = "replace-me"
-openai_api_key       = "replace-me"
-frontend_image_tag   = "staging"
-backend_image_tag    = "staging"
-ai_workers_image_tag = "staging"
+aws_region   = "eu-west-2"
+environment  = "staging"
+project_name = "neuroflow"
+
+frontend_domain = "neuroflow.staging.eaglessolutions.co.uk"
+api_domain      = "neuroflow-api.staging.eaglessolutions.co.uk"
+route53_zone_id = "Z02866112UE0M0NEAFMZO"
+
+frontend_desired_count = 1
+backend_desired_count  = 1
+db_name                = "neuroflow"
+db_instance_class      = "db.t4g.micro"
+
+platform_display_name    = "NeuroFlow Staging"
+support_email            = "support@neuroflow.eaglessolutions.co.uk"
+admin_notification_email = "admin@neuroflow.eaglessolutions.co.uk"
+
+# Secrets — inject via TF_VAR_* in CI
+# db_password       = ""
+# jwt_secret        = ""
+# anthropic_api_key = ""

@@ -1,8 +1,26 @@
-aws_region           = "eu-west-2"
-project_name         = "adhd-autism-platform"
-environment          = "dev"
-db_password          = "replace-me"
-openai_api_key       = "replace-me"
-frontend_image_tag   = "dev"
-backend_image_tag    = "dev"
-ai_workers_image_tag = "dev"
+aws_region   = "eu-west-2"
+environment  = "dev"
+project_name = "neuroflow"
+
+frontend_domain = "neuroflow.development.eaglessolutions.co.uk"
+api_domain      = "neuroflow-api.development.eaglessolutions.co.uk"
+route53_zone_id = "Z02866112UE0M0NEAFMZO"
+
+frontend_desired_count = 1
+backend_desired_count  = 1
+workers_desired_count  = 1
+
+db_name           = "neuroflow"
+db_username       = "neuroflow_admin"
+db_instance_class = "db.t4g.micro"
+
+platform_display_name    = "NeuroFlow Dev"
+support_email            = "support@neuroflow.eaglessolutions.co.uk"
+admin_notification_email = "admin@neuroflow.eaglessolutions.co.uk"
+
+# Secrets — inject via TF_VAR_* in CI
+# db_password       = ""
+# jwt_secret        = ""
+# anthropic_api_key = ""
+# sendgrid_api_key  = ""
+# stripe_secret_key = ""

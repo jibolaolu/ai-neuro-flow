@@ -1,167 +1,53 @@
-variable "aws_region" {
-  description = "AWS region for staging resources."
-  type        = string
-  default     = "eu-west-2"
-}
+variable "aws_region"  { type = string; default = "eu-west-2" }
+variable "project_name" { type = string; default = "neuroflow" }
+variable "environment"  { type = string; default = "staging" }
 
-variable "project_name" {
-  description = "Project name used as a naming prefix."
-  type        = string
-  default     = "adhd-autism-platform"
-}
+variable "vpc_cidr"                  { type = string; default = "10.20.0.0/16" }
+variable "availability_zones"        { type = list(string); default = ["eu-west-2a", "eu-west-2b"] }
+variable "public_subnet_cidrs"       { type = list(string); default = ["10.20.0.0/24", "10.20.1.0/24"] }
+variable "private_app_subnet_cidrs"  { type = list(string); default = ["10.20.10.0/24", "10.20.11.0/24"] }
+variable "private_data_subnet_cidrs" { type = list(string); default = ["10.20.20.0/24", "10.20.21.0/24"] }
 
-variable "environment" {
-  description = "Deployment environment name."
-  type        = string
-  default     = "staging"
-}
+variable "frontend_container_port" { type = number; default = 3000 }
+variable "backend_container_port"  { type = number; default = 8000 }
 
-variable "vpc_cidr" {
-  description = "CIDR range for the VPC."
-  type        = string
-  default     = "10.15.0.0/16"
-}
+variable "frontend_image_tag"   { type = string; default = "latest" }
+variable "backend_image_tag"    { type = string; default = "latest" }
+variable "ai_workers_image_tag" { type = string; default = "latest" }
 
-variable "availability_zones" {
-  description = "Availability zones for the deployment."
-  type        = list(string)
-  default     = ["eu-west-2a", "eu-west-2b"]
-}
+variable "frontend_task_cpu"    { type = number; default = 512 }
+variable "frontend_task_memory" { type = number; default = 1024 }
+variable "backend_task_cpu"     { type = number; default = 512 }
+variable "backend_task_memory"  { type = number; default = 1024 }
+variable "workers_task_cpu"     { type = number; default = 256 }
+variable "workers_task_memory"  { type = number; default = 512 }
 
-variable "public_subnet_cidrs" {
-  description = "Public subnet CIDRs."
-  type        = list(string)
-  default     = ["10.15.0.0/24", "10.15.1.0/24"]
-}
+variable "frontend_desired_count" { type = number; default = 1 }
+variable "backend_desired_count"  { type = number; default = 1 }
+variable "workers_desired_count"  { type = number; default = 1 }
 
-variable "private_app_subnet_cidrs" {
-  description = "Private subnet CIDRs for ECS services."
-  type        = list(string)
-  default     = ["10.15.10.0/24", "10.15.11.0/24"]
-}
+variable "db_name"             { type = string; default = "neuroflow" }
+variable "db_username"         { type = string; default = "neuroflow_admin" }
+variable "db_password"         { type = string; sensitive = true }
+variable "db_instance_class"   { type = string; default = "db.t4g.micro" }
+variable "db_allocated_storage" { type = number; default = 20 }
 
-variable "private_data_subnet_cidrs" {
-  description = "Private subnet CIDRs for data services."
-  type        = list(string)
-  default     = ["10.15.20.0/24", "10.15.21.0/24"]
-}
+variable "frontend_domain"  { type = string; default = "neuroflow.staging.eaglessolutions.co.uk" }
+variable "api_domain"       { type = string; default = "neuroflow-api.staging.eaglessolutions.co.uk" }
+variable "route53_zone_id"  { type = string; default = "Z02866112UE0M0NEAFMZO" }
 
-variable "frontend_container_port" {
-  description = "Frontend container port."
-  type        = number
-  default     = 3000
-}
+variable "jwt_secret"               { type = string; sensitive = true }
+variable "anthropic_api_key"        { type = string; sensitive = true }
+variable "anthropic_model"          { type = string; default = "claude-sonnet-4-5" }
+variable "sendgrid_api_key"         { type = string; sensitive = true; default = "" }
+variable "sendgrid_from_email"      { type = string; default = "noreply@neuroflow.eaglessolutions.co.uk" }
+variable "stripe_secret_key"        { type = string; sensitive = true; default = "" }
+variable "stripe_webhook_secret"    { type = string; sensitive = true; default = "" }
+variable "stripe_price_starter"     { type = string; default = "" }
+variable "stripe_price_professional" { type = string; default = "" }
+variable "stripe_price_enterprise"  { type = string; default = "" }
 
-variable "backend_container_port" {
-  description = "Backend container port."
-  type        = number
-  default     = 8000
-}
-
-variable "frontend_image_tag" {
-  description = "Frontend image tag."
-  type        = string
-  default     = "staging"
-}
-
-variable "backend_image_tag" {
-  description = "Backend image tag."
-  type        = string
-  default     = "staging"
-}
-
-variable "ai_workers_image_tag" {
-  description = "AI workers image tag."
-  type        = string
-  default     = "staging"
-}
-
-variable "frontend_task_cpu" {
-  description = "Frontend Fargate CPU units."
-  type        = number
-  default     = 256
-}
-
-variable "frontend_task_memory" {
-  description = "Frontend Fargate memory in MiB."
-  type        = number
-  default     = 512
-}
-
-variable "backend_task_cpu" {
-  description = "Backend Fargate CPU units."
-  type        = number
-  default     = 512
-}
-
-variable "backend_task_memory" {
-  description = "Backend Fargate memory in MiB."
-  type        = number
-  default     = 1024
-}
-
-variable "workers_task_cpu" {
-  description = "AI workers Fargate CPU units."
-  type        = number
-  default     = 256
-}
-
-variable "workers_task_memory" {
-  description = "AI workers Fargate memory in MiB."
-  type        = number
-  default     = 512
-}
-
-variable "frontend_desired_count" {
-  description = "Number of frontend tasks."
-  type        = number
-  default     = 1
-}
-
-variable "backend_desired_count" {
-  description = "Number of backend tasks."
-  type        = number
-  default     = 1
-}
-
-variable "workers_desired_count" {
-  description = "Number of worker tasks."
-  type        = number
-  default     = 1
-}
-
-variable "db_name" {
-  description = "PostgreSQL database name."
-  type        = string
-  default     = "neuroaccess_staging"
-}
-
-variable "db_username" {
-  description = "PostgreSQL admin username."
-  type        = string
-  default     = "platform_admin"
-}
-
-variable "db_password" {
-  description = "PostgreSQL admin password."
-  type        = string
-  sensitive   = true
-}
-
-variable "db_instance_class" {
-  description = "RDS instance class."
-  type        = string
-  default     = "db.t4g.small"
-}
-
-variable "db_allocated_storage" {
-  description = "Initial RDS storage in GiB."
-  type        = number
-  default     = 20
-}
-
-variable "openai_api_key" {
-  description = "OpenAI API key injected into backend and worker tasks."
-  type        = string
-  sensitive   = true
-}
+variable "platform_display_name"    { type = string; default = "NeuroFlow" }
+variable "platform_tagline"         { type = string; default = "NICE-aligned neurodevelopmental assessment for clinics" }
+variable "support_email"            { type = string; default = "support@neuroflow.eaglessolutions.co.uk" }
+variable "admin_notification_email" { type = string; default = "admin@neuroflow.eaglessolutions.co.uk" }
