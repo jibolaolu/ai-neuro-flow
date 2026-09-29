@@ -323,6 +323,32 @@ resource "aws_s3_bucket_public_access_block" "uploads" {
   restrict_public_buckets = true
 }
 
+# Grant ECS task role read/write access to the uploads bucket
+resource "aws_iam_role_policy" "task_s3_uploads" {
+  name = "${local.name_prefix}-task-s3-uploads"
+  role = module.ecs_cluster.task_role_name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:PutObject",
+          "s3:GetObject",
+          "s3:DeleteObject",
+          "s3:HeadObject",
+          "s3:ListBucket",
+        ]
+        Resource = [
+          aws_s3_bucket.uploads.arn,
+          "${aws_s3_bucket.uploads.arn}/*",
+        ]
+      }
+    ]
+  })
+}
+
 # ── ECS services ─────────────────────────────────────────────────────────────
 module "frontend_service" {
   source = "../../modules/ecs-service"

@@ -16,13 +16,12 @@ import os
 import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, require_roles
-from app.core.config import document_upload_root
+from app.services import storage as storage_svc
 from app.models.client import ClientRecord
 from app.models.client_profile import ClientProfileRecord
 from app.models.clinical_report import (
@@ -373,9 +372,9 @@ def download_pdf_authenticated(
         raise HTTPException(status_code=404, detail="Report not found")
     if current_user.role == "clinician" and r.clinician_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
-    if not r.pdf_path or not Path(r.pdf_path).exists():
+    if not r.pdf_path or not storage_svc.report_pdf_exists(r.pdf_path):
         raise HTTPException(status_code=404, detail="PDF not yet generated")
-    pdf_bytes = Path(r.pdf_path).read_bytes()
+    pdf_bytes = storage_svc.read_report_pdf(r.pdf_path)
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
@@ -414,9 +413,9 @@ def download_pdf_by_token(
     # Token expired → link no longer accessible, but PDF itself can still be read by staff
     if r.pdf_token_expires_at and r.pdf_token_expires_at < now:
         raise HTTPException(status_code=410, detail="This report link has expired. Please contact the clinic.")
-    if not r.pdf_path or not Path(r.pdf_path).exists():
+    if not r.pdf_path or not storage_svc.report_pdf_exists(r.pdf_path):
         raise HTTPException(status_code=404, detail="Report PDF not available")
-    pdf_bytes = Path(r.pdf_path).read_bytes()
+    pdf_bytes = storage_svc.read_report_pdf(r.pdf_path)
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
@@ -457,12 +456,7 @@ def _generate_and_attach_pdf(r: ClinicalReportRecord, db: Session) -> None:
         report_id=r.id,
     )
 
-    # Save to uploads directory
-    upload_root = document_upload_root() / "reports"
-    upload_root.mkdir(parents=True, exist_ok=True)
-    pdf_path = upload_root / f"{r.id}.pdf"
-    pdf_path.write_bytes(pdf_bytes)
-    r.pdf_path = str(pdf_path)
+    r.pdf_path = storage_svc.store_report_pdf(r.id, pdf_bytes)
 
 
 def _send_report_to_client(r: ClinicalReportRecord, db: Session) -> None:
@@ -479,8 +473,8 @@ def _send_report_to_client(r: ClinicalReportRecord, db: Session) -> None:
 
     # Build PDF attachment bytes if available
     pdf_bytes: bytes | None = None
-    if r.pdf_path and Path(r.pdf_path).exists():
-        pdf_bytes = Path(r.pdf_path).read_bytes()
+    if r.pdf_path and storage_svc.report_pdf_exists(r.pdf_path):
+        pdf_bytes = storage_svc.read_report_pdf(r.pdf_path)
 
     email_svc.send_report_issued(
         to_email=recipient_email,

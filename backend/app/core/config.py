@@ -55,6 +55,12 @@ class Settings(BaseSettings):
     # Admin notification email - receives "all forms returned" alerts
     admin_notification_email: str = "admin@neuroflow.app"
 
+    # S3 storage — set S3_BUCKET_NAME in production (ECS); empty = local filesystem fallback
+    s3_bucket_name: str = ""
+    aws_region: str = "eu-west-2"
+    # Presigned URL expiry for document downloads (seconds)
+    s3_presign_expiry: int = 3600
+
     # Client document uploads (PDF, images, DOCX). Relative paths resolve under backend dir.
     document_upload_dir: str = ""
 

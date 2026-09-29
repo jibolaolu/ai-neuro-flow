@@ -3,6 +3,7 @@ import uuid
 from pathlib import Path, PurePosixPath
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.orm import Session
 from starlette.responses import FileResponse
@@ -17,6 +18,7 @@ from app.services.tenant import (
     require_clinic_member,
 )
 from app.core.config import document_upload_root, settings
+from app.services import storage as storage_svc
 from app.api.v1.forms import sync_client_profile_from_submitted_forms
 from app.models.client import (
     ClientAssignBody,
@@ -323,39 +325,29 @@ async def upload_client_document(
     mime_type, suffix = _resolve_mime_and_suffix(file.content_type, original)
     title_clean = (title or "").strip() or (PurePosixPath(original).stem or "Document")
 
-    root = document_upload_root()
-    client_dir = root / client_id
-    client_dir.mkdir(parents=True, exist_ok=True)
-    stored_fs_name = f"{uuid.uuid4().hex}{suffix}"
-    abs_path = (client_dir / stored_fs_name).resolve()
-    rel_path = f"{client_id}/{stored_fs_name}"
-
+    # Read entire file into memory for size check then hand off to storage layer.
+    chunks: list[bytes] = []
     total = 0
-    try:
-        with abs_path.open("wb") as out:
-            while True:
-                chunk = await file.read(1024 * 1024)
-                if not chunk:
-                    break
-                total += len(chunk)
-                if total > MAX_DOCUMENT_BYTES:
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail=f"File too large (max {MAX_DOCUMENT_BYTES // (1024 * 1024)} MB)",
-                    )
-                out.write(chunk)
-    except HTTPException:
-        if abs_path.is_file():
-            abs_path.unlink(missing_ok=True)
-        raise
-    except Exception:
-        if abs_path.is_file():
-            abs_path.unlink(missing_ok=True)
-        raise HTTPException(status_code=500, detail="Could not store file") from None
+    while True:
+        chunk = await file.read(1024 * 1024)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > MAX_DOCUMENT_BYTES:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"File too large (max {MAX_DOCUMENT_BYTES // (1024 * 1024)} MB)",
+            )
+        chunks.append(chunk)
 
     if total == 0:
-        abs_path.unlink(missing_ok=True)
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Empty file upload")
+
+    file_bytes = b"".join(chunks)
+    try:
+        rel_path = await storage_svc.store_upload(file_bytes, client_id, suffix, mime_type)
+    except Exception:
+        raise HTTPException(status_code=500, detail="Could not store file") from None
 
     doc_id = f"DOC-{uuid.uuid4().hex[:10].upper()}"
     doc = ClientDocumentRecord(
@@ -386,7 +378,7 @@ def download_client_document_file(
     user: UserRecord = Depends(
         require_roles("clinician", "senior-clinician", "clinical-admin", "super-platform-admin"),
     ),
-) -> FileResponse:
+):
     record = get_client_for_user(db, user, client_id)
     _assert_care_team_access(record, user)
 
@@ -401,15 +393,17 @@ def download_client_document_file(
     if not doc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
 
-    root = document_upload_root().resolve()
-    full_path = (root / doc.stored_rel_path).resolve()
-    try:
-        full_path.relative_to(root)
-    except ValueError:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found") from None
-    if not full_path.is_file():
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File missing on server")
+    if storage_svc.use_s3():
+        # Redirect to a short-lived presigned S3 URL
+        url = storage_svc.presigned_url(
+            rel_path=doc.stored_rel_path,
+            original_filename=doc.original_filename,
+            mime_type=doc.mime_type,
+            expiry=settings.s3_presign_expiry,
+        )
+        return RedirectResponse(url=url, status_code=302)
 
+    full_path = storage_svc.local_file_path(doc.stored_rel_path)
     return FileResponse(
         path=str(full_path),
         media_type=doc.mime_type,

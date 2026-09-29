@@ -18,3 +18,4 @@ sentence-transformers>=3.3.0
 sqlalchemy==2.0.36
 psycopg2-binary==2.9.10
 uvicorn[standard]==0.32.1
+boto3>=1.35.0
