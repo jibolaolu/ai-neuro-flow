@@ -35,7 +35,7 @@ def ensure_default_organization(engine: Engine) -> None:
                         id, name, slug, is_active, subscription_status,
                         subscription_plan, trial_ends_at, created_at
                     ) VALUES (
-                        :id, :name, :slug, 1, :status,
+                        :id, :name, :slug, :is_active, :status,
                         NULL, :trial_ends, :created_at
                     )
                     """
@@ -44,6 +44,7 @@ def ensure_default_organization(engine: Engine) -> None:
                     "id": DEFAULT_ORG_ID,
                     "name": DEFAULT_ORG_NAME,
                     "slug": DEFAULT_ORG_SLUG,
+                    "is_active": True,
                     "status": SUB_TRIALING,
                     "trial_ends": trial_end.isoformat(),
                     "created_at": now.isoformat(),
