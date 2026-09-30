@@ -38,11 +38,11 @@ def _zoom_create_meeting(
         ZOOM_CLIENT_SECRET=...
     """
     try:
-        from app.core.config import settings
         import base64
-        import urllib.request
-        import urllib.parse
-        import json as _json
+
+        import requests as _requests
+
+        from app.core.config import settings
 
         if not settings.zoom_account_id or not settings.zoom_client_id or not settings.zoom_client_secret:
             return None
@@ -51,25 +51,20 @@ def _zoom_create_meeting(
         credentials = base64.b64encode(
             f"{settings.zoom_client_id}:{settings.zoom_client_secret}".encode()
         ).decode()
-        token_url = (
-            f"https://zoom.us/oauth/token"
-            f"?grant_type=account_credentials"
-            f"&account_id={urllib.parse.quote(settings.zoom_account_id)}"
-        )
-        token_req = urllib.request.Request(
-            token_url,
-            method="POST",
+        token_resp = _requests.post(
+            "https://zoom.us/oauth/token",
+            params={"grant_type": "account_credentials", "account_id": settings.zoom_account_id},
             headers={"Authorization": f"Basic {credentials}"},
+            timeout=8,
         )
-        with urllib.request.urlopen(token_req, timeout=8) as resp:
-            token_data = _json.loads(resp.read())
-        access_token = token_data.get("access_token")
+        token_resp.raise_for_status()
+        access_token = token_resp.json().get("access_token")
         if not access_token:
             logger.warning("Zoom OAuth did not return access_token")
             return None
 
         # Step 2: Create meeting
-        meeting_payload = {
+        meeting_payload: dict = {
             "topic": topic,
             "type": 2 if start_time_iso else 1,  # 2=scheduled, 1=instant
             "duration": duration_minutes,
@@ -84,19 +79,14 @@ def _zoom_create_meeting(
         if start_time_iso:
             meeting_payload["start_time"] = start_time_iso
 
-        meeting_body = _json.dumps(meeting_payload).encode()
-        meeting_req = urllib.request.Request(
+        meeting_resp = _requests.post(
             "https://api.zoom.us/v2/users/me/meetings",
-            data=meeting_body,
-            method="POST",
-            headers={
-                "Authorization": f"Bearer {access_token}",
-                "Content-Type": "application/json",
-            },
+            json=meeting_payload,
+            headers={"Authorization": f"Bearer {access_token}"},
+            timeout=8,
         )
-        with urllib.request.urlopen(meeting_req, timeout=8) as resp:
-            meeting_data = _json.loads(resp.read())
-        join_url = meeting_data.get("join_url")
+        meeting_resp.raise_for_status()
+        join_url = meeting_resp.json().get("join_url")
         if join_url:
             logger.info("Zoom meeting created: %s", join_url)
             return str(join_url)

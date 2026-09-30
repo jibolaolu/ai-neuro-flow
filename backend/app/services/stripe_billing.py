@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import json
 import logging
-import urllib.error
 import urllib.parse
-import urllib.request
+
+import requests as _requests
 
 from app.core.config import settings
 
@@ -24,19 +24,23 @@ def _request(method: str, path: str, data: dict | None = None) -> dict:
     if not key:
         raise RuntimeError("STRIPE_SECRET_KEY not configured")
     url = f"{STRIPE_API}{path}"
-    body = urllib.parse.urlencode(_flatten(data or {})).encode() if data else None
-    req = urllib.request.Request(
-        url,
-        data=body,
-        method=method,
-        headers={"Authorization": f"Bearer {key}"},
-    )
+    form_data = urllib.parse.urlencode(_flatten(data or {})) if data else None
     try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            return json.loads(resp.read().decode())
-    except urllib.error.HTTPError as e:
-        err_body = e.read().decode()
-        logger.error("Stripe API error %s: %s", e.code, err_body)
+        resp = _requests.request(
+            method,
+            url,
+            data=form_data,
+            headers={
+                "Authorization": f"Bearer {key}",
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+            timeout=30,
+        )
+        resp.raise_for_status()
+        return resp.json()
+    except _requests.HTTPError as e:
+        err_body = e.response.text if e.response is not None else str(e)
+        logger.error("Stripe API error %s: %s", e.response.status_code if e.response else "?", err_body)
         raise RuntimeError(f"Stripe error: {err_body}") from e
 
 

@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import json
 import time
-import urllib.error
-import urllib.request
 
+import requests as _requests
 from jose import JWTError, jwk, jwt
 
 from app.core.config import settings
@@ -43,11 +42,11 @@ def _get_jwks() -> dict:
     now = time.time()
     if _JWKS_CACHE and (now - _JWKS_CACHE_AT) < _JWKS_TTL_SECONDS:
         return _JWKS_CACHE
-    req = urllib.request.Request(_jwks_url(), headers={"User-Agent": "neuroflow-api"})
     try:
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            data = json.loads(resp.read().decode())
-    except (urllib.error.URLError, json.JSONDecodeError, TimeoutError) as exc:
+        resp = _requests.get(_jwks_url(), headers={"User-Agent": "neuroflow-api"}, timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+    except (_requests.RequestException, json.JSONDecodeError) as exc:
         raise JWTError(f"Unable to fetch Auth0 JWKS: {exc}") from exc
     _JWKS_CACHE = data
     _JWKS_CACHE_AT = now
