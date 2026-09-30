@@ -45,7 +45,7 @@ module "ecs_cluster" {
 # â”€â”€ Security groups â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 resource "aws_security_group" "alb" {
   name        = "${local.name_prefix}-alb-sg"
-  description = "ALB â€” public HTTP and HTTPS ingress"
+  description = "ALB - public HTTP and HTTPS ingress"
   vpc_id      = module.networking.vpc_id
 
   ingress {
@@ -76,7 +76,7 @@ resource "aws_security_group" "alb" {
 
 resource "aws_security_group" "frontend_service" {
   name        = "${local.name_prefix}-frontend-sg"
-  description = "Frontend ECS service â€” ingress from ALB only"
+  description = "Frontend ECS service - ingress from ALB only"
   vpc_id      = module.networking.vpc_id
 
   ingress {
@@ -99,7 +99,7 @@ resource "aws_security_group" "frontend_service" {
 
 resource "aws_security_group" "backend_service" {
   name        = "${local.name_prefix}-backend-sg"
-  description = "Backend ECS service â€” ingress from ALB and AI workers"
+  description = "Backend ECS service - ingress from ALB and AI workers"
   vpc_id      = module.networking.vpc_id
 
   ingress {
@@ -130,7 +130,7 @@ resource "aws_security_group" "backend_service" {
 
 resource "aws_security_group" "ai_workers_service" {
   name        = "${local.name_prefix}-workers-sg"
-  description = "AI workers â€” egress only"
+  description = "AI workers - egress only"
   vpc_id      = module.networking.vpc_id
 
   egress {
@@ -145,7 +145,7 @@ resource "aws_security_group" "ai_workers_service" {
 
 resource "aws_security_group" "database" {
   name        = "${local.name_prefix}-db-sg"
-  description = "PostgreSQL â€” ingress from backend only"
+  description = "PostgreSQL - ingress from backend only"
   vpc_id      = module.networking.vpc_id
 
   ingress {
