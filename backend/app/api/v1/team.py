@@ -49,18 +49,12 @@ def _get_clinician_or_404(db: Session, user_id: str) -> UserRecord:
 
 @router.get("/clinicians", response_model=dict)
 def list_clinicians_for_assignment(
-    include_inactive: bool = Query(
-        False, description="Team roster: include deactivated clinicians"
-    ),
+    include_inactive: bool = Query(False, description="Team roster: include deactivated clinicians"),
     db: Session = Depends(get_db),
-    actor: UserRecord = Depends(
-        require_roles("clinical-admin", "super-platform-admin")
-    ),
+    actor: UserRecord = Depends(require_roles("clinical-admin", "super-platform-admin")),
 ) -> dict:
     """List clinicians; default active-only (assignment dropdown). Pass include_inactive for full roster."""
-    q = db.query(UserRecord).filter(
-        UserRecord.role.in_(("clinician", "senior-clinician"))
-    )
+    q = db.query(UserRecord).filter(UserRecord.role.in_(("clinician", "senior-clinician")))
     if actor.role == "clinical-admin":
         q = q.filter(UserRecord.clinic_id == actor.clinic_id)
     if not include_inactive:
@@ -73,9 +67,7 @@ def list_clinicians_for_assignment(
 def get_clinician_for_admin(
     user_id: str,
     db: Session = Depends(get_db),
-    actor: UserRecord = Depends(
-        require_roles("clinical-admin", "super-platform-admin")
-    ),
+    actor: UserRecord = Depends(require_roles("clinical-admin", "super-platform-admin")),
 ) -> dict:
     """Single clinician profile for admin team detail (active or inactive)."""
     u = _get_clinician_or_404(db, user_id)
@@ -99,9 +91,7 @@ def update_clinician_for_admin(
     user_id: str,
     body: ClinicianAdminUpdate,
     db: Session = Depends(get_db),
-    actor: UserRecord = Depends(
-        require_roles("clinical-admin", "super-platform-admin")
-    ),
+    actor: UserRecord = Depends(require_roles("clinical-admin", "super-platform-admin")),
 ) -> dict:
     u = _get_clinician_or_404(db, user_id)
     _assert_can_manage_clinician(actor, u)
@@ -111,11 +101,7 @@ def update_clinician_for_admin(
         raise HTTPException(status_code=400, detail="No fields to update")
 
     if "email" in data:
-        other = (
-            db.query(UserRecord)
-            .filter(UserRecord.email == str(data["email"]), UserRecord.id != u.id)
-            .first()
-        )
+        other = db.query(UserRecord).filter(UserRecord.email == str(data["email"]), UserRecord.id != u.id).first()
         if other:
             raise HTTPException(status_code=409, detail="Email already in use")
 
@@ -145,9 +131,7 @@ def update_clinician_for_admin(
 def deactivate_clinician_for_admin(
     user_id: str,
     db: Session = Depends(get_db),
-    actor: UserRecord = Depends(
-        require_roles("clinical-admin", "super-platform-admin")
-    ),
+    actor: UserRecord = Depends(require_roles("clinical-admin", "super-platform-admin")),
 ) -> dict:
     """Soft-delete: deactivate account (blocks login and API). Admin can reactivate via PATCH."""
     u = _get_clinician_or_404(db, user_id)

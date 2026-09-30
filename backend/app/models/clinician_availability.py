@@ -17,13 +17,9 @@ class ClinicianAvailabilitySlotRecord(Base):
     # ISO week: YYYY-Www - used for "weekly rota confirmed" flows
     week_id = Column(String, nullable=True, index=True)
     rota_status = Column(String, nullable=True)  # draft | confirmed | booked
-    booked_client_id = Column(
-        String, nullable=True, index=True
-    )  # set when a client books this slot
+    booked_client_id = Column(String, nullable=True, index=True)  # set when a client books this slot
     # Clinical-admin review
-    admin_status = Column(
-        String, nullable=True
-    )  # pending | accepted | flagged | rejected
+    admin_status = Column(String, nullable=True)  # pending | accepted | flagged | rejected
     admin_comment = Column(String, nullable=True)
     reviewed_by = Column(String, nullable=True)  # reviewer full_name
     reviewed_at = Column(DateTime, nullable=True)

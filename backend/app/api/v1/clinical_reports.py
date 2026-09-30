@@ -97,21 +97,13 @@ def _to_out(r: ClinicalReportRecord) -> ClinicalReportOut:
 def list_reports_for_client(
     client_id: str,
     db: Session = Depends(get_db),
-    current_user: UserRecord = Depends(
-        require_roles(
-            "clinician", "senior-clinician", "clinical-admin", "super-platform-admin"
-        )
-    ),
+    current_user: UserRecord = Depends(require_roles("clinician", "senior-clinician", "clinical-admin", "super-platform-admin")),
 ) -> list[ClinicalReportOut]:
     get_client_for_user(db, current_user, client_id)
-    query = _reports_query(db, current_user).filter(
-        ClinicalReportRecord.client_id == client_id
-    )
+    query = _reports_query(db, current_user).filter(ClinicalReportRecord.client_id == client_id)
     if current_user.role == "clinician":
         query = query.filter(ClinicalReportRecord.clinician_id == current_user.id)
-    return [
-        _to_out(r) for r in query.order_by(ClinicalReportRecord.created_at.desc()).all()
-    ]
+    return [_to_out(r) for r in query.order_by(ClinicalReportRecord.created_at.desc()).all()]
 
 
 # ── List MY reports (clinician view) with optional status filter ──────────────
@@ -123,14 +115,10 @@ def list_my_reports(
     db: Session = Depends(get_db),
     current_user: UserRecord = Depends(require_roles("clinician", "senior-clinician")),
 ) -> list[ClinicalReportOut]:
-    query = _reports_query(db, current_user).filter(
-        ClinicalReportRecord.clinician_id == current_user.id
-    )
+    query = _reports_query(db, current_user).filter(ClinicalReportRecord.clinician_id == current_user.id)
     if status:
         query = query.filter(ClinicalReportRecord.status == status)
-    return [
-        _to_out(r) for r in query.order_by(ClinicalReportRecord.created_at.desc()).all()
-    ]
+    return [_to_out(r) for r in query.order_by(ClinicalReportRecord.created_at.desc()).all()]
 
 
 # ── List pending (review queue) for senior / admin ───────────────────────────
@@ -139,20 +127,13 @@ def list_my_reports(
 @router.get("/pending", response_model=list[ClinicalReportOut])
 def list_pending_reports(
     db: Session = Depends(get_db),
-    current_user: UserRecord = Depends(
-        require_roles("senior-clinician", "clinical-admin", "super-platform-admin")
-    ),
+    current_user: UserRecord = Depends(require_roles("senior-clinician", "clinical-admin", "super-platform-admin")),
 ) -> list[ClinicalReportOut]:
-    query = _reports_query(db, current_user).filter(
-        ClinicalReportRecord.status == REPORT_STATUS_PENDING
-    )
+    query = _reports_query(db, current_user).filter(ClinicalReportRecord.status == REPORT_STATUS_PENDING)
     # Senior clinicians cannot approve their own reports
     if current_user.role == "senior-clinician":
         query = query.filter(ClinicalReportRecord.clinician_id != current_user.id)
-    return [
-        _to_out(r)
-        for r in query.order_by(ClinicalReportRecord.submitted_at.asc()).all()
-    ]
+    return [_to_out(r) for r in query.order_by(ClinicalReportRecord.submitted_at.asc()).all()]
 
 
 # ── Get single report ─────────────────────────────────────────────────────────
@@ -162,17 +143,9 @@ def list_pending_reports(
 def get_report(
     report_id: str,
     db: Session = Depends(get_db),
-    current_user: UserRecord = Depends(
-        require_roles(
-            "clinician", "senior-clinician", "clinical-admin", "super-platform-admin"
-        )
-    ),
+    current_user: UserRecord = Depends(require_roles("clinician", "senior-clinician", "clinical-admin", "super-platform-admin")),
 ) -> ClinicalReportOut:
-    r = (
-        _reports_query(db, current_user)
-        .filter(ClinicalReportRecord.id == report_id)
-        .first()
-    )
+    r = _reports_query(db, current_user).filter(ClinicalReportRecord.id == report_id).first()
     if not r:
         raise HTTPException(status_code=404, detail="Report not found")
     if current_user.role == "clinician" and r.clinician_id != current_user.id:
@@ -222,11 +195,7 @@ def patch_report(
     db: Session = Depends(get_db),
     current_user: UserRecord = Depends(require_roles("clinician", "senior-clinician")),
 ) -> ClinicalReportOut:
-    r = (
-        _reports_query(db, current_user)
-        .filter(ClinicalReportRecord.id == report_id)
-        .first()
-    )
+    r = _reports_query(db, current_user).filter(ClinicalReportRecord.id == report_id).first()
     if not r:
         raise HTTPException(status_code=404, detail="Report not found")
     if r.clinician_id != current_user.id:
@@ -260,11 +229,7 @@ def delete_report(
     db: Session = Depends(get_db),
     current_user: UserRecord = Depends(require_roles("clinician", "senior-clinician")),
 ) -> Response:
-    r = (
-        _reports_query(db, current_user)
-        .filter(ClinicalReportRecord.id == report_id)
-        .first()
-    )
+    r = _reports_query(db, current_user).filter(ClinicalReportRecord.id == report_id).first()
     if not r:
         raise HTTPException(status_code=404, detail="Report not found")
     if r.clinician_id != current_user.id:
@@ -285,11 +250,7 @@ def submit_report(
     db: Session = Depends(get_db),
     current_user: UserRecord = Depends(require_roles("clinician", "senior-clinician")),
 ) -> ClinicalReportOut:
-    r = (
-        _reports_query(db, current_user)
-        .filter(ClinicalReportRecord.id == report_id)
-        .first()
-    )
+    r = _reports_query(db, current_user).filter(ClinicalReportRecord.id == report_id).first()
     if not r:
         raise HTTPException(status_code=404, detail="Report not found")
     if r.clinician_id != current_user.id:
@@ -325,24 +286,16 @@ def review_report(
     report_id: str,
     body: ReviewIn,
     db: Session = Depends(get_db),
-    current_user: UserRecord = Depends(
-        require_roles("senior-clinician", "clinical-admin", "super-platform-admin")
-    ),
+    current_user: UserRecord = Depends(require_roles("senior-clinician", "clinical-admin", "super-platform-admin")),
 ) -> ClinicalReportOut:
-    r = (
-        _reports_query(db, current_user)
-        .filter(ClinicalReportRecord.id == report_id)
-        .first()
-    )
+    r = _reports_query(db, current_user).filter(ClinicalReportRecord.id == report_id).first()
     if not r:
         raise HTTPException(status_code=404, detail="Report not found")
     if r.status != REPORT_STATUS_PENDING:
         raise HTTPException(status_code=409, detail="Report is not pending review")
     # Senior clinicians cannot approve their own submissions
     if current_user.role == "senior-clinician" and r.clinician_id == current_user.id:
-        raise HTTPException(
-            status_code=403, detail="You cannot approve your own report"
-        )
+        raise HTTPException(status_code=403, detail="You cannot approve your own report")
 
     now = datetime.now(timezone.utc)
     r.reviewed_by_id = current_user.id
@@ -371,21 +324,13 @@ def review_report(
 def issue_report(
     report_id: str,
     db: Session = Depends(get_db),
-    current_user: UserRecord = Depends(
-        require_roles("senior-clinician", "clinical-admin", "super-platform-admin")
-    ),
+    current_user: UserRecord = Depends(require_roles("senior-clinician", "clinical-admin", "super-platform-admin")),
 ) -> ClinicalReportOut:
-    r = (
-        _reports_query(db, current_user)
-        .filter(ClinicalReportRecord.id == report_id)
-        .first()
-    )
+    r = _reports_query(db, current_user).filter(ClinicalReportRecord.id == report_id).first()
     if not r:
         raise HTTPException(status_code=404, detail="Report not found")
     if r.status != REPORT_STATUS_COMPLETE:
-        raise HTTPException(
-            status_code=409, detail="Report must be complete before issuing"
-        )
+        raise HTTPException(status_code=409, detail="Report must be complete before issuing")
 
     now = datetime.now(timezone.utc)
     r.status = REPORT_STATUS_ISSUED
@@ -415,17 +360,9 @@ def issue_report(
 def download_pdf_authenticated(
     report_id: str,
     db: Session = Depends(get_db),
-    current_user: UserRecord = Depends(
-        require_roles(
-            "clinician", "senior-clinician", "clinical-admin", "super-platform-admin"
-        )
-    ),
+    current_user: UserRecord = Depends(require_roles("clinician", "senior-clinician", "clinical-admin", "super-platform-admin")),
 ) -> Response:
-    r = (
-        _reports_query(db, current_user)
-        .filter(ClinicalReportRecord.id == report_id)
-        .first()
-    )
+    r = _reports_query(db, current_user).filter(ClinicalReportRecord.id == report_id).first()
     if not r:
         raise HTTPException(status_code=404, detail="Report not found")
     if current_user.role == "clinician" and r.clinician_id != current_user.id:
@@ -449,11 +386,7 @@ def get_report_info_by_token(
     db: Session = Depends(get_db),
 ) -> dict:
     """Return minimal branding info for the report landing page (no auth required)."""
-    r = (
-        db.query(ClinicalReportRecord)
-        .filter(ClinicalReportRecord.pdf_token == token)
-        .first()
-    )
+    r = db.query(ClinicalReportRecord).filter(ClinicalReportRecord.pdf_token == token).first()
     if not r:
         raise HTTPException(status_code=404, detail="Invalid or expired link")
     from app.core.branding import get_clinic_branding
@@ -470,11 +403,7 @@ def download_pdf_by_token(
     token: str,
     db: Session = Depends(get_db),
 ) -> Response:
-    r = (
-        db.query(ClinicalReportRecord)
-        .filter(ClinicalReportRecord.pdf_token == token)
-        .first()
-    )
+    r = db.query(ClinicalReportRecord).filter(ClinicalReportRecord.pdf_token == token).first()
     if not r:
         raise HTTPException(status_code=404, detail="Invalid or expired link")
     now = datetime.now(timezone.utc)
@@ -503,11 +432,7 @@ def _generate_and_attach_pdf(r: ClinicalReportRecord, db: Session) -> None:
 
     client = db.query(ClientRecord).filter(ClientRecord.id == r.client_id).first()
     clinician = db.query(UserRecord).filter(UserRecord.id == r.clinician_id).first()
-    profile = (
-        db.query(ClientProfileRecord)
-        .filter(ClientProfileRecord.client_id == r.client_id)
-        .first()
-    )
+    profile = db.query(ClientProfileRecord).filter(ClientProfileRecord.client_id == r.client_id).first()
 
     try:
         sections: dict[str, str] = json.loads(r.sections_json or "{}")
@@ -518,16 +443,12 @@ def _generate_and_attach_pdf(r: ClinicalReportRecord, db: Session) -> None:
     pdf_bytes = generate_report_pdf(
         report_type=r.report_type,
         client_name=client_name,
-        client_dob=(profile.date_of_birth if profile else None)
-        or (client.child_dob if client else None),
+        client_dob=(profile.date_of_birth if profile else None) or (client.child_dob if client else None),
         client_nhs_ref=None,
-        client_address=(profile.address if profile else None)
-        or (client.address if client else None),
+        client_address=(profile.address if profile else None) or (client.address if client else None),
         client_icb=None,
-        gp_name=(profile.gp_name if profile else None)
-        or (client.gp_name if client else None),
-        gp_address=(profile.gp_practice if profile else None)
-        or (client.gp_practice if client else None),
+        gp_name=(profile.gp_name if profile else None) or (client.gp_name if client else None),
+        gp_address=(profile.gp_practice if profile else None) or (client.gp_practice if client else None),
         date_of_assessment=r.date_of_assessment,
         place_of_assessment=r.place_of_assessment,
         assessed_by=r.assessed_by or (clinician.full_name if clinician else None),

@@ -286,11 +286,7 @@ def send_secondary_intake_form(
     paid_service_name: str | None = None,
 ) -> bool:
     """Pathway-specific questionnaire link only (no invoice; welcome email covered payment)."""
-    service_bit = (
-        f"<strong>{html_module.escape(paid_service_name)}</strong> - "
-        if paid_service_name
-        else ""
-    )
+    service_bit = f"<strong>{html_module.escape(paid_service_name)}</strong> - " if paid_service_name else ""
     safe_pathway = html_module.escape(pathway_label)
     safe_name = html_module.escape(client_name)
     html = f"""

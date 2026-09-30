@@ -110,12 +110,7 @@ def list_api_keys(
     ),
 ) -> list[ApiKeyOut]:
     clinic_id = effective_clinic_id(user)
-    keys = (
-        db.query(ApiKeyRecord)
-        .filter(ApiKeyRecord.clinic_id == clinic_id)
-        .order_by(ApiKeyRecord.created_at.desc())
-        .all()
-    )
+    keys = db.query(ApiKeyRecord).filter(ApiKeyRecord.clinic_id == clinic_id).order_by(ApiKeyRecord.created_at.desc()).all()
     return [ApiKeyOut.model_validate(k.__dict__) for k in keys]
 
 
@@ -135,9 +130,7 @@ def create_api_key(
     it cannot be recovered afterwards.
     """
     if body.tier not in {"basic", "pro", "partner"}:
-        raise HTTPException(
-            status_code=400, detail="tier must be basic, pro, or partner"
-        )
+        raise HTTPException(status_code=400, detail="tier must be basic, pro, or partner")
 
     clinic_id = effective_clinic_id(user)
     raw, key_hash, key_prefix = generate_api_key()
@@ -174,11 +167,7 @@ def update_api_key(
     ),
 ) -> ApiKeyOut:
     clinic_id = effective_clinic_id(user)
-    record = (
-        db.query(ApiKeyRecord)
-        .filter(ApiKeyRecord.id == key_id, ApiKeyRecord.clinic_id == clinic_id)
-        .first()
-    )
+    record = db.query(ApiKeyRecord).filter(ApiKeyRecord.id == key_id, ApiKeyRecord.clinic_id == clinic_id).first()
     if not record:
         raise HTTPException(status_code=404, detail="API key not found")
     if body.label is not None:
@@ -202,11 +191,7 @@ def revoke_api_key(
     ),
 ) -> None:
     clinic_id = effective_clinic_id(user)
-    record = (
-        db.query(ApiKeyRecord)
-        .filter(ApiKeyRecord.id == key_id, ApiKeyRecord.clinic_id == clinic_id)
-        .first()
-    )
+    record = db.query(ApiKeyRecord).filter(ApiKeyRecord.id == key_id, ApiKeyRecord.clinic_id == clinic_id).first()
     if not record:
         raise HTTPException(status_code=404, detail="API key not found")
     db.delete(record)

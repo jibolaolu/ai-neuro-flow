@@ -81,9 +81,7 @@ class OCRService:
                 if t.strip():
                     extracted.append(t.strip())
             if extracted:
-                logger.info(
-                    "PDF native text: %d pages from %s", len(extracted), file_path
-                )
+                logger.info("PDF native text: %d pages from %s", len(extracted), file_path)
                 return "\n\n".join(extracted)
         except ImportError:
             pass  # no pdf library; fall through to OCR

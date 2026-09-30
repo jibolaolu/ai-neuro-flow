@@ -34,10 +34,7 @@ class SessionBriefService:
             client_name=client_name,
             clinician_name=clinician_name,
             session_time=session_time,
-            summary=(
-                f"{client_name} requires a focused pre-session brief covering intake completeness, "
-                f"presenting concerns, and evidence gaps before {session_time}."
-            ),
+            summary=(f"{client_name} requires a focused pre-session brief covering intake completeness, presenting concerns, and evidence gaps before {session_time}."),
         )
 
     def build_ai_payload(
@@ -66,13 +63,9 @@ class SessionBriefService:
             if scores:
                 context_parts.append(f"Scores received: {json.dumps(scores)[:800]}")
             if form_responses:
-                context_parts.append(
-                    f"Key form responses: {json.dumps(form_responses)[:600]}"
-                )
+                context_parts.append(f"Key form responses: {json.dumps(form_responses)[:600]}")
             if case_notes:
-                context_parts.append(
-                    f"Recent clinical notes: {'; '.join(case_notes[-3:])}"
-                )
+                context_parts.append(f"Recent clinical notes: {'; '.join(case_notes[-3:])}")
             if missing_items:
                 context_parts.append(f"Missing items: {', '.join(missing_items)}")
 
@@ -85,10 +78,7 @@ class SessionBriefService:
             summary = llm_gateway.call(prompt, max_tokens=350)
         except Exception as exc:
             logger.debug("AI session brief failed, using default: %s", exc)
-            summary = (
-                f"{client_name} requires a focused pre-session brief covering intake completeness, "
-                f"presenting concerns, and evidence gaps before {session_time}."
-            )
+            summary = f"{client_name} requires a focused pre-session brief covering intake completeness, presenting concerns, and evidence gaps before {session_time}."
 
         return SessionBrieferPayload(
             case_id=case_id,

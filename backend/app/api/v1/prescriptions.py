@@ -190,9 +190,7 @@ def _get_prescription(db: Session, clinic_id: int, rx_id: int) -> PrescriptionRe
     return rx
 
 
-def _generate_shared_care_letter(
-    rx: PrescriptionRecord, gp_name: str, clinic_name: str = "The Clinic"
-) -> str:
+def _generate_shared_care_letter(rx: PrescriptionRecord, gp_name: str, clinic_name: str = "The Clinic") -> str:
     today = date.today().strftime("%d %B %Y")
     return f"""SHARED CARE AGREEMENT REQUEST
 Date: {today}
@@ -275,11 +273,7 @@ def create_prescription(
     else:
         # Auto-fill from medication reference if known
         med_ref = next(
-            (
-                m
-                for m in ADHD_MEDICATIONS
-                if m["name"].lower() in body.medication.lower()
-            ),
+            (m for m in ADHD_MEDICATIONS if m["name"].lower() in body.medication.lower()),
             None,
         )
         if med_ref:
@@ -364,13 +358,9 @@ def titrate(
     rx.titration_phase = new_phase
     if next_step:
         rx.dose_mg = next_step.get("dose_mg", rx.dose_mg)
-        rx.review_date = date.today() + timedelta(
-            weeks=next_step.get("duration_weeks", 4)
-        )
+        rx.review_date = date.today() + timedelta(weeks=next_step.get("duration_weeks", 4))
     if body.notes:
-        rx.titration_notes = (
-            rx.titration_notes or ""
-        ) + f"\n[{date.today()}] Phase {new_phase}: {body.notes}"
+        rx.titration_notes = (rx.titration_notes or "") + f"\n[{date.today()}] Phase {new_phase}: {body.notes}"
     rx.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(rx)

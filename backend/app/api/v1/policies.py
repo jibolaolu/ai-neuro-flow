@@ -27,9 +27,7 @@ def _can_read(user_role: str, visibility: str) -> bool:
 
 def _assert_readable(user: UserRecord, record: PolicyRecord) -> None:
     if not _can_read(user.role, record.visibility):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
 
 @router.get("/", response_model=PolicyList)
@@ -42,9 +40,7 @@ def list_policies(
     visible = [r for r in all_records if _can_read(user.role, r.visibility)]
     if category:
         visible = [r for r in visible if r.category == category]
-    return PolicyList(
-        items=[PolicyOut.model_validate(r) for r in visible], total=len(visible)
-    )
+    return PolicyList(items=[PolicyOut.model_validate(r) for r in visible], total=len(visible))
 
 
 @router.get("/{policy_id}", response_model=PolicyOut)

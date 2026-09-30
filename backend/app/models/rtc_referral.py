@@ -30,9 +30,7 @@ PATHWAYS = [
 class RTCReferralRecord(Base):
     __tablename__ = "rtc_referrals"
 
-    id = Column(
-        String, primary_key=True, default=lambda: f"RTC-{uuid.uuid4().hex[:8].upper()}"
-    )
+    id = Column(String, primary_key=True, default=lambda: f"RTC-{uuid.uuid4().hex[:8].upper()}")
     clinic_id = Column(String, nullable=False, index=True)
 
     # Patient
@@ -69,9 +67,7 @@ class RTCReferralRecord(Base):
     referred_date = Column(DateTime, nullable=True)
     accepted_at = Column(DateTime, nullable=True)
     rejected_at = Column(DateTime, nullable=True)
-    created_at = Column(
-        DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
-    )
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     updated_at = Column(
         DateTime,
         nullable=False,

@@ -19,8 +19,7 @@ def create_access_token(subject: str, role: str, extra: dict | None = None) -> s
         "sub": subject,
         "role": role,
         "iat": datetime.now(timezone.utc),
-        "exp": datetime.now(timezone.utc)
-        + timedelta(minutes=settings.jwt_expiry_minutes),
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=settings.jwt_expiry_minutes),
     }
     if extra:
         payload.update(extra)

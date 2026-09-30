@@ -11,9 +11,7 @@ from app.db.base import Base
 class ClinicWebhookConfig(Base):
     __tablename__ = "clinic_webhook_configs"
 
-    id = Column(
-        String, primary_key=True, default=lambda: f"WHK-{uuid.uuid4().hex[:10].upper()}"
-    )
+    id = Column(String, primary_key=True, default=lambda: f"WHK-{uuid.uuid4().hex[:10].upper()}")
     clinic_id = Column(String, nullable=False, index=True)
 
     label = Column(String, nullable=False)  # e.g. "WooCommerce Production"
@@ -33,6 +31,4 @@ class ClinicWebhookConfig(Base):
     events_received = Column(Integer, default=0, nullable=False)
     last_event_at = Column(DateTime, nullable=True)
 
-    created_at = Column(
-        DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
-    )
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))

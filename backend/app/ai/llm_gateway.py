@@ -50,18 +50,11 @@ class LLMGateway:
 
         _model = model or settings.anthropic_model
         api_key = settings.anthropic_api_key or None
-        client = (
-            anthropic.Anthropic(api_key=api_key) if api_key else anthropic.Anthropic()
-        )
+        client = anthropic.Anthropic(api_key=api_key) if api_key else anthropic.Anthropic()
 
-        sys_prompt = system or (
-            "You are a specialist clinical assistant for a UK-based "
-            "ADHD and Autism assessment service."
-        )
+        sys_prompt = system or ("You are a specialist clinical assistant for a UK-based ADHD and Autism assessment service.")
         if json_mode:
-            sys_prompt += (
-                " Always respond with valid JSON only — no markdown, no extra text."
-            )
+            sys_prompt += " Always respond with valid JSON only — no markdown, no extra text."
 
         messages: list[dict[str, Any]] = [{"role": "user", "content": prompt}]
 
@@ -88,9 +81,7 @@ class LLMGateway:
                 if attempt < _MAX_RETRIES - 1:
                     time.sleep(_RETRY_DELAY * (2**attempt))
 
-        raise RuntimeError(
-            f"LLM call failed after {_MAX_RETRIES} attempts: {last_exc}"
-        ) from last_exc
+        raise RuntimeError(f"LLM call failed after {_MAX_RETRIES} attempts: {last_exc}") from last_exc
 
     def call_json(
         self,
@@ -101,9 +92,7 @@ class LLMGateway:
         model: str | None = None,
     ) -> dict:
         """Call Claude and parse the response as JSON. Returns dict."""
-        raw = self.call(
-            prompt, system=system, max_tokens=max_tokens, model=model, json_mode=True
-        )
+        raw = self.call(prompt, system=system, max_tokens=max_tokens, model=model, json_mode=True)
         raw = raw.strip()
         # Strip markdown fences if the model adds them anyway
         if raw.startswith("```"):
@@ -119,18 +108,11 @@ class LLMGateway:
     # ── Convenience wrappers ──────────────────────────────────────────────────
 
     def summarise(self, text: str, *, max_words: int = 150) -> str:
-        prompt = (
-            f"Summarise the following clinical text in no more than {max_words} words. "
-            f"Be concise, clinical, and factual:\n\n{text}"
-        )
+        prompt = f"Summarise the following clinical text in no more than {max_words} words. Be concise, clinical, and factual:\n\n{text}"
         return self.call(prompt, max_tokens=400)
 
     def suggest_soap(self, context: str) -> dict:
-        prompt = (
-            "Based on the following clinical context, generate a structured SOAP note. "
-            "Return JSON with keys: subjective, objective, assessment, plan.\n\n"
-            f"Context:\n{context}"
-        )
+        prompt = f"Based on the following clinical context, generate a structured SOAP note. Return JSON with keys: subjective, objective, assessment, plan.\n\nContext:\n{context}"
         return self.call_json(prompt, max_tokens=800)
 
     def analyse_discrepancy(self, context: str) -> dict:
@@ -233,10 +215,7 @@ class LLMGateway:
             "Answer questions in clear, accessible language (no jargon). Be warm, concise, and accurate. "
             "Do not provide diagnoses or medical advice. Reassure and guide clients through the process."
         )
-        prompt = (
-            f"Assessment context for this client:\n{context}\n\n"
-            f"Client question: {message}"
-        )
+        prompt = f"Assessment context for this client:\n{context}\n\nClient question: {message}"
         return self.call(prompt, system=system, max_tokens=500)
 
 

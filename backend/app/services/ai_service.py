@@ -16,9 +16,7 @@ logger = logging.getLogger(__name__)
 class AIService:
     # ── Report summary (was the stub) ─────────────────────────────────────────
 
-    def generate_report_summary(
-        self, notes: str, *, clinic_id: str | None = None
-    ) -> str:
+    def generate_report_summary(self, notes: str, *, clinic_id: str | None = None) -> str:
         """
         Generate a concise clinical summary from raw notes.
         Uses RAG context if available; falls back to direct LLM call.

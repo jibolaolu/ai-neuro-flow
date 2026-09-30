@@ -143,11 +143,7 @@ def diagnostic_support(
     diagnostic direction with confidence level and recommended next steps.
     """
     client = get_client_for_user(db, user, req.client_id)
-    profile = (
-        db.query(ClientProfileRecord)
-        .filter(ClientProfileRecord.client_id == req.client_id)
-        .first()
-    )
+    profile = db.query(ClientProfileRecord).filter(ClientProfileRecord.client_id == req.client_id).first()
     scores = json.loads(profile.scores or "{}") if profile else {}
 
     if not scores:
@@ -202,11 +198,7 @@ def suggest_report_section(
     """AI drafts a report section based on scores, notes, and similar cases."""
     client = get_client_for_user(db, user, req.client_id)
     clinic_id = effective_clinic_id(user)
-    profile = (
-        db.query(ClientProfileRecord)
-        .filter(ClientProfileRecord.client_id == req.client_id)
-        .first()
-    )
+    profile = db.query(ClientProfileRecord).filter(ClientProfileRecord.client_id == req.client_id).first()
     scores = json.loads(profile.scores or "{}") if profile else {}
 
     try:
@@ -273,20 +265,12 @@ def cross_informant_synthesis(
 ):
     """AI analyses discrepancies between parent, teacher, and self-report scores."""
     client = get_client_for_user(db, user, req.client_id)
-    profile = (
-        db.query(ClientProfileRecord)
-        .filter(ClientProfileRecord.client_id == req.client_id)
-        .first()
-    )
+    profile = db.query(ClientProfileRecord).filter(ClientProfileRecord.client_id == req.client_id).first()
     if not profile or not profile.scores:
         raise HTTPException(404, "No scores available for this client")
 
     scores = json.loads(profile.scores)
-    context = (
-        f"Client pathway: {client.pathway or 'Unknown'}\n"
-        f"Age group: {client.age_group or 'Unknown'}\n\n"
-        f"Scores by instrument:\n{json.dumps(scores, indent=2)}"
-    )
+    context = f"Client pathway: {client.pathway or 'Unknown'}\nAge group: {client.age_group or 'Unknown'}\n\nScores by instrument:\n{json.dumps(scores, indent=2)}"
 
     try:
         result = llm_gateway.analyse_discrepancy(context)
@@ -304,11 +288,7 @@ def risk_stratification(
 ):
     """AI risk stratification across all instruments + case notes."""
     client = get_client_for_user(db, user, req.client_id)
-    profile = (
-        db.query(ClientProfileRecord)
-        .filter(ClientProfileRecord.client_id == req.client_id)
-        .first()
-    )
+    profile = db.query(ClientProfileRecord).filter(ClientProfileRecord.client_id == req.client_id).first()
     scores = json.loads(profile.scores or "{}") if profile else {}
 
     context = (
@@ -360,9 +340,7 @@ def search_documents(
     get_client_for_user(db, client_id, user)
     clinic_id = effective_clinic_id(user) or ""
 
-    matches = document_intelligence.search_client_documents(
-        q, client_id=client_id, clinic_id=clinic_id
-    )
+    matches = document_intelligence.search_client_documents(q, client_id=client_id, clinic_id=clinic_id)
     return {"query": q, "matches": matches}
 
 
@@ -377,9 +355,7 @@ class SmartAssignRequest(BaseModel):
 def smart_assign_clinician(
     req: SmartAssignRequest,
     db: Session = Depends(get_db),
-    user: UserRecord = Depends(
-        require_roles("clinic-admin", "clinical-admin", "senior-clinician")
-    ),
+    user: UserRecord = Depends(require_roles("clinic-admin", "clinical-admin", "senior-clinician")),
 ):
     """AI-ranked clinician assignment based on specialization, caseload, and availability."""
     client = get_client_for_user(db, user, req.client_id)
@@ -432,9 +408,7 @@ def smart_assign_clinician(
                 "role": c.role,
                 "active_caseload": active_cases,
                 "open_slots": available_slots,
-                "specializations": getattr(c, "specializations", None)
-                or client.pathway
-                or "General",
+                "specializations": getattr(c, "specializations", None) or client.pathway or "General",
             }
         )
 
@@ -542,12 +516,7 @@ def client_chat(
 
     client = db.query(ClientRecord).filter(ClientRecord.id == tok.client_id).first()
     context = (
-        (
-            f"Client pathway: {client.pathway or 'Not specified'}\n"
-            f"Client status: {client.status or 'In assessment'}\n"
-            f"Form type: {tok.form_type or 'Assessment form'}\n"
-            f"Form status: {tok.status}\n"
-        )
+        (f"Client pathway: {client.pathway or 'Not specified'}\nClient status: {client.status or 'In assessment'}\nForm type: {tok.form_type or 'Assessment form'}\nForm status: {tok.status}\n")
         if client
         else f"Form type: {tok.form_type or 'Assessment form'}"
     )
@@ -557,6 +526,4 @@ def client_chat(
         return {"reply": reply}
     except Exception as exc:
         logger.error("client_chat failed: %s", exc)
-        raise HTTPException(
-            500, "Unable to process your question right now. Please try again."
-        )
+        raise HTTPException(500, "Unable to process your question right now. Please try again.")

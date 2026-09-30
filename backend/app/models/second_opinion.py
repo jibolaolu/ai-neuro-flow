@@ -12,9 +12,7 @@ from app.db.base import Base
 class SecondOpinionRequest(Base):
     __tablename__ = "second_opinion_requests"
 
-    id = Column(
-        String, primary_key=True, default=lambda: f"SOR-{secrets.token_hex(4).upper()}"
-    )
+    id = Column(String, primary_key=True, default=lambda: f"SOR-{secrets.token_hex(4).upper()}")
     report_id = Column(String, nullable=False, index=True)
     client_id = Column(String, nullable=True, index=True)
     requesting_clinician_id = Column(String, nullable=False)
@@ -24,12 +22,8 @@ class SecondOpinionRequest(Base):
     status = Column(String, default="requested")
     request_note = Column(Text, nullable=True)
     second_opinion_note = Column(Text, nullable=True)
-    created_at = Column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
-    )
-    updated_at = Column(
-        DateTime(timezone=True), onupdate=lambda: datetime.now(timezone.utc)
-    )
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime(timezone=True), onupdate=lambda: datetime.now(timezone.utc))
 
 
 class SecondOpinionOut(BaseModel):

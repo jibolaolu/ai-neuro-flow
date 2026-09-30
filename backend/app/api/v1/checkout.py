@@ -78,9 +78,7 @@ def _dmy_to_iso(dmy: str) -> str:
 
 
 @router.post("/pre-payment", response_model=PrePaymentResponse)
-def pre_payment(
-    body: PrePaymentRequest, db: Session = Depends(get_db)
-) -> PrePaymentResponse:
+def pre_payment(body: PrePaymentRequest, db: Session = Depends(get_db)) -> PrePaymentResponse:
     """
     Store client details before Stripe redirect.
     Returns a pending_id to be passed as Stripe client_reference_id.

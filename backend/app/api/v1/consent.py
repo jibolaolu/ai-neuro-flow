@@ -30,17 +30,9 @@ def _to_out(record: ClientConsentRecord) -> ConsentOut:
 def get_consent(
     client_id: str,
     db: Session = Depends(get_db),
-    _: UserRecord = Depends(
-        require_roles(
-            "clinician", "senior-clinician", "clinical-admin", "super-platform-admin"
-        )
-    ),
+    _: UserRecord = Depends(require_roles("clinician", "senior-clinician", "clinical-admin", "super-platform-admin")),
 ) -> ConsentOut:
-    record = (
-        db.query(ClientConsentRecord)
-        .filter(ClientConsentRecord.client_id == client_id)
-        .first()
-    )
+    record = db.query(ClientConsentRecord).filter(ClientConsentRecord.client_id == client_id).first()
     if not record:
         # Return empty consent record
         return ConsentOut(client_id=client_id, consents={}, updated_at=None)
@@ -52,17 +44,9 @@ def upsert_consent(
     client_id: str,
     body: ConsentIn,
     db: Session = Depends(get_db),
-    current_user: UserRecord = Depends(
-        require_roles(
-            "clinician", "senior-clinician", "clinical-admin", "super-platform-admin"
-        )
-    ),
+    current_user: UserRecord = Depends(require_roles("clinician", "senior-clinician", "clinical-admin", "super-platform-admin")),
 ) -> ConsentOut:
-    record = (
-        db.query(ClientConsentRecord)
-        .filter(ClientConsentRecord.client_id == client_id)
-        .first()
-    )
+    record = db.query(ClientConsentRecord).filter(ClientConsentRecord.client_id == client_id).first()
     now = datetime.now(timezone.utc)
     if record:
         record.consents_json = json.dumps(body.consents)

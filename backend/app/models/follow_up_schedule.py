@@ -27,9 +27,7 @@ class FollowUpScheduleRecord(Base):
     months_offset = Column(Integer, nullable=False)  # 3, 6, or 12
     due_at = Column(DateTime, nullable=False)
     status = Column(String, default=FOLLOWUP_STATUS_PENDING)
-    form_token_id = Column(
-        String, nullable=True
-    )  # FK to form_tokens.id once dispatched
+    form_token_id = Column(String, nullable=True)  # FK to form_tokens.id once dispatched
     dispatched_at = Column(DateTime, nullable=True)
     created_by = Column(String, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))

@@ -63,9 +63,7 @@ def unsubscribe(
     user: Any = Depends(get_current_user),
 ):
     user_id = str(user.id)
-    _subscriptions[user_id] = [
-        s for s in _subscriptions.get(user_id, []) if s["endpoint"] != sub.endpoint
-    ]
+    _subscriptions[user_id] = [s for s in _subscriptions.get(user_id, []) if s["endpoint"] != sub.endpoint]
     return None
 
 
@@ -111,9 +109,7 @@ def send_push_to_user(user_id: str, payload: dict) -> int:
 
         # Prune dead endpoints
         if dead:
-            _subscriptions[str(user_id)] = [
-                s for s in subs if s["endpoint"] not in dead
-            ]
+            _subscriptions[str(user_id)] = [s for s in subs if s["endpoint"] not in dead]
         return sent
 
     except ImportError:

@@ -54,9 +54,7 @@ def _compute_triage_score(referral: RTCReferralRecord, now: datetime) -> dict[st
 
     # Wait time (days since referral or creation)
     ref_date = referral.referred_date or referral.created_at
-    wait_days = (
-        max(0, (now - ref_date.replace(tzinfo=timezone.utc)).days) if ref_date else 0
-    )
+    wait_days = max(0, (now - ref_date.replace(tzinfo=timezone.utc)).days) if ref_date else 0
     score += min(wait_days, 60)  # cap at 60 to prevent domination
     if wait_days >= 42:
         flags.append(f"Waiting {wait_days}d — may breach 6-week standard")
@@ -96,9 +94,7 @@ def _compute_triage_score(referral: RTCReferralRecord, now: datetime) -> dict[st
         "flags": flags,
         "gp_practice": referral.gp_practice,
         "icb_name": referral.icb_name,
-        "referred_date": referral.referred_date.isoformat()
-        if referral.referred_date
-        else None,
+        "referred_date": referral.referred_date.isoformat() if referral.referred_date else None,
         "created_at": referral.created_at.isoformat() if referral.created_at else None,
     }
 
@@ -109,15 +105,11 @@ def _compute_triage_score(referral: RTCReferralRecord, now: datetime) -> dict[st
 @router.get("/")
 def get_triage_list(
     db: Session = Depends(get_db),
-    user: UserRecord = Depends(
-        require_roles("clinical-admin", "super-platform-admin", "senior-clinician")
-    ),
+    user: UserRecord = Depends(require_roles("clinical-admin", "super-platform-admin", "senior-clinician")),
 ) -> dict:
     """Return all pending/accepted referrals ranked by triage score (highest first)."""
     clinic_id = user.clinic_id or user.organization_id or ""
-    q = db.query(RTCReferralRecord).filter(
-        RTCReferralRecord.status.in_([RTC_STATUS_PENDING, RTC_STATUS_ACCEPTED])
-    )
+    q = db.query(RTCReferralRecord).filter(RTCReferralRecord.status.in_([RTC_STATUS_PENDING, RTC_STATUS_ACCEPTED]))
     if user.role != "super-platform-admin":
         q = q.filter(RTCReferralRecord.clinic_id == clinic_id)
 
@@ -142,15 +134,11 @@ def get_triage_list(
 @router.get("/summary")
 def get_triage_summary(
     db: Session = Depends(get_db),
-    user: UserRecord = Depends(
-        require_roles("clinical-admin", "super-platform-admin", "senior-clinician")
-    ),
+    user: UserRecord = Depends(require_roles("clinical-admin", "super-platform-admin", "senior-clinician")),
 ) -> dict:
     """KPI summary for dashboard widgets."""
     clinic_id = user.clinic_id or user.organization_id or ""
-    q = db.query(RTCReferralRecord).filter(
-        RTCReferralRecord.status.in_([RTC_STATUS_PENDING, RTC_STATUS_ACCEPTED])
-    )
+    q = db.query(RTCReferralRecord).filter(RTCReferralRecord.status.in_([RTC_STATUS_PENDING, RTC_STATUS_ACCEPTED]))
     if user.role != "super-platform-admin":
         q = q.filter(RTCReferralRecord.clinic_id == clinic_id)
 

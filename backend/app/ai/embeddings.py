@@ -25,9 +25,7 @@ def _get_ef():
 
         return SentenceTransformerEmbeddingFunction(model_name=settings.embedding_model)
     except ImportError:
-        logger.warning(
-            "chromadb / sentence-transformers not installed — embeddings disabled"
-        )
+        logger.warning("chromadb / sentence-transformers not installed — embeddings disabled")
         return None
 
 

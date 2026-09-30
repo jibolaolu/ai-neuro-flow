@@ -56,9 +56,7 @@ def schedule_follow_up(
     requested = set(payload.months_offsets)
     invalid = requested - valid
     if invalid:
-        raise HTTPException(
-            400, f"Invalid month offsets: {invalid}. Must be 3, 6, or 12."
-        )
+        raise HTTPException(400, f"Invalid month offsets: {invalid}. Must be 3, 6, or 12.")
 
     # Avoid duplicates
     existing = {
@@ -103,10 +101,5 @@ def list_follow_ups(
 ):
     """List follow-up schedules for a client."""
     get_client_for_user(db, user, client_id)
-    rows = (
-        db.query(FollowUpScheduleRecord)
-        .filter(FollowUpScheduleRecord.client_id == client_id)
-        .order_by(FollowUpScheduleRecord.due_at)
-        .all()
-    )
+    rows = db.query(FollowUpScheduleRecord).filter(FollowUpScheduleRecord.client_id == client_id).order_by(FollowUpScheduleRecord.due_at).all()
     return FollowUpScheduleList(items=rows, total=len(rows))

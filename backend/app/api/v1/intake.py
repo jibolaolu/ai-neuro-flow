@@ -123,12 +123,8 @@ def _normalise_woocommerce(body: dict, clinic_id: str) -> IntakePayload:
     service_name = (items[0].get("name") if items else None) or pathway
 
     meta = body.get("meta_data", [])
-    child_dob = next(
-        (m.get("value") for m in meta if m.get("key") == "child_dob"), None
-    )
-    child_name = next(
-        (m.get("value") for m in meta if m.get("key") == "child_name"), None
-    )
+    child_dob = next((m.get("value") for m in meta if m.get("key") == "child_dob"), None)
+    child_name = next((m.get("value") for m in meta if m.get("key") == "child_name"), None)
 
     if child_dob:
         age = _age_from_dob(child_dob)
@@ -156,9 +152,7 @@ def _normalise_stripe(body: dict, clinic_id: str) -> IntakePayload:
     meta = obj.get("metadata", {})
     cd = obj.get("customer_details", {})
 
-    name = (
-        meta.get("client_name") or meta.get("full_name") or cd.get("name") or "Unknown"
-    )
+    name = meta.get("client_name") or meta.get("full_name") or cd.get("name") or "Unknown"
     email = cd.get("email") or meta.get("email") or ""
     phone = cd.get("phone") or meta.get("phone") or ""
 
@@ -207,16 +201,10 @@ def _normalise_cliniko(body: dict, clinic_id: str) -> IntakePayload:
     last = patient.get("last_name", "")
     name = f"{first} {last}".strip() or "Unknown"
     email = patient.get("email", "")
-    phone = (
-        patient.get("patient_phone_numbers", [{}])[0].get("number", "")
-        if patient.get("patient_phone_numbers")
-        else ""
-    )
+    phone = patient.get("patient_phone_numbers", [{}])[0].get("number", "") if patient.get("patient_phone_numbers") else ""
 
     appointment = body.get("appointment", {})
-    notes = appointment.get("notes") or appointment.get("appointment_type", {}).get(
-        "name", ""
-    )
+    notes = appointment.get("notes") or appointment.get("appointment_type", {}).get("name", "")
     pathway, age_group = _detect_pathway(notes or appointment.get("name", ""))
 
     return IntakePayload(
@@ -234,9 +222,7 @@ def _normalise_cliniko(body: dict, clinic_id: str) -> IntakePayload:
 
 def _normalise_acuity(body: dict, clinic_id: str) -> IntakePayload:
     """Acuity Scheduling appointment.scheduled webhook."""
-    name = (
-        f"{body.get('firstName', '')} {body.get('lastName', '')}".strip() or "Unknown"
-    )
+    name = f"{body.get('firstName', '')} {body.get('lastName', '')}".strip() or "Unknown"
     email = body.get("email", "")
     phone = body.get("phone", "")
     appt_type = body.get("type", "")
@@ -248,11 +234,7 @@ def _normalise_acuity(body: dict, clinic_id: str) -> IntakePayload:
     except (ValueError, TypeError):
         amount = 0.0
 
-    forms_data = {
-        f.get("name", ""): f.get("value", "")
-        for f in body.get("forms", [{}])[0].get("values", [])
-        if isinstance(f, dict)
-    }
+    forms_data = {f.get("name", ""): f.get("value", "") for f in body.get("forms", [{}])[0].get("values", []) if isinstance(f, dict)}
 
     return IntakePayload(
         clinic_id=clinic_id,
@@ -284,13 +266,7 @@ def _normalise_generic(body: dict, clinic_id: str) -> IntakePayload:
     email = body.get("email", "")
     phone = body.get("phone") or body.get("telephone") or ""
 
-    raw_pathway = (
-        body.get("pathway")
-        or body.get("paid_service_name")
-        or body.get("service_name")
-        or body.get("product_name")
-        or ""
-    )
+    raw_pathway = body.get("pathway") or body.get("paid_service_name") or body.get("service_name") or body.get("product_name") or ""
     pathway, age_group = _detect_pathway(raw_pathway)
     if body.get("age_group") in ("Adult", "Adolescent", "Child"):
         age_group = body["age_group"]
@@ -300,9 +276,7 @@ def _normalise_generic(body: dict, clinic_id: str) -> IntakePayload:
         age_group = _age_group_from_age(_age_from_dob(child_dob))
 
     try:
-        amount = float(
-            body.get("amount") or body.get("amount_paid") or body.get("price") or 0
-        )
+        amount = float(body.get("amount") or body.get("amount_paid") or body.get("price") or 0)
     except (ValueError, TypeError):
         amount = 0.0
 
@@ -382,9 +356,7 @@ class WebhookConfigOut(BaseModel):
 
 class WebhookConfigCreate(BaseModel):
     label: str = Field(..., min_length=1, max_length=120)
-    payload_format: str = Field(
-        "generic", pattern="^(woocommerce|stripe|cliniko|acuity|generic)$"
-    )
+    payload_format: str = Field("generic", pattern="^(woocommerce|stripe|cliniko|acuity|generic)$")
 
 
 class WebhookConfigCreated(WebhookConfigOut):
@@ -481,9 +453,7 @@ async def receive_webhook(
         # Log and return 200 — never 401 (avoids enumeration)
         import logging
 
-        logging.getLogger(__name__).warning(
-            "Webhook signature mismatch clinic=%s config=%s", clinic_id, cfg.id
-        )
+        logging.getLogger(__name__).warning("Webhook signature mismatch clinic=%s config=%s", clinic_id, cfg.id)
         return {"received": False, "error": "signature_mismatch"}
 
     # ── Parse payload ─────────────────────────────────────────────────────────
@@ -591,12 +561,7 @@ def list_webhook_configs(
     ),
 ) -> list[WebhookConfigOut]:
     clinic_id = effective_clinic_id(user)
-    cfgs = (
-        db.query(ClinicWebhookConfig)
-        .filter(ClinicWebhookConfig.clinic_id == clinic_id)
-        .order_by(ClinicWebhookConfig.created_at.desc())
-        .all()
-    )
+    cfgs = db.query(ClinicWebhookConfig).filter(ClinicWebhookConfig.clinic_id == clinic_id).order_by(ClinicWebhookConfig.created_at.desc()).all()
     base = _base_url(request)
     return [_config_to_out(c, base) for c in cfgs]
 

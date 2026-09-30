@@ -30,9 +30,7 @@ def _get_client():
         from app.core.config import _BACKEND_DIR, settings
 
         raw = (settings.chroma_persist_dir or "").strip()
-        persist_path = (
-            Path(raw).resolve() if raw else (_BACKEND_DIR / "chroma_db").resolve()
-        )
+        persist_path = Path(raw).resolve() if raw else (_BACKEND_DIR / "chroma_db").resolve()
         persist_path.mkdir(parents=True, exist_ok=True)
 
         client = chromadb.PersistentClient(path=str(persist_path))
@@ -126,17 +124,13 @@ class RAGEngine:
             distances = results.get("distances", [[]])[0]
             ids = results.get("ids", [[]])[0]
 
-            for i, (doc, meta, dist, doc_id) in enumerate(
-                zip(docs, metas, distances, ids)
-            ):
+            for i, (doc, meta, dist, doc_id) in enumerate(zip(docs, metas, distances, ids)):
                 matches.append(
                     {
                         "id": doc_id,
                         "text": doc,
                         "metadata": meta,
-                        "score": round(
-                            1.0 - dist, 4
-                        ),  # convert L2 distance → similarity-ish
+                        "score": round(1.0 - dist, 4),  # convert L2 distance → similarity-ish
                         "rank": i + 1,
                     }
                 )

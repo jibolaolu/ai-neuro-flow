@@ -12,18 +12,14 @@ from app.db.base import Base
 class ClientPortalMessage(Base):
     __tablename__ = "client_portal_messages"
 
-    id = Column(
-        String, primary_key=True, default=lambda: f"CPM-{secrets.token_hex(4).upper()}"
-    )
+    id = Column(String, primary_key=True, default=lambda: f"CPM-{secrets.token_hex(4).upper()}")
     client_id = Column(String, nullable=False, index=True)
     direction = Column(String, nullable=False)
     sender_name = Column(String, nullable=False)
     sender_user_id = Column(String, nullable=True)
     body = Column(Text, nullable=False)
     is_read = Column(Boolean, default=False)
-    created_at = Column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
-    )
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
 class ClientPortalMessageOut(BaseModel):

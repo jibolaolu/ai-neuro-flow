@@ -52,9 +52,7 @@ async def lookup_ods(ods_code: str):
         async with httpx.AsyncClient(timeout=8) as client:
             r = await client.get(url, headers={"Accept": "application/json"})
         if r.status_code == 404:
-            raise HTTPException(
-                status_code=404, detail=f"ODS code {ods_code} not found"
-            )
+            raise HTTPException(status_code=404, detail=f"ODS code {ods_code} not found")
         r.raise_for_status()
         data = r.json()
         org = data.get("Organisation", {})
@@ -64,11 +62,7 @@ async def lookup_ods(ods_code: str):
             "status": org.get("Status"),
             "type": org.get("OrgRecordClass"),
             "address": org.get("GeoLoc", {}).get("Location", {}),
-            "roles": [
-                r.get("id")
-                for r in org.get("Roles", {}).get("Role", [])
-                if isinstance(r, dict)
-            ],
+            "roles": [r.get("id") for r in org.get("Roles", {}).get("Role", []) if isinstance(r, dict)],
         }
     except httpx.HTTPError as exc:
         raise HTTPException(status_code=502, detail=f"ODS lookup failed: {exc}")
@@ -122,9 +116,7 @@ class EmisPatientPayload(BaseModel):
 def _verify_emis_signature(body: bytes, sig: str) -> bool:
     """HMAC-SHA256 signature verification for EMIS webhook payloads."""
     if not EMIS_WEBHOOK_SECRET:
-        logger.warning(
-            "EMIS_WEBHOOK_SECRET not set — skipping signature check (dev mode)"
-        )
+        logger.warning("EMIS_WEBHOOK_SECRET not set — skipping signature check (dev mode)")
         return True
     expected = hmac.new(EMIS_WEBHOOK_SECRET.encode(), body, hashlib.sha256).hexdigest()
     return hmac.compare_digest(expected, sig.removeprefix("sha256="))

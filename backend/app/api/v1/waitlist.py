@@ -23,16 +23,7 @@ def get_waitlist(
     - awaiting_clinician: forms done but no clinician assigned
     - awaiting_booking: clinician assigned but no session booked
     """
-    clients = (
-        db.query(ClientRecord)
-        .filter(
-            ClientRecord.status.notin_(
-                ["Complete", "Assessment Complete", "Report Issued"]
-            )
-        )
-        .order_by(ClientRecord.created_at)
-        .all()
-    )
+    clients = db.query(ClientRecord).filter(ClientRecord.status.notin_(["Complete", "Assessment Complete", "Report Issued"])).order_by(ClientRecord.created_at).all()
 
     awaiting_forms = []
     awaiting_clinician = []
@@ -51,11 +42,7 @@ def get_waitlist(
             if c.created_at:
                 from datetime import datetime, timezone
 
-                created = (
-                    c.created_at.replace(tzinfo=timezone.utc)
-                    if c.created_at.tzinfo is None
-                    else c.created_at
-                )
+                created = c.created_at.replace(tzinfo=timezone.utc) if c.created_at.tzinfo is None else c.created_at
                 days_waiting = (datetime.now(timezone.utc) - created).days
             awaiting_forms.append(
                 {
@@ -83,11 +70,7 @@ def get_waitlist(
                 }
             )
         else:
-            clinician = (
-                db.query(UserRecord)
-                .filter(UserRecord.id == c.assigned_clinician_user_id)
-                .first()
-            )
+            clinician = db.query(UserRecord).filter(UserRecord.id == c.assigned_clinician_user_id).first()
             awaiting_booking.append(
                 {
                     "id": c.id,
@@ -122,7 +105,5 @@ def send_booking_invite(
     try:
         email_svc.send_booking_invite(client)
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to send invite: {e}"
-        ) from e
+        raise HTTPException(status_code=500, detail=f"Failed to send invite: {e}") from e
     return {"ok": True, "message": f"Booking invite sent to {client.email}"}

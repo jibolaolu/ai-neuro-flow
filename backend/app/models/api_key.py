@@ -33,9 +33,7 @@ def hash_key(raw_key: str) -> str:
 class ApiKeyRecord(Base):
     __tablename__ = "api_keys"
 
-    id = Column(
-        String, primary_key=True, default=lambda: f"KEY-{uuid.uuid4().hex[:10].upper()}"
-    )
+    id = Column(String, primary_key=True, default=lambda: f"KEY-{uuid.uuid4().hex[:10].upper()}")
     clinic_id = Column(String, nullable=False, index=True)
 
     label = Column(String, nullable=False)
@@ -46,9 +44,7 @@ class ApiKeyRecord(Base):
     tier = Column(String, nullable=False, default="basic")
 
     key_hash = Column(String, nullable=False, unique=True, index=True)
-    key_prefix = Column(
-        String, nullable=False
-    )  # safe to display, e.g. "nf_live_a1b2c3d4"
+    key_prefix = Column(String, nullable=False)  # safe to display, e.g. "nf_live_a1b2c3d4"
 
     active = Column(Boolean, default=True, nullable=False)
 
@@ -56,7 +52,5 @@ class ApiKeyRecord(Base):
     requests_total = Column(Integer, default=0, nullable=False)
     last_used_at = Column(DateTime, nullable=True)
 
-    created_at = Column(
-        DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
-    )
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     created_by = Column(String, nullable=True)  # user_id who created the key

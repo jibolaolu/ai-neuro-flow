@@ -22,18 +22,14 @@ class ClinicalReportRecord(Base):
     client_id = Column(String, nullable=False, index=True)
     clinician_id = Column(String, nullable=False, index=True)  # authored by (user_id)
     report_type = Column(String, nullable=False)  # e.g. "NHS Adult ADHD"
-    status = Column(
-        String, default=REPORT_STATUS_DRAFT
-    )  # draft|pending|complete|issued
+    status = Column(String, default=REPORT_STATUS_DRAFT)  # draft|pending|complete|issued
     sections_json = Column(Text, nullable=True)  # JSON dict section_key -> text
     place_of_assessment = Column(String, nullable=True)
     date_of_assessment = Column(String, nullable=True)  # ISO date YYYY-MM-DD
     assessed_by = Column(String, nullable=True)  # clinician full name + credentials
     # PDF artefact
     pdf_path = Column(String, nullable=True)  # absolute path on server
-    pdf_token = Column(
-        String, nullable=True, unique=True, index=True
-    )  # public read token
+    pdf_token = Column(String, nullable=True, unique=True, index=True)  # public read token
     pdf_token_expires_at = Column(DateTime, nullable=True)
     # Review workflow
     reviewed_by_id = Column(String, nullable=True)

@@ -46,9 +46,7 @@ def require_clinic_member(user: UserRecord) -> str:
 
 
 def get_organization(db: Session, clinic_id: str) -> OrganizationRecord | None:
-    return (
-        db.query(OrganizationRecord).filter(OrganizationRecord.id == clinic_id).first()
-    )
+    return db.query(OrganizationRecord).filter(OrganizationRecord.id == clinic_id).first()
 
 
 def organization_allows_access(org: OrganizationRecord) -> bool:
@@ -56,9 +54,7 @@ def organization_allows_access(org: OrganizationRecord) -> bool:
         return False
     if org.subscription_status in (SUB_ACTIVE, SUB_TRIALING):
         if org.subscription_status == SUB_TRIALING and org.trial_ends_at:
-            return org.trial_ends_at.replace(tzinfo=timezone.utc) >= datetime.now(
-                timezone.utc
-            )
+            return org.trial_ends_at.replace(tzinfo=timezone.utc) >= datetime.now(timezone.utc)
         return True
     if org.subscription_status == SUB_PAST_DUE:
         return True  # grace: read-only could be enforced later
@@ -74,9 +70,7 @@ def require_active_subscription(db: Session, user: UserRecord) -> OrganizationRe
     cid = require_clinic_member(user)
     org = get_organization(db, cid)
     if not org:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Organization not found"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization not found")
     if not organization_allows_access(org):
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
@@ -96,18 +90,14 @@ def clients_query(db: Session, user: UserRecord) -> Query:
 def get_client_for_user(db: Session, user: UserRecord, client_id: str) -> ClientRecord:
     record = clients_query(db, user).filter(ClientRecord.id == client_id).first()
     if not record:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Client not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Client not found")
     return record
 
 
 def assert_client_tenant(record: ClientRecord, user: UserRecord) -> None:
     cid = effective_clinic_id(user)
     if cid is not None and record.clinic_id != cid:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Client not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Client not found")
 
 
 def assert_user_in_tenant(actor: UserRecord, target: UserRecord) -> None:

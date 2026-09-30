@@ -85,17 +85,13 @@ def create_slot(
     body: AvailabilitySlotIn,
     db: Session = Depends(get_db),
     user: UserRecord = Depends(
-        require_roles(
-            "clinician", "senior-clinician", "clinical-admin", "super-platform-admin"
-        ),
+        require_roles("clinician", "senior-clinician", "clinical-admin", "super-platform-admin"),
     ),
 ) -> AvailabilitySlotOut:
     try:
         date.fromisoformat(body.date_iso)
     except ValueError:
-        raise HTTPException(
-            status_code=400, detail="date_iso must be YYYY-MM-DD"
-        ) from None
+        raise HTTPException(status_code=400, detail="date_iso must be YYYY-MM-DD") from None
     start = _to_minutes(body.start_time)
     end = _to_minutes(body.end_time)
     if end <= start:
@@ -124,9 +120,7 @@ def create_slot(
 def my_slots(
     db: Session = Depends(get_db),
     user: UserRecord = Depends(
-        require_roles(
-            "clinician", "senior-clinician", "clinical-admin", "super-platform-admin"
-        ),
+        require_roles("clinician", "senior-clinician", "clinical-admin", "super-platform-admin"),
     ),
 ) -> dict:
     items = (
@@ -141,27 +135,15 @@ def my_slots(
     booked_ids = {s.booked_client_id for s in items if s.booked_client_id}
     clients_map: dict[str, ClientRecord] = {}
     if booked_ids:
-        clients_map = {
-            c.id: c
-            for c in db.query(ClientRecord)
-            .filter(ClientRecord.id.in_(booked_ids))
-            .all()
-        }
-    return {
-        "items": [
-            _slot_dict(s, user, clients_map.get(s.booked_client_id or ""))
-            for s in items
-        ]
-    }
+        clients_map = {c.id: c for c in db.query(ClientRecord).filter(ClientRecord.id.in_(booked_ids)).all()}
+    return {"items": [_slot_dict(s, user, clients_map.get(s.booked_client_id or "")) for s in items]}
 
 
 @router.get("/clinician/{user_id}/slots", response_model=dict)
 def list_slots_for_user_as_admin(
     user_id: str,
     db: Session = Depends(get_db),
-    admin: UserRecord = Depends(
-        require_roles("clinical-admin", "super-platform-admin")
-    ),
+    admin: UserRecord = Depends(require_roles("clinical-admin", "super-platform-admin")),
 ) -> dict:
     """Admin view of one clinician's availability rows (for team profile / capacity)."""
     target = db.query(UserRecord).filter(UserRecord.id == user_id).first()
@@ -200,9 +182,7 @@ def team_availability(
 def confirm_rota(
     week_id: str,
     db: Session = Depends(get_db),
-    admin: UserRecord = Depends(
-        require_roles("clinical-admin", "super-platform-admin")
-    ),
+    admin: UserRecord = Depends(require_roles("clinical-admin", "super-platform-admin")),
 ) -> dict:
     """Mark all draft slots in a rota week as confirmed; emails each affected clinician (push TBD)."""
     from app.services import email as email_module
@@ -218,9 +198,7 @@ def confirm_rota(
     db.commit()
     email_stats: dict = {"emails_sent": 0, "users_notified": 0, "push": "deferred"}
     if count:
-        email_stats = email_module.notify_clinicians_rota_week_confirmed(
-            db, week_id, admin.full_name
-        )
+        email_stats = email_module.notify_clinicians_rota_week_confirmed(db, week_id, admin.full_name)
     return {
         "week_id": week_id,
         "updated_slots": count,
@@ -241,9 +219,7 @@ def admin_action_on_slot(
     slot_id: str,
     body: SlotAdminActionIn,
     db: Session = Depends(get_db),
-    admin: UserRecord = Depends(
-        require_roles("clinical-admin", "super-platform-admin")
-    ),
+    admin: UserRecord = Depends(require_roles("clinical-admin", "super-platform-admin")),
 ) -> dict:
     """
     Clinic-admin actions on a single availability slot.
@@ -258,15 +234,9 @@ def admin_action_on_slot(
             detail=f"action must be one of {', '.join(sorted(VALID_ACTIONS))}",
         )
 
-    s = (
-        db.query(ClinicianAvailabilitySlotRecord)
-        .filter(ClinicianAvailabilitySlotRecord.id == slot_id)
-        .first()
-    )
+    s = db.query(ClinicianAvailabilitySlotRecord).filter(ClinicianAvailabilitySlotRecord.id == slot_id).first()
     if not s:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Slot not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Slot not found")
 
     if body.action == "accept":
         s.admin_status = "accepted"
@@ -299,20 +269,12 @@ def delete_slot(
     slot_id: str,
     db: Session = Depends(get_db),
     user: UserRecord = Depends(
-        require_roles(
-            "clinician", "senior-clinician", "clinical-admin", "super-platform-admin"
-        ),
+        require_roles("clinician", "senior-clinician", "clinical-admin", "super-platform-admin"),
     ),
 ) -> dict:
-    s = (
-        db.query(ClinicianAvailabilitySlotRecord)
-        .filter(ClinicianAvailabilitySlotRecord.id == slot_id)
-        .first()
-    )
+    s = db.query(ClinicianAvailabilitySlotRecord).filter(ClinicianAvailabilitySlotRecord.id == slot_id).first()
     if not s:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Slot not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Slot not found")
 
     if user.role in ("clinical-admin", "super-platform-admin"):
         db.delete(s)
@@ -320,9 +282,7 @@ def delete_slot(
         return {"deleted": slot_id}
 
     if s.user_id != user.id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Slot not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Slot not found")
     if (s.rota_status or "draft") != "draft":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

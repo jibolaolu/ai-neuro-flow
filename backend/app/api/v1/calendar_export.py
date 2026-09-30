@@ -62,22 +62,12 @@ def _build_ical(
     )
 
 
-def _google_link(
-    *, summary: str, description: str, location: str, start: datetime, end: datetime
-) -> str:
+def _google_link(*, summary: str, description: str, location: str, start: datetime, end: datetime) -> str:
     fmt = "%Y%m%dT%H%M%SZ"
-    return (
-        "https://calendar.google.com/calendar/render?action=TEMPLATE"
-        f"&text={quote(summary)}"
-        f"&dates={start.strftime(fmt)}/{end.strftime(fmt)}"
-        f"&details={quote(description)}"
-        f"&location={quote(location)}"
-    )
+    return f"https://calendar.google.com/calendar/render?action=TEMPLATE&text={quote(summary)}&dates={start.strftime(fmt)}/{end.strftime(fmt)}&details={quote(description)}&location={quote(location)}"
 
 
-def _outlook_link(
-    *, summary: str, description: str, location: str, start: datetime, end: datetime
-) -> str:
+def _outlook_link(*, summary: str, description: str, location: str, start: datetime, end: datetime) -> str:
     fmt = "%Y-%m-%dT%H:%M:%S"
     return (
         "https://outlook.live.com/calendar/0/deeplink/compose?path=/calendar/action/compose&rru=addevent"
@@ -113,9 +103,7 @@ def client_appointment_ical(
 
     branding = get_clinic_branding(db, client.clinic_id)
     clinic_name = branding.display_name
-    clinician_name = (
-        getattr(client, "assigned_clinician_name", None) or "Your clinician"
-    )
+    clinician_name = getattr(client, "assigned_clinician_name", None) or "Your clinician"
     description = (
         f"{clinic_name} assessment appointment\n"
         f"Pathway: {client.pathway or 'ADHD/Autism'}\n"
@@ -137,9 +125,7 @@ def client_appointment_ical(
     return PlainTextResponse(
         content=ical,
         media_type="text/calendar",
-        headers={
-            "Content-Disposition": f'attachment; filename="assessment-{client_id}.ics"'
-        },
+        headers={"Content-Disposition": f'attachment; filename="assessment-{client_id}.ics"'},
     )
 
 
@@ -212,10 +198,7 @@ def public_appointment_links(
 
     clinic_name = get_clinic_branding(db, client.clinic_id).display_name
     summary = f"Assessment Appointment — {client.pathway or 'ADHD/Autism'}"
-    description = (
-        f"Your {clinic_name} {client.pathway or 'ADHD/Autism'} assessment.\n"
-        f"Please ensure you attend on time and have completed all requested forms."
-    )
+    description = f"Your {clinic_name} {client.pathway or 'ADHD/Autism'} assessment.\nPlease ensure you attend on time and have completed all requested forms."
 
     return {
         "appointment_time": start.isoformat(),

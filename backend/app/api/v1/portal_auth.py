@@ -83,21 +83,15 @@ def generate_portal_link(
 
 
 @public_router.post("/portal/authenticate")
-def portal_authenticate(
-    token: str, response: Response, db: Session = Depends(get_db)
-) -> dict:
+def portal_authenticate(token: str, response: Response, db: Session = Depends(get_db)) -> dict:
     """Exchange magic token for a 7-day session cookie."""
-    client = (
-        db.query(ClientRecord).filter(ClientRecord.portal_magic_token == token).first()
-    )
+    client = db.query(ClientRecord).filter(ClientRecord.portal_magic_token == token).first()
     if not client:
         raise HTTPException(status_code=401, detail="Invalid or expired login link")
     if getattr(client, "is_active", "true") == "false":
         raise HTTPException(status_code=403, detail="This portal is no longer active")
     expires_at = client.portal_magic_token_expires_at
-    if not expires_at or datetime.now(timezone.utc) > expires_at.replace(
-        tzinfo=timezone.utc
-    ):
+    if not expires_at or datetime.now(timezone.utc) > expires_at.replace(tzinfo=timezone.utc):
         raise HTTPException(
             status_code=401,
             detail="This login link has expired. Please request a new one.",
@@ -133,17 +127,11 @@ def portal_me(request: Request, db: Session = Depends(get_db)) -> dict:
     session_val = request.cookies.get(_PORTAL_COOKIE)
     if not session_val:
         raise HTTPException(status_code=401, detail="Not authenticated")
-    client = (
-        db.query(ClientRecord)
-        .filter(ClientRecord.portal_session_token == session_val)
-        .first()
-    )
+    client = db.query(ClientRecord).filter(ClientRecord.portal_session_token == session_val).first()
     if not client:
         raise HTTPException(status_code=401, detail="Session expired or invalid")
     expires_at = client.portal_session_expires_at
-    if expires_at and datetime.now(timezone.utc) > expires_at.replace(
-        tzinfo=timezone.utc
-    ):
+    if expires_at and datetime.now(timezone.utc) > expires_at.replace(tzinfo=timezone.utc):
         raise HTTPException(status_code=401, detail="Session expired")
     return {
         "client_id": client.id,
@@ -155,17 +143,11 @@ def portal_me(request: Request, db: Session = Depends(get_db)) -> dict:
 
 
 @public_router.post("/portal/logout")
-def portal_logout(
-    response: Response, request: Request, db: Session = Depends(get_db)
-) -> dict:
+def portal_logout(response: Response, request: Request, db: Session = Depends(get_db)) -> dict:
     """Clear the portal session."""
     session_val = request.cookies.get(_PORTAL_COOKIE)
     if session_val:
-        client = (
-            db.query(ClientRecord)
-            .filter(ClientRecord.portal_session_token == session_val)
-            .first()
-        )
+        client = db.query(ClientRecord).filter(ClientRecord.portal_session_token == session_val).first()
         if client:
             client.portal_session_token = None
             client.portal_session_expires_at = None

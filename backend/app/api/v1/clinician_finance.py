@@ -98,9 +98,7 @@ class InvoiceApprovalPatch(BaseModel):
     notes: str | None = Field(None, max_length=2000)
 
 
-def _lines_for_invoice(
-    db: Session, user_id: str, period_from: date, period_to: date
-) -> list[TimesheetLineRecord]:
+def _lines_for_invoice(db: Session, user_id: str, period_from: date, period_to: date) -> list[TimesheetLineRecord]:
     return (
         db.query(TimesheetLineRecord)
         .filter(
@@ -161,9 +159,7 @@ def generate_invoice(
     user: UserRecord = Depends(require_roles("clinician", "senior-clinician")),
 ) -> InvoiceGenerateOut:
     if body.period_to < body.period_from:
-        raise HTTPException(
-            status_code=400, detail="period_to must be on or after period_from"
-        )
+        raise HTTPException(status_code=400, detail="period_to must be on or after period_from")
 
     lines = _lines_for_invoice(db, user.id, body.period_from, body.period_to)
     total_hours = sum(r.hours for r in lines) if lines else 0.0
@@ -202,13 +198,7 @@ def list_my_invoices(
     db: Session = Depends(get_db),
     user: UserRecord = Depends(require_roles("clinician", "senior-clinician")),
 ) -> dict[str, list[InvoiceSummaryOut]]:
-    rows = (
-        db.query(InvoiceRequestRecord)
-        .filter(InvoiceRequestRecord.user_id == user.id)
-        .order_by(InvoiceRequestRecord.created_at.desc())
-        .limit(200)
-        .all()
-    )
+    rows = db.query(InvoiceRequestRecord).filter(InvoiceRequestRecord.user_id == user.id).order_by(InvoiceRequestRecord.created_at.desc()).limit(200).all()
     return {"items": [InvoiceSummaryOut.model_validate(r) for r in rows]}
 
 
@@ -229,11 +219,7 @@ def download_invoice_pdf(
     db: Session = Depends(get_db),
     user: UserRecord = Depends(get_current_user),
 ) -> Response:
-    inv = (
-        db.query(InvoiceRequestRecord)
-        .filter(InvoiceRequestRecord.id == invoice_id)
-        .first()
-    )
+    inv = db.query(InvoiceRequestRecord).filter(InvoiceRequestRecord.id == invoice_id).first()
     if not inv:
         raise HTTPException(status_code=404, detail="Invoice not found")
 
@@ -259,19 +245,13 @@ def download_invoice_pdf(
     )
 
 
-@router.get(
-    "/admin/invoice-requests", response_model=dict[str, list[InvoiceRequestAdminOut]]
-)
+@router.get("/admin/invoice-requests", response_model=dict[str, list[InvoiceRequestAdminOut]])
 def admin_list_invoice_requests(
     approval_status: str | None = None,
     db: Session = Depends(get_db),
     _: UserRecord = Depends(require_roles(*_ADMIN_ROLES)),
 ) -> dict[str, list[InvoiceRequestAdminOut]]:
-    q = (
-        db.query(InvoiceRequestRecord, UserRecord.full_name)
-        .join(UserRecord, InvoiceRequestRecord.user_id == UserRecord.id)
-        .order_by(InvoiceRequestRecord.created_at.desc())
-    )
+    q = db.query(InvoiceRequestRecord, UserRecord.full_name).join(UserRecord, InvoiceRequestRecord.user_id == UserRecord.id).order_by(InvoiceRequestRecord.created_at.desc())
     if approval_status and approval_status != "all":
         q = q.filter(InvoiceRequestRecord.approval_status == approval_status)
     rows = q.limit(500).all()
@@ -298,28 +278,20 @@ def admin_list_invoice_requests(
     return {"items": items}
 
 
-@router.patch(
-    "/admin/invoice-requests/{invoice_id}", response_model=InvoiceRequestAdminOut
-)
+@router.patch("/admin/invoice-requests/{invoice_id}", response_model=InvoiceRequestAdminOut)
 def admin_patch_invoice_request(
     invoice_id: str,
     body: InvoiceApprovalPatch,
     db: Session = Depends(get_db),
     admin: UserRecord = Depends(require_roles(*_ADMIN_ROLES)),
 ) -> InvoiceRequestAdminOut:
-    inv = (
-        db.query(InvoiceRequestRecord)
-        .filter(InvoiceRequestRecord.id == invoice_id)
-        .first()
-    )
+    inv = db.query(InvoiceRequestRecord).filter(InvoiceRequestRecord.id == invoice_id).first()
     if not inv:
         raise HTTPException(status_code=404, detail="Invoice not found")
 
     notes_stripped = body.notes.strip() if body.notes else ""
     if body.action in ("reject", "needs_revision") and not notes_stripped:
-        raise HTTPException(
-            status_code=400, detail="notes required for reject or needs_revision"
-        )
+        raise HTTPException(status_code=400, detail="notes required for reject or needs_revision")
 
     now = datetime.now(timezone.utc)
     if body.action == "approve":

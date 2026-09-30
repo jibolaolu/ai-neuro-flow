@@ -135,9 +135,7 @@ ASSESSMENT_DETAILS: list[AssessmentDetail] = [
         ],
         draft_sections_ready=[],
         downstream_tasks=[
-            form_service.build_welcome_pack_task(
-                "Noah Williams", "Child ADHD + Autism"
-            ),
+            form_service.build_welcome_pack_task("Noah Williams", "Child ADHD + Autism"),
             session_brief_service.build_task("Dr Priya Raman", "2026-04-22T10:00:00"),
             report_workflow_service.build_task("not_started"),
         ],
@@ -158,9 +156,7 @@ ASSESSMENT_DETAILS: list[AssessmentDetail] = [
 
 @router.get("/")
 def list_assessments() -> dict[str, list[dict[str, object]]]:
-    items = [
-        Assessment(**item.model_dump()).model_dump() for item in ASSESSMENT_DETAILS
-    ]
+    items = [Assessment(**item.model_dump()).model_dump() for item in ASSESSMENT_DETAILS]
     return {"items": items}
 
 

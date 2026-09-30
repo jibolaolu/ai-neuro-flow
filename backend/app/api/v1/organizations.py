@@ -38,9 +38,7 @@ def _normalize_slug(slug: str) -> str:
 
 
 @router.post("/signup", response_model=dict, status_code=status.HTTP_201_CREATED)
-def signup_organization(
-    payload: OrganizationSignup, db: Session = Depends(get_db)
-) -> dict:
+def signup_organization(payload: OrganizationSignup, db: Session = Depends(get_db)) -> dict:
     """Register a new clinic (organization) and its first clinical admin."""
     if not settings.allow_public_signup:
         raise HTTPException(
@@ -106,9 +104,7 @@ def signup_organization(
 @router.get("/me", response_model=OrganizationOut)
 def get_my_organization(
     db: Session = Depends(get_db),
-    user: UserRecord = Depends(
-        require_roles("clinical-admin", "senior-clinician", "clinician")
-    ),
+    user: UserRecord = Depends(require_roles("clinical-admin", "senior-clinician", "clinician")),
 ) -> OrganizationOut:
     cid = require_clinic_member(user)
     org = get_organization(db, cid)
@@ -179,12 +175,7 @@ def list_organization_team(
     actor: UserRecord = Depends(require_roles("clinical-admin")),
 ) -> dict:
     cid = require_clinic_member(actor)
-    users = (
-        db.query(UserRecord)
-        .filter(UserRecord.clinic_id == cid)
-        .order_by(UserRecord.full_name)
-        .all()
-    )
+    users = db.query(UserRecord).filter(UserRecord.clinic_id == cid).order_by(UserRecord.full_name).all()
     return {
         "items": [
             {

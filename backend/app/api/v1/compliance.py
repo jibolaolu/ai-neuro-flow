@@ -94,17 +94,11 @@ def compliance_dashboard(
         sg_flagged = 0
 
     # ── Clients without assigned clinician ─────────────────────────────────
-    unassigned = sum(
-        1 for c in clients if not getattr(c, "assigned_clinician_user_id", None)
-    )
+    unassigned = sum(1 for c in clients if not getattr(c, "assigned_clinician_user_id", None))
 
     # ── Outstanding consents >14 days ──────────────────────────────────────
     cutoff_14 = now - timedelta(days=14)
-    overdue_forms = [
-        f
-        for f in all_forms
-        if f.status != "submitted" and f.created_at and f.created_at < cutoff_14
-    ]
+    overdue_forms = [f for f in all_forms if f.status != "submitted" and f.created_at and f.created_at < cutoff_14]
 
     # ── Recent audit log (last 20 case note events as proxy) ───────────────
     recent_activity = [
@@ -114,9 +108,7 @@ def compliance_dashboard(
             "actor": n.author_name or "Unknown",
             "client_id": n.client_id,
         }
-        for n in sorted(
-            notes, key=lambda x: x.created_at or datetime.min, reverse=True
-        )[:20]
+        for n in sorted(notes, key=lambda x: x.created_at or datetime.min, reverse=True)[:20]
     ]
 
     return {
@@ -162,11 +154,7 @@ def audit_trail(
 
     # Case notes
     try:
-        notes = (
-            db.query(ClientCaseNoteRecord)
-            .filter(ClientCaseNoteRecord.client_id.in_(client_ids))
-            .all()
-        )
+        notes = db.query(ClientCaseNoteRecord).filter(ClientCaseNoteRecord.client_id.in_(client_ids)).all()
         for n in notes:
             events.append(
                 {
@@ -193,9 +181,7 @@ def audit_trail(
         for f in forms:
             events.append(
                 {
-                    "timestamp": f.submitted_at.isoformat()
-                    if getattr(f, "submitted_at", None)
-                    else None,
+                    "timestamp": f.submitted_at.isoformat() if getattr(f, "submitted_at", None) else None,
                     "event_type": "form_submitted",
                     "description": f"Form submitted: {f.form_type or 'Assessment form'}",
                     "actor": "Client",

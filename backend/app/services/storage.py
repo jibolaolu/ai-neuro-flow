@@ -66,9 +66,7 @@ async def store_upload(
     return rel_path
 
 
-def presigned_url(
-    rel_path: str, original_filename: str, mime_type: str, expiry: int
-) -> str:
+def presigned_url(rel_path: str, original_filename: str, mime_type: str, expiry: int) -> str:
     """Generate a presigned GET URL for an S3-stored document."""
     from app.core.config import settings
 
@@ -94,13 +92,9 @@ def local_file_path(rel_path: str) -> Path:
     try:
         full.relative_to(root)
     except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
-        ) from None
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found") from None
     if not full.is_file():
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="File missing on server"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File missing on server")
     return full
 
 
@@ -157,15 +151,11 @@ def read_report_pdf(pdf_path_or_key: str) -> bytes:
             )
             return obj["Body"].read()
         except Exception:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Report PDF not available"
-            ) from None
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report PDF not available") from None
     else:
         p = Path(pdf_path_or_key)
         if not p.is_file():
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, detail="Report PDF not available"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report PDF not available")
         return p.read_bytes()
 
 

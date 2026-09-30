@@ -102,11 +102,7 @@ def cancel_job(
         raise HTTPException(400, "Only queued jobs can be cancelled")
 
     cid = effective_clinic_id(user)
-    if (
-        not is_platform_admin(user)
-        and job.clinic_id != cid
-        and job.created_by != user.id
-    ):
+    if not is_platform_admin(user) and job.clinic_id != cid and job.created_by != user.id:
         raise HTTPException(403, "Access denied")
 
     db.delete(job)

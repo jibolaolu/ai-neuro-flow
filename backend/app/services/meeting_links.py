@@ -44,17 +44,11 @@ def _zoom_create_meeting(
 
         from app.core.config import settings
 
-        if (
-            not settings.zoom_account_id
-            or not settings.zoom_client_id
-            or not settings.zoom_client_secret
-        ):
+        if not settings.zoom_account_id or not settings.zoom_client_id or not settings.zoom_client_secret:
             return None
 
         # Step 1: Get OAuth token
-        credentials = base64.b64encode(
-            f"{settings.zoom_client_id}:{settings.zoom_client_secret}".encode()
-        ).decode()
+        credentials = base64.b64encode(f"{settings.zoom_client_id}:{settings.zoom_client_secret}".encode()).decode()
         token_resp = _requests.post(
             "https://zoom.us/oauth/token",
             params={

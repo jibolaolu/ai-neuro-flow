@@ -73,13 +73,7 @@ def list_notifications(
     db: Session = Depends(get_db),
     current_user: UserRecord = Depends(get_current_user),
 ) -> dict:
-    items = (
-        db.query(NotificationRecord)
-        .filter(NotificationRecord.user_id == current_user.id)
-        .order_by(NotificationRecord.created_at.desc())
-        .limit(50)
-        .all()
-    )
+    items = db.query(NotificationRecord).filter(NotificationRecord.user_id == current_user.id).order_by(NotificationRecord.created_at.desc()).limit(50).all()
     unread = sum(1 for n in items if not n.read)
     return {
         "items": [NotificationOut.model_validate(n) for n in items],

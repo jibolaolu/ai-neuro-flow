@@ -100,11 +100,7 @@ class DocumentIntelligence:
             n_results=n_results,
         )
         # Filter to this client only
-        matches = [
-            m
-            for m in results.get("matches", [])
-            if m.get("metadata", {}).get("client_id") == client_id
-        ]
+        matches = [m for m in results.get("matches", []) if m.get("metadata", {}).get("client_id") == client_id]
         return matches
 
     def auto_populate_report_fields(

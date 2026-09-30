@@ -54,11 +54,7 @@ def get_system_status(
     try:
         db.execute(text("SELECT 1"))
         db_type = "SQLite" if "sqlite" in settings.database_url else "PostgreSQL"
-        services.append(
-            ServiceCheck(
-                name="Database", status="ok", detail=f"{db_type} - connection healthy"
-            )
-        )
+        services.append(ServiceCheck(name="Database", status="ok", detail=f"{db_type} - connection healthy"))
     except Exception as exc:
         services.append(ServiceCheck(name="Database", status="error", detail=str(exc)))
 
@@ -74,9 +70,7 @@ def get_system_status(
             )
         )
     else:
-        jwt_configured = bool(
-            settings.jwt_secret and settings.jwt_secret not in _INSECURE_JWT_SECRETS
-        )
+        jwt_configured = bool(settings.jwt_secret and settings.jwt_secret not in _INSECURE_JWT_SECRETS)
         services.append(
             ServiceCheck(
                 name="Local JWT (dev)",
@@ -86,17 +80,12 @@ def get_system_status(
         )
 
     # ── Webhook secret ─────────────────────────────────────────────────────────
-    webhook_configured = bool(
-        settings.webhook_secret
-        and settings.webhook_secret not in _INSECURE_WEBHOOK_SECRETS
-    )
+    webhook_configured = bool(settings.webhook_secret and settings.webhook_secret not in _INSECURE_WEBHOOK_SECRETS)
     services.append(
         ServiceCheck(
             name="Webhook Secret",
             status="ok" if webhook_configured else "degraded",
-            detail="Secret configured"
-            if webhook_configured
-            else "Using default dev secret - set WEBHOOK_SECRET in production",
+            detail="Secret configured" if webhook_configured else "Using default dev secret - set WEBHOOK_SECRET in production",
         )
     )
 
@@ -106,9 +95,7 @@ def get_system_status(
         ServiceCheck(
             name="Stripe Webhook",
             status="ok" if stripe_configured else "degraded",
-            detail="Signing secret configured"
-            if stripe_configured
-            else "STRIPE_WEBHOOK_SECRET not set",
+            detail="Signing secret configured" if stripe_configured else "STRIPE_WEBHOOK_SECRET not set",
         )
     )
 
@@ -118,11 +105,7 @@ def get_system_status(
         ServiceCheck(
             name="SendGrid",
             status="ok" if sendgrid_configured else "degraded",
-            detail=(
-                f"API key loaded - from {settings.sendgrid_from_email}"
-                if sendgrid_configured
-                else "SENDGRID_API_KEY empty - emails logged only, not delivered"
-            ),
+            detail=(f"API key loaded - from {settings.sendgrid_from_email}" if sendgrid_configured else "SENDGRID_API_KEY empty - emails logged only, not delivered"),
         )
     )
 
@@ -140,17 +123,13 @@ def get_system_status(
     config_summary = {
         "environment": settings.environment,
         "api_version": settings.app_version,
-        "database": "SQLite (dev)"
-        if "sqlite" in settings.database_url
-        else "PostgreSQL",
+        "database": "SQLite (dev)" if "sqlite" in settings.database_url else "PostgreSQL",
         "frontend_url": settings.frontend_url,
         "wordpress_production": settings.wordpress_production_url,
         "wordpress_staging": settings.wordpress_staging_url,
         "jwt_expiry": f"{settings.jwt_expiry_minutes} minutes",
         "cors_origins": f"{settings.frontend_url}, {settings.wordpress_production_url}",
-        "sendgrid": "configured"
-        if getattr(settings, "sendgrid_api_key", "")
-        else "not configured",
+        "sendgrid": "configured" if getattr(settings, "sendgrid_api_key", "") else "not configured",
         "platform_base_url": getattr(settings, "platform_base_url", ""),
     }
 

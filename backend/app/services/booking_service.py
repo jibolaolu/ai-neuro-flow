@@ -34,28 +34,18 @@ class BookingService:
         if _own_db:
             db = self._get_db()
         try:
-            rows = (
-                db.query(BookingDBRecord)
-                .order_by(BookingDBRecord.created_at.desc())
-                .all()
-            )
+            rows = db.query(BookingDBRecord).order_by(BookingDBRecord.created_at.desc()).all()
             return [r.to_dict() for r in rows]
         finally:
             if _own_db:
                 db.close()
 
-    def get_booking(
-        self, booking_id: str, db: Session | None = None
-    ) -> BookingRecord | None:
+    def get_booking(self, booking_id: str, db: Session | None = None) -> BookingRecord | None:
         _own_db = db is None
         if _own_db:
             db = self._get_db()
         try:
-            row = (
-                db.query(BookingDBRecord)
-                .filter(BookingDBRecord.id == booking_id)
-                .first()
-            )
+            row = db.query(BookingDBRecord).filter(BookingDBRecord.id == booking_id).first()
             if not row:
                 return None
             return self._row_to_model(row)
@@ -63,9 +53,7 @@ class BookingService:
             if _own_db:
                 db.close()
 
-    def process_payment_webhook(
-        self, payload: BookingWebhookPayload, db: Session | None = None
-    ) -> BookingRecord:
+    def process_payment_webhook(self, payload: BookingWebhookPayload, db: Session | None = None) -> BookingRecord:
         _own_db = db is None
         if _own_db:
             db = self._get_db()
@@ -75,12 +63,8 @@ class BookingService:
             new_id = f"booking-{uuid.uuid4().hex[:8]}"
             case_id = f"case-{1000 + sequence}"
 
-            form_task = self.form_service.build_welcome_pack_task(
-                payload.client_name, payload.pathway
-            )
-            brief_task = self.session_brief_service.build_task(
-                "Dr Jordan Lee", payload.preferred_slot
-            )
+            form_task = self.form_service.build_welcome_pack_task(payload.client_name, payload.pathway)
+            brief_task = self.session_brief_service.build_task("Dr Jordan Lee", payload.preferred_slot)
             handoff_task = self.report_workflow_service.build_task("drafting")
 
             steps = [
@@ -106,9 +90,7 @@ class BookingService:
                     "key": "confirmation_dispatch",
                     "title": "Confirmation dispatch",
                     "status": "complete",
-                    "detail": self.notification_service.build_calendar_invite_status(
-                        "Dr Jordan Lee", payload.preferred_slot
-                    ),
+                    "detail": self.notification_service.build_calendar_invite_status("Dr Jordan Lee", payload.preferred_slot),
                 },
                 form_task.model_dump(),
                 brief_task.model_dump(),

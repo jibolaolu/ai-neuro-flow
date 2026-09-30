@@ -204,13 +204,7 @@ def process_pending_jobs() -> None:
 
     db = SessionLocal()
     try:
-        pending = (
-            db.query(AIJobRecord)
-            .filter(AIJobRecord.status == JOB_STATUS_QUEUED)
-            .order_by(AIJobRecord.created_at)
-            .limit(5)
-            .all()
-        )
+        pending = db.query(AIJobRecord).filter(AIJobRecord.status == JOB_STATUS_QUEUED).order_by(AIJobRecord.created_at).limit(5).all()
 
         for job in pending:
             job.status = JOB_STATUS_RUNNING

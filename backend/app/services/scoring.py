@@ -41,9 +41,7 @@ def score_asrs(ratings: list[int]) -> dict:
     total = part_a + part_b
 
     # Screen: count Part A items meeting threshold
-    screen_count = sum(
-        1 for i, thresh in enumerate(_ASRS_PART_A_THRESHOLDS) if ratings[i] >= thresh
-    )
+    screen_count = sum(1 for i, thresh in enumerate(_ASRS_PART_A_THRESHOLDS) if ratings[i] >= thresh)
     screen_positive = screen_count >= 4
 
     inattention = sum(ratings[i] for i in _ASRS_INATTENTION_IDX)

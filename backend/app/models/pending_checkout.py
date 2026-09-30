@@ -42,6 +42,4 @@ class PendingCheckout(Base):
     child_dob = Column(String, nullable=True)  # ISO YYYY-MM-DD
 
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    expires_at = Column(
-        DateTime, default=lambda: datetime.now(timezone.utc) + timedelta(hours=24)
-    )
+    expires_at = Column(DateTime, default=lambda: datetime.now(timezone.utc) + timedelta(hours=24))

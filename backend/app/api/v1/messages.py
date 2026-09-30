@@ -33,12 +33,7 @@ def inbox(
     user: UserRecord = Depends(get_current_user),
 ) -> MessageList:
     _assert_messaging_role(user)
-    msgs = (
-        db.query(DirectMessage)
-        .filter(DirectMessage.recipient_id == user.id)
-        .order_by(DirectMessage.created_at.desc())
-        .all()
-    )
+    msgs = db.query(DirectMessage).filter(DirectMessage.recipient_id == user.id).order_by(DirectMessage.created_at.desc()).all()
     unread = sum(1 for m in msgs if not m.is_read)
     return MessageList(
         items=[MessageOut.model_validate(m) for m in msgs],
@@ -53,15 +48,8 @@ def sent(
     user: UserRecord = Depends(get_current_user),
 ) -> MessageList:
     _assert_messaging_role(user)
-    msgs = (
-        db.query(DirectMessage)
-        .filter(DirectMessage.sender_id == user.id)
-        .order_by(DirectMessage.created_at.desc())
-        .all()
-    )
-    return MessageList(
-        items=[MessageOut.model_validate(m) for m in msgs], total=len(msgs), unread=0
-    )
+    msgs = db.query(DirectMessage).filter(DirectMessage.sender_id == user.id).order_by(DirectMessage.created_at.desc()).all()
+    return MessageList(items=[MessageOut.model_validate(m) for m in msgs], total=len(msgs), unread=0)
 
 
 @router.get("/unread-count", response_model=dict)
@@ -88,15 +76,8 @@ def get_thread(
     if not root:
         raise HTTPException(status_code=404, detail="Message not found")
     root_id = root.parent_id or root.id
-    msgs = (
-        db.query(DirectMessage)
-        .filter((DirectMessage.id == root_id) | (DirectMessage.parent_id == root_id))
-        .order_by(DirectMessage.created_at.asc())
-        .all()
-    )
-    return MessageList(
-        items=[MessageOut.model_validate(m) for m in msgs], total=len(msgs), unread=0
-    )
+    msgs = db.query(DirectMessage).filter((DirectMessage.id == root_id) | (DirectMessage.parent_id == root_id)).order_by(DirectMessage.created_at.asc()).all()
+    return MessageList(items=[MessageOut.model_validate(m) for m in msgs], total=len(msgs), unread=0)
 
 
 @router.post("/send", response_model=MessageOut, status_code=201)
@@ -123,9 +104,7 @@ def send_message(
         body=body.body,
         parent_id=body.parent_id,
         is_read=False,
-        attachment_urls=json.dumps(body.attachment_urls)
-        if body.attachment_urls
-        else None,
+        attachment_urls=json.dumps(body.attachment_urls) if body.attachment_urls else None,
     )
     db.add(msg)
     db.commit()
@@ -165,8 +144,4 @@ def list_messageable_users(
         .filter(UserRecord.role.in_(list(ALLOWED_ROLES)), UserRecord.is_active == True)  # noqa: E712
         .all()
     )
-    return [
-        {"id": u.id, "full_name": u.full_name, "role": u.role}
-        for u in users
-        if u.id != user.id
-    ]
+    return [{"id": u.id, "full_name": u.full_name, "role": u.role} for u in users if u.id != user.id]

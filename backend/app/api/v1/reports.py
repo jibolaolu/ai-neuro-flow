@@ -20,9 +20,7 @@ def get_report_summary() -> dict[str, str]:
 @router.get("/operational-overview", response_model=dict)
 def operational_overview(
     db: Session = Depends(get_db),
-    actor: UserRecord = Depends(
-        require_roles("clinical-admin", "super-platform-admin")
-    ),
+    actor: UserRecord = Depends(require_roles("clinical-admin", "super-platform-admin")),
 ) -> dict:
     """Pathway counts from live clients + per-clinician assignment/completion metrics."""
     clients = clients_query(db, actor).all()
@@ -45,21 +43,9 @@ def operational_overview(
 
     clinician_rows: list[dict] = []
     for u in clinicians:
-        assigned = (
-            clients_query(db, actor)
-            .filter(ClientRecord.assigned_clinician_user_id == u.id)
-            .all()
-        )
-        active_cases = sum(
-            1
-            for c in assigned
-            if "complete" not in _lower(c.status) and "complete" not in _lower(c.stage)
-        )
-        completed = sum(
-            1
-            for c in assigned
-            if "complete" in _lower(c.status) or "complete" in _lower(c.stage)
-        )
+        assigned = clients_query(db, actor).filter(ClientRecord.assigned_clinician_user_id == u.id).all()
+        active_cases = sum(1 for c in assigned if "complete" not in _lower(c.status) and "complete" not in _lower(c.stage))
+        completed = sum(1 for c in assigned if "complete" in _lower(c.status) or "complete" in _lower(c.stage))
         booked_sessions = sum(1 for c in assigned if c.confirmed_session_at is not None)
         clinician_rows.append(
             {
@@ -74,16 +60,10 @@ def operational_overview(
             }
         )
 
-    open_assessments = (
-        clients_query(db, actor)
-        .filter(~func.lower(ClientRecord.status).contains("complete"))
-        .count()
-    )
+    open_assessments = clients_query(db, actor).filter(~func.lower(ClientRecord.status).contains("complete")).count()
 
     return {
-        "pathway_counts": [
-            {"pathway": k, "clients": v} for k, v in sorted(pathway_counts.items())
-        ],
+        "pathway_counts": [{"pathway": k, "clients": v} for k, v in sorted(pathway_counts.items())],
         "clinicians": clinician_rows,
         "totals": {
             "clients": len(clients),

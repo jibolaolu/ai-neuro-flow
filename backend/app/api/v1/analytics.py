@@ -39,11 +39,7 @@ def get_subscribers(
     user: UserRecord = Depends(require_roles("super-platform-admin")),
 ):
     """All registered organizations with live metrics from DB."""
-    orgs = (
-        db.query(OrganizationRecord)
-        .order_by(OrganizationRecord.created_at.desc())
-        .all()
-    )
+    orgs = db.query(OrganizationRecord).order_by(OrganizationRecord.created_at.desc()).all()
 
     rows = []
     for org in orgs:
@@ -75,9 +71,7 @@ def get_subscribers(
             db.query(SupportTicketRecord)
             .filter(
                 SupportTicketRecord.clinic_id == org.id,
-                SupportTicketRecord.status.in_(
-                    ("open", "in_progress", "awaiting_info")
-                ),
+                SupportTicketRecord.status.in_(("open", "in_progress", "awaiting_info")),
             )
             .count()
         )
@@ -115,9 +109,7 @@ def get_subscribers(
                 "active_clients": active_clients,
                 "mrr_gbp": mrr,
                 "open_support_tickets": open_tickets,
-                "joined_date": org.created_at.date().isoformat()
-                if org.created_at
-                else None,
+                "joined_date": org.created_at.date().isoformat() if org.created_at else None,
                 "contact_email": contact_email,
             }
         )
@@ -148,17 +140,11 @@ def get_revenue(
     buckets: list[dict] = []
 
     for i in range(months - 1, -1, -1):
-        month_start = (now.replace(day=1) - timedelta(days=i * 30)).replace(
-            day=1, hour=0, minute=0, second=0, microsecond=0
-        )
+        month_start = (now.replace(day=1) - timedelta(days=i * 30)).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         month_label = month_start.strftime("%Y-%m")
 
         # Count orgs that were active in this month (joined before end of month, not churned before start)
-        month_end = (
-            month_start.replace(month=month_start.month % 12 + 1)
-            if month_start.month < 12
-            else month_start.replace(year=month_start.year + 1, month=1)
-        )
+        month_end = month_start.replace(month=month_start.month % 12 + 1) if month_start.month < 12 else month_start.replace(year=month_start.year + 1, month=1)
 
         active_orgs = (
             db.query(OrganizationRecord)
@@ -168,17 +154,11 @@ def get_revenue(
             .all()
         )
 
-        mrr = sum(
-            _plan_mrr(o.subscription_plan or "professional")
-            for o in active_orgs
-            if (o.subscription_status or "") == "active"
-        )
+        mrr = sum(_plan_mrr(o.subscription_plan or "professional") for o in active_orgs if (o.subscription_status or "") == "active")
 
         # New orgs this month
         new_orgs = [o for o in active_orgs if o.created_at >= month_start]
-        new_mrr = sum(
-            _plan_mrr(getattr(o, "subscription_plan", "professional")) for o in new_orgs
-        )
+        new_mrr = sum(_plan_mrr(getattr(o, "subscription_plan", "professional")) for o in new_orgs)
 
         buckets.append(
             {
@@ -202,18 +182,10 @@ def get_platform_kpis(
     total_users = db.query(UserRecord).filter(UserRecord.is_active == True).count()  # noqa: E712
     total_clients = db.query(ClientRecord).count()
     total_orgs = db.query(OrganizationRecord).count()
-    open_tickets = (
-        db.query(SupportTicketRecord)
-        .filter(SupportTicketRecord.status.in_(("open", "in_progress")))
-        .count()
-    )
+    open_tickets = db.query(SupportTicketRecord).filter(SupportTicketRecord.status.in_(("open", "in_progress"))).count()
 
     orgs = db.query(OrganizationRecord).all()
-    total_mrr = sum(
-        _plan_mrr(o.subscription_plan or "professional")
-        for o in orgs
-        if (o.subscription_status or "") == "active"
-    )
+    total_mrr = sum(_plan_mrr(o.subscription_plan or "professional") for o in orgs if (o.subscription_status or "") == "active")
 
     return {
         "total_orgs": total_orgs,
@@ -228,9 +200,7 @@ def get_platform_kpis(
 def get_population_insights(
     clinic_id: str | None = None,
     db: Session = Depends(get_db),
-    user: UserRecord = Depends(
-        require_roles("super-platform-admin", "clinic-admin", "clinical-admin")
-    ),
+    user: UserRecord = Depends(require_roles("super-platform-admin", "clinic-admin", "clinical-admin")),
 ):
     """
     Population-level insights and benchmarking.

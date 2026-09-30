@@ -182,11 +182,7 @@ class NestFormatter(logging.Formatter):
                 method = m.group("method")
                 path = m.group("path")
                 status = int(m.group("status"))
-                msg = (
-                    f"{_colour_method(method)} "
-                    f"{_white(path):<55} "
-                    f"{_colour_status(status)}"
-                )
+                msg = f"{_colour_method(method)} {_white(path):<55} {_colour_status(status)}"
 
         # Exception info
         if record.exc_info:
@@ -203,12 +199,7 @@ _req_logger = logging.getLogger("uvicorn.access")
 
 def log_request(method: str, path: str, status: int, duration_ms: float) -> None:
     level = logging.WARNING if status >= 400 else logging.INFO
-    msg = (
-        f"{_colour_method(method)} "
-        f"{_white(path):<55} "
-        f"{_colour_status(status)}  "
-        f"{_dim(f'+{duration_ms:.0f}ms')}"
-    )
+    msg = f"{_colour_method(method)} {_white(path):<55} {_colour_status(status)}  {_dim(f'+{duration_ms:.0f}ms')}"
     # Emit directly so the NestFormatter picks it up via the root handler
     record = logging.LogRecord(
         name="uvicorn.access",
@@ -245,6 +236,4 @@ def configure_logging() -> None:
         uv.propagate = True
 
     # sqlalchemy — only show at DEBUG
-    logging.getLogger("sqlalchemy.engine").setLevel(
-        logging.DEBUG if settings.log_level.upper() == "DEBUG" else logging.WARNING
-    )
+    logging.getLogger("sqlalchemy.engine").setLevel(logging.DEBUG if settings.log_level.upper() == "DEBUG" else logging.WARNING)

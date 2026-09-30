@@ -54,11 +54,7 @@ def _short_id(prefix: str) -> str:
 
 def _ensure_settings(db: Session) -> None:
     for key in HR_FEATURES:
-        if (
-            not db.query(HrFeatureSettingRecord)
-            .filter(HrFeatureSettingRecord.feature_key == key)
-            .first()
-        ):
+        if not db.query(HrFeatureSettingRecord).filter(HrFeatureSettingRecord.feature_key == key).first():
             db.add(
                 HrFeatureSettingRecord(
                     feature_key=key,
@@ -71,11 +67,7 @@ def _ensure_settings(db: Session) -> None:
 
 def _check_feature_access(db: Session, feature_key: str, user_role: str) -> None:
     _ensure_settings(db)
-    rec = (
-        db.query(HrFeatureSettingRecord)
-        .filter(HrFeatureSettingRecord.feature_key == feature_key)
-        .first()
-    )
+    rec = db.query(HrFeatureSettingRecord).filter(HrFeatureSettingRecord.feature_key == feature_key).first()
     if not rec or not rec.enabled:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -118,11 +110,7 @@ def update_hr_setting(
     _: UserRecord = Depends(require_roles(*_ADMIN_ROLES)),
 ) -> HrFeatureSettingOut:
     _ensure_settings(db)
-    rec = (
-        db.query(HrFeatureSettingRecord)
-        .filter(HrFeatureSettingRecord.feature_key == feature_key)
-        .first()
-    )
+    rec = db.query(HrFeatureSettingRecord).filter(HrFeatureSettingRecord.feature_key == feature_key).first()
     if not rec:
         raise HTTPException(status_code=404, detail="Feature setting not found")
     if body.enabled is not None:
@@ -153,10 +141,7 @@ def list_leave(
         q = q.filter(HrLeaveRequestRecord.user_id == user.id)
     elif user_id:
         q = q.filter(HrLeaveRequestRecord.user_id == user_id)
-    return [
-        HrLeaveOut.model_validate(r)
-        for r in q.order_by(HrLeaveRequestRecord.created_at.desc()).all()
-    ]
+    return [HrLeaveOut.model_validate(r) for r in q.order_by(HrLeaveRequestRecord.created_at.desc()).all()]
 
 
 @router.post("/leave", response_model=HrLeaveOut, status_code=201)
@@ -186,19 +171,13 @@ def update_leave(
     user: UserRecord = Depends(get_current_user),
 ) -> HrLeaveOut:
     _check_feature_access(db, "leave", user.role)
-    rec = (
-        db.query(HrLeaveRequestRecord)
-        .filter(HrLeaveRequestRecord.id == leave_id)
-        .first()
-    )
+    rec = db.query(HrLeaveRequestRecord).filter(HrLeaveRequestRecord.id == leave_id).first()
     if not rec:
         raise HTTPException(status_code=404, detail="Leave request not found")
     if user.role not in _ADMIN_ROLES and rec.user_id != user.id:
         raise HTTPException(status_code=403, detail="Access denied")
     if body.status and user.role not in _ADMIN_ROLES:
-        raise HTTPException(
-            status_code=403, detail="Only admins can change leave status"
-        )
+        raise HTTPException(status_code=403, detail="Only admins can change leave status")
     if body.status:
         rec.reviewed_by_user_id = user.id
         rec.reviewed_by_name = user.full_name
@@ -216,11 +195,7 @@ def delete_leave(
     user: UserRecord = Depends(get_current_user),
 ) -> None:
     _check_feature_access(db, "leave", user.role)
-    rec = (
-        db.query(HrLeaveRequestRecord)
-        .filter(HrLeaveRequestRecord.id == leave_id)
-        .first()
-    )
+    rec = db.query(HrLeaveRequestRecord).filter(HrLeaveRequestRecord.id == leave_id).first()
     if not rec:
         raise HTTPException(status_code=404, detail="Leave request not found")
     if user.role not in _ADMIN_ROLES and rec.user_id != user.id:
@@ -244,10 +219,7 @@ def list_timesheets(
         q = q.filter(HrTimesheetRecord.user_id == user.id)
     elif user_id:
         q = q.filter(HrTimesheetRecord.user_id == user_id)
-    return [
-        HrTimesheetOut.model_validate(r)
-        for r in q.order_by(HrTimesheetRecord.week_start.desc()).all()
-    ]
+    return [HrTimesheetOut.model_validate(r) for r in q.order_by(HrTimesheetRecord.week_start.desc()).all()]
 
 
 @router.post("/timesheets", response_model=HrTimesheetOut, status_code=201)
@@ -266,9 +238,7 @@ def create_timesheet(
         .first()
     )
     if existing:
-        raise HTTPException(
-            status_code=409, detail="Timesheet already exists for this week"
-        )
+        raise HTTPException(status_code=409, detail="Timesheet already exists for this week")
     rec = HrTimesheetRecord(
         id=_short_id("TS"),
         user_id=user.id,
@@ -295,9 +265,7 @@ def update_timesheet(
     if user.role not in _ADMIN_ROLES and rec.user_id != user.id:
         raise HTTPException(status_code=403, detail="Access denied")
     if body.status and user.role not in _ADMIN_ROLES:
-        raise HTTPException(
-            status_code=403, detail="Only admins can change timesheet status"
-        )
+        raise HTTPException(status_code=403, detail="Only admins can change timesheet status")
     if body.status == "approved":
         rec.reviewed_by_user_id = user.id
         rec.reviewed_by_name = user.full_name
@@ -323,10 +291,7 @@ def list_supervision(
         q = q.filter(HrSupervisionRecord.supervisee_user_id == user.id)
     elif user_id:
         q = q.filter(HrSupervisionRecord.supervisee_user_id == user_id)
-    return [
-        HrSupervisionOut.model_validate(r)
-        for r in q.order_by(HrSupervisionRecord.session_date.desc()).all()
-    ]
+    return [HrSupervisionOut.model_validate(r) for r in q.order_by(HrSupervisionRecord.session_date.desc()).all()]
 
 
 @router.post("/supervision", response_model=HrSupervisionOut, status_code=201)
@@ -338,16 +303,10 @@ def create_supervision(
     _check_feature_access(db, "supervision", user.role)
     supervisor_name: str | None = None
     if body.supervisor_user_id:
-        sup = (
-            db.query(UserRecord)
-            .filter(UserRecord.id == body.supervisor_user_id)
-            .first()
-        )
+        sup = db.query(UserRecord).filter(UserRecord.id == body.supervisor_user_id).first()
         supervisor_name = sup.full_name if sup else None
     supervisee_name: str | None = None
-    supervisee = (
-        db.query(UserRecord).filter(UserRecord.id == body.supervisee_user_id).first()
-    )
+    supervisee = db.query(UserRecord).filter(UserRecord.id == body.supervisee_user_id).first()
     if supervisee:
         supervisee_name = supervisee.full_name
 
@@ -392,10 +351,7 @@ def list_training(
         q = q.filter(HrTrainingRecord.user_id == user.id)
     elif user_id:
         q = q.filter(HrTrainingRecord.user_id == user_id)
-    return [
-        HrTrainingOut.model_validate(r)
-        for r in q.order_by(HrTrainingRecord.created_at.desc()).all()
-    ]
+    return [HrTrainingOut.model_validate(r) for r in q.order_by(HrTrainingRecord.created_at.desc()).all()]
 
 
 @router.post("/training", response_model=HrTrainingOut, status_code=201)
@@ -412,11 +368,7 @@ def create_training(
         body_data = body.model_dump()
     rec = HrTrainingRecord(
         id=_short_id("TR"),
-        user_name=(
-            db.query(UserRecord).filter(UserRecord.id == body_data["user_id"]).first()
-            or type("", (), {"full_name": ""})()
-        ).full_name
-        or None,
+        user_name=(db.query(UserRecord).filter(UserRecord.id == body_data["user_id"]).first() or type("", (), {"full_name": ""})()).full_name or None,
         created_by_user_id=user.id,
         **body_data,
     )
@@ -471,10 +423,7 @@ def list_incidents(
     q = db.query(HrIncidentRecord)
     if user.role not in _ADMIN_ROLES:
         q = q.filter(HrIncidentRecord.reporter_user_id == user.id)
-    return [
-        HrIncidentOut.model_validate(r)
-        for r in q.order_by(HrIncidentRecord.created_at.desc()).all()
-    ]
+    return [HrIncidentOut.model_validate(r) for r in q.order_by(HrIncidentRecord.created_at.desc()).all()]
 
 
 @router.post("/incidents", response_model=HrIncidentOut, status_code=201)
@@ -519,9 +468,7 @@ def update_incident(
     if user.role not in _ADMIN_ROLES and rec.reporter_user_id != user.id:
         raise HTTPException(status_code=403, detail="Access denied")
     if body.status and user.role not in _ADMIN_ROLES:
-        raise HTTPException(
-            status_code=403, detail="Only admins can change incident status"
-        )
+        raise HTTPException(status_code=403, detail="Only admins can change incident status")
     if body.status and user.role in _ADMIN_ROLES:
         rec.reviewed_by_user_id = user.id
         rec.reviewed_by_name = user.full_name
@@ -545,10 +492,7 @@ def list_contracts(
     q = db.query(HrContractRecord)
     if user_id:
         q = q.filter(HrContractRecord.user_id == user_id)
-    return [
-        HrContractOut.model_validate(r)
-        for r in q.order_by(HrContractRecord.created_at.desc()).all()
-    ]
+    return [HrContractOut.model_validate(r) for r in q.order_by(HrContractRecord.created_at.desc()).all()]
 
 
 @router.post("/contracts", response_model=HrContractOut, status_code=201)

@@ -45,15 +45,9 @@ def list_posts(
 ) -> NewsfeedList:
     if user.role not in STAFF_ROLES:
         raise HTTPException(status_code=403, detail="Not available")
-    all_posts = (
-        db.query(NewsfeedPost)
-        .order_by(NewsfeedPost.pinned.desc(), NewsfeedPost.created_at.desc())
-        .all()
-    )
+    all_posts = db.query(NewsfeedPost).order_by(NewsfeedPost.pinned.desc(), NewsfeedPost.created_at.desc()).all()
     visible = [p for p in all_posts if _can_see(user.role, p.visibility)]
-    return NewsfeedList(
-        items=[NewsfeedPostOut.model_validate(p) for p in visible], total=len(visible)
-    )
+    return NewsfeedList(items=[NewsfeedPostOut.model_validate(p) for p in visible], total=len(visible))
 
 
 @router.post("/", response_model=NewsfeedPostOut, status_code=201)

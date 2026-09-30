@@ -17,9 +17,7 @@ INV_STATUS_VOID = "void"
 class InvoiceRecord(Base):
     __tablename__ = "invoices"
 
-    id = Column(
-        String, primary_key=True, default=lambda: f"INV-{uuid.uuid4().hex[:8].upper()}"
-    )
+    id = Column(String, primary_key=True, default=lambda: f"INV-{uuid.uuid4().hex[:8].upper()}")
     clinic_id = Column(String, nullable=False, index=True)
 
     # Client
@@ -43,15 +41,11 @@ class InvoiceRecord(Base):
     stripe_payment_intent = Column(String, nullable=True)
 
     # Dates
-    invoice_date = Column(
-        DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
-    )
+    invoice_date = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     due_date = Column(DateTime, nullable=True)
     sent_at = Column(DateTime, nullable=True)
     paid_at = Column(DateTime, nullable=True)
-    created_at = Column(
-        DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
-    )
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     created_by = Column(String, nullable=True)
     notes = Column(Text, nullable=True)
 
@@ -73,9 +67,7 @@ class InvoiceRecord(Base):
             "total_gbp": self.total_gbp,
             "status": self.status,
             "stripe_payment_link": self.stripe_payment_link,
-            "invoice_date": self.invoice_date.isoformat()
-            if self.invoice_date
-            else None,
+            "invoice_date": self.invoice_date.isoformat() if self.invoice_date else None,
             "due_date": self.due_date.isoformat() if self.due_date else None,
             "sent_at": self.sent_at.isoformat() if self.sent_at else None,
             "paid_at": self.paid_at.isoformat() if self.paid_at else None,

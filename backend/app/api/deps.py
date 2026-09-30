@@ -96,12 +96,7 @@ def _provision_auth0_user(db: Session, email: str, claims: dict) -> UserRecord:
     falling back to clinical-admin so the user lands in the clinic-admin dashboard.
     Password is set to a random unusable value — login is Auth0-only for these accounts.
     """
-    name = (
-        claims.get("name")
-        or f"{claims.get('given_name', '')} {claims.get('family_name', '')}".strip()
-        or claims.get("nickname")
-        or email.split("@")[0]
-    )
+    name = claims.get("name") or f"{claims.get('given_name', '')} {claims.get('family_name', '')}".strip() or claims.get("nickname") or email.split("@")[0]
 
     role = "clinical-admin"
     for key, value in claims.items():

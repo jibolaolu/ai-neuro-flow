@@ -23,9 +23,7 @@ class PrescriptionRecord(Base):
 
     # Titration
     titration_phase = Column(Integer, default=1)  # 1 = starting dose
-    titration_plan = Column(
-        Text, nullable=True
-    )  # JSON: [{phase, dose_mg, duration_weeks, notes}]
+    titration_plan = Column(Text, nullable=True)  # JSON: [{phase, dose_mg, duration_weeks, notes}]
     titration_notes = Column(Text, nullable=True)
 
     # Dates
@@ -34,9 +32,7 @@ class PrescriptionRecord(Base):
     end_date = Column(Date, nullable=True)
 
     # Status
-    status = Column(
-        String(30), default="active"
-    )  # active | on-hold | stopped | completed
+    status = Column(String(30), default="active")  # active | on-hold | stopped | completed
     stop_reason = Column(Text, nullable=True)
 
     # Shared care
@@ -83,9 +79,7 @@ class PrescriptionRecord(Base):
             "shared_care_requested": self.shared_care_requested,
             "shared_care_gp_name": self.shared_care_gp_name,
             "shared_care_gp_email": self.shared_care_gp_email,
-            "shared_care_sent_at": self.shared_care_sent_at.isoformat()
-            if self.shared_care_sent_at
-            else None,
+            "shared_care_sent_at": self.shared_care_sent_at.isoformat() if self.shared_care_sent_at else None,
             "monitoring_notes": self.monitoring_notes,
             "side_effects": self.side_effects,
             "created_at": self.created_at.isoformat() if self.created_at else None,

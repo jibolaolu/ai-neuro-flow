@@ -35,9 +35,7 @@ def _score_clinician(
     pat = getattr(u, "preferred_assessment_type", None)
     if pat and pathway:
         pathway_lower = pathway.lower()
-        is_child = any(
-            k in pathway_lower for k in ("child", "paed", "adhd child", "autism child")
-        )
+        is_child = any(k in pathway_lower for k in ("child", "paed", "adhd child", "autism child"))
         is_adult = any(k in pathway_lower for k in ("adult",))
         if pat == "both":
             score += 10
@@ -89,9 +87,7 @@ def _score_clinician(
         reasons.append(f"{report_return_rate:.0%} report revision rate — above average")
     else:
         score -= 20
-        reasons.append(
-            f"{report_return_rate:.0%} report revision rate — high, quality review recommended"
-        )
+        reasons.append(f"{report_return_rate:.0%} report revision rate — high, quality review recommended")
 
     if u.role == "senior-clinician":
         score += 5
@@ -109,7 +105,8 @@ def recommend_clinicians(
     clinicians = (
         db.query(UserRecord)
         .filter(
-            UserRecord.role.in_(list(_CLINICIAN_ROLES)), UserRecord.is_active == True  # noqa: E712
+            UserRecord.role.in_(list(_CLINICIAN_ROLES)),
+            UserRecord.is_active == True,  # noqa: E712
         )
         .all()
     )
@@ -120,33 +117,23 @@ def recommend_clinicians(
             db.query(func.count(ClientRecord.id))
             .filter(
                 ClientRecord.assigned_clinician_user_id == u.id,
-                ClientRecord.status.notin_(
-                    ["Complete", "Assessment Complete", "Report Issued"]
-                ),
+                ClientRecord.status.notin_(["Complete", "Assessment Complete", "Report Issued"]),
             )
             .scalar()
         ) or 0
 
-        total_issued = (
-            db.query(func.count(ClientRecord.id))
-            .filter(ClientRecord.assigned_clinician_user_id == u.id)
-            .scalar()
-        ) or 0
+        total_issued = (db.query(func.count(ClientRecord.id)).filter(ClientRecord.assigned_clinician_user_id == u.id).scalar()) or 0
 
         report_return_rate = 0.0
 
-        score, reasons = _score_clinician(
-            u, pathway, active_count, report_return_rate, total_issued
-        )
+        score, reasons = _score_clinician(u, pathway, active_count, report_return_rate, total_issued)
         results.append(
             {
                 "clinician_id": u.id,
                 "full_name": u.full_name,
                 "role": u.role,
                 "email": u.email,
-                "preferred_assessment_type": getattr(
-                    u, "preferred_assessment_type", None
-                ),
+                "preferred_assessment_type": getattr(u, "preferred_assessment_type", None),
                 "active_assessments": active_count,
                 "score": score,
                 "reasons": reasons,

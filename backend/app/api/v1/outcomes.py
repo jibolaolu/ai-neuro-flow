@@ -41,9 +41,7 @@ def list_outcomes(
     return OutcomeList(items=rows, total=len(rows))
 
 
-@router.post(
-    "/{client_id}", response_model=OutcomeOut, status_code=status.HTTP_201_CREATED
-)
+@router.post("/{client_id}", response_model=OutcomeOut, status_code=status.HTTP_201_CREATED)
 def create_outcome(
     client_id: str,
     payload: OutcomeCreate,
@@ -57,11 +55,7 @@ def create_outcome(
     # Optionally generate AI outcome prediction
     ai_prediction: str | None = None
     try:
-        profile = (
-            db.query(ClientProfileRecord)
-            .filter(ClientProfileRecord.client_id == client_id)
-            .first()
-        )
+        profile = db.query(ClientProfileRecord).filter(ClientProfileRecord.client_id == client_id).first()
         scores = json.loads(profile.scores or "{}") if profile else {}
         if scores:
             from app.ai.llm_gateway import llm_gateway
@@ -87,9 +81,7 @@ def create_outcome(
         recorded_by_name=getattr(user, "full_name", None) or user.email,
         final_diagnosis=payload.final_diagnosis,
         treatment_plan=payload.treatment_plan,
-        referrals_made=json.dumps(payload.referrals_made)
-        if payload.referrals_made
-        else None,
+        referrals_made=json.dumps(payload.referrals_made) if payload.referrals_made else None,
         follow_up_date=payload.follow_up_date,
         client_feedback=payload.client_feedback,
         outcome_score=payload.outcome_score,
@@ -109,12 +101,7 @@ def get_latest_outcome(
     user: UserRecord = Depends(require_roles(*_CLINICAL_ROLES)),
 ):
     get_client_for_user(db, user, client_id)
-    outcome = (
-        db.query(OutcomeRecord)
-        .filter(OutcomeRecord.client_id == client_id)
-        .order_by(OutcomeRecord.created_at.desc())
-        .first()
-    )
+    outcome = db.query(OutcomeRecord).filter(OutcomeRecord.client_id == client_id).order_by(OutcomeRecord.created_at.desc()).first()
     if not outcome:
         raise HTTPException(404, "No outcomes recorded for this client")
     return outcome

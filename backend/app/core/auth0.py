@@ -43,9 +43,7 @@ def _get_jwks() -> dict:
     if _JWKS_CACHE and (now - _JWKS_CACHE_AT) < _JWKS_TTL_SECONDS:
         return _JWKS_CACHE
     try:
-        resp = _requests.get(
-            _jwks_url(), headers={"User-Agent": "neuroflow-api"}, timeout=10
-        )
+        resp = _requests.get(_jwks_url(), headers={"User-Agent": "neuroflow-api"}, timeout=10)
         resp.raise_for_status()
         data = resp.json()
     except (_requests.RequestException, json.JSONDecodeError) as exc:

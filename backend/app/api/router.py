@@ -58,22 +58,12 @@ from app.api.v1 import (
 
 api_router = APIRouter()
 api_router.include_router(auth.router, prefix="/auth", tags=["auth"])
-api_router.include_router(
-    organizations.router, prefix="/organizations", tags=["organizations"]
-)
-api_router.include_router(
-    subscriptions.router, prefix="/subscriptions", tags=["subscriptions"]
-)
+api_router.include_router(organizations.router, prefix="/organizations", tags=["organizations"])
+api_router.include_router(subscriptions.router, prefix="/subscriptions", tags=["subscriptions"])
 api_router.include_router(public_booking.router, prefix="/public", tags=["public"])
-api_router.include_router(
-    availability.router, prefix="/availability", tags=["availability"]
-)
-api_router.include_router(
-    assignments.router, prefix="/assignments", tags=["assignments"]
-)
-api_router.include_router(
-    clinician_finance.router, prefix="/clinician-finance", tags=["clinician-finance"]
-)
+api_router.include_router(availability.router, prefix="/availability", tags=["availability"])
+api_router.include_router(assignments.router, prefix="/assignments", tags=["assignments"])
+api_router.include_router(clinician_finance.router, prefix="/clinician-finance", tags=["clinician-finance"])
 api_router.include_router(team.router, prefix="/team", tags=["team"])
 api_router.include_router(bookings.router, prefix="/bookings", tags=["bookings"])
 api_router.include_router(clients.router, prefix="/clients", tags=["clients"])
@@ -87,18 +77,12 @@ api_router.include_router(intake.router, prefix="/intake", tags=["intake"])
 
 # Demo / dev-only routes — not mounted in production
 if not settings.is_production():
-    api_router.include_router(
-        assessments.router, prefix="/assessments", tags=["assessments"]
-    )
+    api_router.include_router(assessments.router, prefix="/assessments", tags=["assessments"])
     api_router.include_router(billing.router, prefix="/billing", tags=["billing"])
     api_router.include_router(checkout.router, prefix="/checkout", tags=["checkout"])
-api_router.include_router(
-    clinical_reports.router, prefix="/clinical-reports", tags=["clinical-reports"]
-)
+api_router.include_router(clinical_reports.router, prefix="/clinical-reports", tags=["clinical-reports"])
 api_router.include_router(consent.router, prefix="/consent", tags=["consent"])
-api_router.include_router(
-    support_tickets.router, prefix="/support-tickets", tags=["support-tickets"]
-)
+api_router.include_router(support_tickets.router, prefix="/support-tickets", tags=["support-tickets"])
 api_router.include_router(ai_features.router, prefix="/ai", tags=["ai"])
 api_router.include_router(ai_jobs.router, prefix="/ai-jobs", tags=["ai-jobs"])
 api_router.include_router(outcomes.router, prefix="/outcomes", tags=["outcomes"])
@@ -111,16 +95,12 @@ api_router.include_router(triage.router, prefix="/triage", tags=["triage"])
 api_router.include_router(fhir.router, prefix="/fhir", tags=["fhir"])
 api_router.include_router(compliance.router, prefix="/compliance", tags=["compliance"])
 api_router.include_router(push.router, prefix="/push", tags=["push"])
-api_router.include_router(
-    prescriptions.router, prefix="/prescriptions", tags=["prescriptions"]
-)
+api_router.include_router(prescriptions.router, prefix="/prescriptions", tags=["prescriptions"])
 api_router.include_router(ig_workflow.router, prefix="/ig", tags=["ig-workflow"])
 api_router.include_router(emis_connect.router, prefix="/nhs", tags=["nhs-emis"])
 api_router.include_router(telehealth.router, prefix="/telehealth", tags=["telehealth"])
 # ── New features ported from NeuroAccess ──────────────────────────────────────
-api_router.include_router(
-    notifications.router, prefix="/notifications", tags=["notifications"]
-)
+api_router.include_router(notifications.router, prefix="/notifications", tags=["notifications"])
 api_router.include_router(audit_log.router, prefix="/audit-log", tags=["audit-log"])
 api_router.include_router(waitlist.router, prefix="/waitlist", tags=["waitlist"])
 api_router.include_router(messages.router, prefix="/messages", tags=["messages"])
@@ -129,20 +109,10 @@ api_router.include_router(surveys.router, prefix="/surveys", tags=["surveys"])
 api_router.include_router(policies.router, prefix="/policies", tags=["policies"])
 api_router.include_router(hr.router, prefix="/hr", tags=["hr"])
 api_router.include_router(ai_matrix.router, prefix="/ai-matrix", tags=["ai-matrix"])
-api_router.include_router(
-    email_triage.router, prefix="/email-triage", tags=["email-triage"]
-)
-api_router.include_router(
-    system_settings.router, prefix="/system-settings", tags=["system-settings"]
-)
-api_router.include_router(
-    client_comms.router, prefix="/client-comms", tags=["client-comms"]
-)
-api_router.include_router(
-    client_comms.public_router, prefix="/public", tags=["client-comms-public"]
-)
+api_router.include_router(email_triage.router, prefix="/email-triage", tags=["email-triage"])
+api_router.include_router(system_settings.router, prefix="/system-settings", tags=["system-settings"])
+api_router.include_router(client_comms.router, prefix="/client-comms", tags=["client-comms"])
+api_router.include_router(client_comms.public_router, prefix="/public", tags=["client-comms-public"])
 api_router.include_router(second_opinion.router, tags=["second-opinion"])
 api_router.include_router(portal_auth.staff_router, tags=["portal-auth"])
-api_router.include_router(
-    portal_auth.public_router, prefix="/public", tags=["portal-auth-public"]
-)
+api_router.include_router(portal_auth.public_router, prefix="/public", tags=["portal-auth-public"])

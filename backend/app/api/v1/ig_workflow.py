@@ -145,9 +145,7 @@ def create_request(
 ):
     cid = effective_clinic_id(user)
     if body.request_type not in REQUEST_TYPES:
-        raise HTTPException(
-            status_code=400, detail=f"Invalid request_type. Valid: {REQUEST_TYPES}"
-        )
+        raise HTTPException(status_code=400, detail=f"Invalid request_type. Valid: {REQUEST_TYPES}")
     req = CaldicottRequest(
         clinic_id=cid,
         requester_id=user.id,
@@ -205,9 +203,7 @@ def decide(
     if not req:
         raise HTTPException(status_code=404, detail="Request not found")
     if body.decision not in ("approved", "rejected", "deferred"):
-        raise HTTPException(
-            status_code=400, detail="decision must be approved | rejected | deferred"
-        )
+        raise HTTPException(status_code=400, detail="decision must be approved | rejected | deferred")
     req.status = body.decision
     req.decision_notes = body.notes
     req.decided_at = datetime.utcnow()
@@ -321,9 +317,7 @@ def submit_dspt(
     cid = effective_clinic_id(user)
     row = db.query(DsptChecklist).filter(DsptChecklist.clinic_id == cid).first()
     if not row:
-        raise HTTPException(
-            status_code=400, detail="No DSPT checklist found — complete standards first"
-        )
+        raise HTTPException(status_code=400, detail="No DSPT checklist found — complete standards first")
     row.submitted_at = datetime.utcnow()
     row.updated_at = datetime.utcnow()
     db.commit()

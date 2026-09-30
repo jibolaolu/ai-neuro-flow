@@ -82,9 +82,7 @@ class IntakeResult:
 # ── Helper: pathway → form set ────────────────────────────────────────────────
 
 
-def _forms_for_pathway(
-    age_group: str, gp_email: str | None, teacher_email: str | None
-) -> list[tuple[str, str | None]]:
+def _forms_for_pathway(age_group: str, gp_email: str | None, teacher_email: str | None) -> list[tuple[str, str | None]]:
     """
     Return a list of (form_type, recipient_email_or_None) for a given age group.
     recipient_email=None means 'send to client'.
@@ -207,11 +205,7 @@ def run_intake_pipeline(db: Session, payload: IntakePayload) -> IntakeResult:
     )
     if existing:
         # Return the existing client without re-sending anything
-        dummy_inv = (
-            db.query(InvoiceRecord)
-            .filter(InvoiceRecord.client_id == existing.id)
-            .first()
-        )
+        dummy_inv = db.query(InvoiceRecord).filter(InvoiceRecord.client_id == existing.id).first()
         return IntakeResult(
             client=existing,
             invoice=dummy_inv or _make_stub_invoice(existing),
@@ -254,9 +248,7 @@ def run_intake_pipeline(db: Session, payload: IntakePayload) -> IntakeResult:
         client_name=client.full_name,
         client_email=client.email,
         invoice_number=inv_number,
-        description=payload.paid_service_name
-        or payload.pathway
-        or "Assessment service",
+        description=payload.paid_service_name or payload.pathway or "Assessment service",
         line_items_json=json.dumps(
             [
                 {
@@ -290,14 +282,10 @@ def run_intake_pipeline(db: Session, payload: IntakePayload) -> IntakeResult:
     forms_sent.append(FORM_BASIC_INTAKE)
 
     # ── 5. Pathway questionnaire + GP / teacher forms ─────────────────────────
-    for form_type, third_party_email in _forms_for_pathway(
-        payload.age_group, payload.gp_email, payload.teacher_email
-    ):
+    for form_type, third_party_email in _forms_for_pathway(payload.age_group, payload.gp_email, payload.teacher_email):
         if third_party_email:
             # Third-party (GP / teacher)
-            third_party_name = (
-                payload.gp_name if "gp" in form_type else payload.teacher_name
-            ) or third_party_email
+            third_party_name = (payload.gp_name if "gp" in form_type else payload.teacher_name) or third_party_email
             _dispatch_form_record(
                 db=db,
                 client=client,
@@ -308,11 +296,7 @@ def run_intake_pipeline(db: Session, payload: IntakePayload) -> IntakeResult:
             )
         else:
             # Client self-report / parent form
-            recipient_name = (
-                payload.child_name
-                if payload.child_name and payload.age_group == "Child"
-                else client.full_name
-            )
+            recipient_name = payload.child_name if payload.child_name and payload.age_group == "Child" else client.full_name
             _dispatch_form_record(
                 db=db,
                 client=client,

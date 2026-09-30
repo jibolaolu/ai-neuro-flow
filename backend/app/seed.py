@@ -197,9 +197,7 @@ TEST_USERS = [
 ]
 
 
-def _ensure_org(
-    db, org_id: str, name: str, slug: str, status: str = SUB_TRIALING
-) -> None:
+def _ensure_org(db, org_id: str, name: str, slug: str, status: str = SUB_TRIALING) -> None:
     if db.query(OrganizationRecord).filter(OrganizationRecord.id == org_id).first():
         return
     trial_end = datetime.now(timezone.utc) + timedelta(days=settings.signup_trial_days)
@@ -250,9 +248,7 @@ def seed() -> None:
     users_skipped = []
 
     for data in TEST_USERS:
-        existing = (
-            db.query(UserRecord).filter(UserRecord.email == data["email"]).first()
-        )
+        existing = db.query(UserRecord).filter(UserRecord.email == data["email"]).first()
         if existing:
             users_skipped.append(data["email"])
             continue
@@ -271,10 +267,7 @@ def seed() -> None:
 
     db.commit()
 
-    email_to_id = {
-        u.email: u.id
-        for u in db.query(UserRecord).filter(UserRecord.email.isnot(None)).all()
-    }
+    email_to_id = {u.email: u.id for u in db.query(UserRecord).filter(UserRecord.email.isnot(None)).all()}
 
     clients_seeded = []
     clients_skipped = []
@@ -324,20 +317,12 @@ def seed() -> None:
 
     print("\nCore / named users  (password varies — see below):")
     for u in TEST_USERS:
-        if u["email"] not in [
-            pu["email"]
-            for pu in TEST_USERS
-            if pu["email"].split(".")[0] in ("starter", "professional", "enterprise")
-        ]:
+        if u["email"] not in [pu["email"] for pu in TEST_USERS if pu["email"].split(".")[0] in ("starter", "professional", "enterprise")]:
             mark = "new" if u["email"] in seeded_emails else "exists"
             print(f"  [{u['role']:22s}]  {u['email']:40s}  {u['password']}  ({mark})")
 
     print("\nPer-plan accounts  (password: NeuroFlowTest01!):")
-    plan_emails = [
-        u["email"]
-        for u in TEST_USERS
-        if u["email"].split(".")[0] in ("starter", "professional", "enterprise")
-    ]
+    plan_emails = [u["email"] for u in TEST_USERS if u["email"].split(".")[0] in ("starter", "professional", "enterprise")]
     for u in TEST_USERS:
         if u["email"] in plan_emails:
             mark = "new" if u["email"] in seeded_emails else "exists"

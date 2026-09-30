@@ -44,11 +44,7 @@ def check_overdue_forms() -> None:
         platform_url = getattr(settings, "platform_base_url", "http://localhost:3004")
 
         for token_record in overdue:
-            client = (
-                db.query(ClientRecord)
-                .filter(ClientRecord.id == token_record.client_id)
-                .first()
-            )
+            client = db.query(ClientRecord).filter(ClientRecord.id == token_record.client_id).first()
             if not client:
                 continue
 
@@ -56,11 +52,7 @@ def check_overdue_forms() -> None:
             sent_at = token_record.sent_at
             if sent_at and sent_at.tzinfo is None:
                 sent_at = sent_at.replace(tzinfo=timezone.utc)
-            days_since = (
-                (datetime.now(timezone.utc) - sent_at).days
-                if sent_at
-                else REMINDER_AFTER_DAYS
-            )
+            days_since = (datetime.now(timezone.utc) - sent_at).days if sent_at else REMINDER_AFTER_DAYS
             reminder_count = 1 if token_record.reminder_sent_at else 0
 
             action = "send_reminder"  # default
@@ -81,9 +73,7 @@ def check_overdue_forms() -> None:
                     pred.get("completion_probability", 0),
                 )
             except Exception as ai_exc:
-                logger.debug(
-                    "AI prediction skipped: %s — using default reminder", ai_exc
-                )
+                logger.debug("AI prediction skipped: %s — using default reminder", ai_exc)
 
             if action == "wait":
                 logger.info(
@@ -158,9 +148,7 @@ def dispatch_follow_up_forms() -> None:
 
                 from app.core.config import settings
 
-                platform_url = getattr(
-                    settings, "platform_base_url", "http://localhost:3004"
-                )
+                platform_url = getattr(settings, "platform_base_url", "http://localhost:3004")
                 form_url = f"{platform_url}/forms/{token_str}"
 
                 import app.services.email as email_svc_mod

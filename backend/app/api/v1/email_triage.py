@@ -83,12 +83,6 @@ def triage_stats(
 ):
     _require_admin(user)
     total = db.query(EmailTriageLog).count()
-    pending = (
-        db.query(EmailTriageLog).filter(EmailTriageLog.status == "pending").count()
-    )
-    urgent = (
-        db.query(EmailTriageLog)
-        .filter(EmailTriageLog.urgency >= 7, EmailTriageLog.status == "pending")
-        .count()
-    )
+    pending = db.query(EmailTriageLog).filter(EmailTriageLog.status == "pending").count()
+    urgent = db.query(EmailTriageLog).filter(EmailTriageLog.urgency >= 7, EmailTriageLog.status == "pending").count()
     return {"total": total, "pending": pending, "urgent": urgent}

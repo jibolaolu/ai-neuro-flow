@@ -30,14 +30,10 @@ def upgrade() -> None:
             sa.Column("id", sa.String, primary_key=True),
             sa.Column("clinic_id", sa.String, nullable=False, index=True),
             sa.Column("label", sa.String, nullable=False),
-            sa.Column(
-                "payload_format", sa.String, nullable=False, server_default="generic"
-            ),
+            sa.Column("payload_format", sa.String, nullable=False, server_default="generic"),
             sa.Column("signing_secret", sa.String, nullable=False),
             sa.Column("active", sa.Boolean, nullable=False, server_default="1"),
-            sa.Column(
-                "events_received", sa.Integer, nullable=False, server_default="0"
-            ),
+            sa.Column("events_received", sa.Integer, nullable=False, server_default="0"),
             sa.Column("last_event_at", sa.DateTime, nullable=True),
             sa.Column("created_at", sa.DateTime, nullable=False),
         )

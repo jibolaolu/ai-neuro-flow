@@ -229,14 +229,10 @@ async def receive_payment_webhook(
 
         data = WooCommercePayload(**json.loads(body))
     except Exception as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
-        )
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
 
     billing = data.billing
-    client_name = (
-        f"{billing.get('first_name', 'Unknown')} {billing.get('last_name', '')}".strip()
-    )
+    client_name = f"{billing.get('first_name', 'Unknown')} {billing.get('last_name', '')}".strip()
     client_email = billing.get("email", "")
     pathway, age_group = detect_pathway(data.line_items)
 
@@ -250,8 +246,7 @@ async def receive_payment_webhook(
 
     logger = logging.getLogger(__name__)
     logger.info(
-        "Payment webhook received | order=%s client=%s email=%s pathway=%s "
-        "age_group=%s amount=%s%s client_id=%s assessment_id=%s",
+        "Payment webhook received | order=%s client=%s email=%s pathway=%s age_group=%s amount=%s%s client_id=%s assessment_id=%s",
         data.id,
         client_name,
         client_email,
@@ -272,9 +267,7 @@ async def receive_payment_webhook(
     )
 
 
-@router.post(
-    "/payment/test", response_model=WebhookResult, status_code=status.HTTP_200_OK
-)
+@router.post("/payment/test", response_model=WebhookResult, status_code=status.HTTP_200_OK)
 def test_payment_webhook() -> WebhookResult:
     """Fire a test payload without needing WordPress - useful during setup."""
     require_non_production()
@@ -305,9 +298,7 @@ def _verify_stripe_signature(body: bytes, sig_header: str | None, secret: str) -
         return False
 
 
-def _stripe_pathway_and_age(
-    session: dict, metadata: dict
-) -> tuple[str, str, str | None, str | None]:
+def _stripe_pathway_and_age(session: dict, metadata: dict) -> tuple[str, str, str | None, str | None]:
     """
     Resolve (pathway, age_group, child_name, child_dob) from the Stripe checkout context.
 
@@ -350,9 +341,7 @@ def _stripe_pathway_and_age(
         return "Adult ADHD", "Adult", None, None
 
     merged = " · ".join(chunks)
-    pathway, age_from_pathway = detect_pathway(
-        [LineItem(name=merged, quantity=1, total="0")]
-    )
+    pathway, age_from_pathway = detect_pathway([LineItem(name=merged, quantity=1, total="0")])
 
     # ── Child DOB → precise age group (highest priority) ──────────────────────
     child_dob: str | None = str(metadata.get("child_dob") or "").strip() or None
@@ -425,9 +414,7 @@ async def receive_stripe_webhook(
     body = await request.body()
 
     if settings.environment != "development":
-        if not _verify_stripe_signature(
-            body, stripe_signature, settings.stripe_webhook_secret
-        ):
+        if not _verify_stripe_signature(body, stripe_signature, settings.stripe_webhook_secret):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid Stripe webhook signature",
@@ -436,9 +423,7 @@ async def receive_stripe_webhook(
     try:
         event = json.loads(body)
     except Exception as exc:
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
-        )
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
 
     if event.get("type") != "checkout.session.completed":
         return WebhookResult(
@@ -465,9 +450,7 @@ async def receive_stripe_webhook(
     pending_ref: str | None = session.get("client_reference_id") or None
     pending: PendingCheckout | None = None
     if pending_ref and str(pending_ref).startswith("PC-"):
-        pending = (
-            db.query(PendingCheckout).filter(PendingCheckout.id == pending_ref).first()
-        )
+        pending = db.query(PendingCheckout).filter(PendingCheckout.id == pending_ref).first()
 
     if pending:
         # Prefer form-captured email and name over Stripe's (Stripe only knows the payer)
@@ -494,16 +477,10 @@ async def receive_stripe_webhook(
             pending.child_dob or "-",
         )
 
-    pathway, age_group, child_name, child_dob = _stripe_pathway_and_age(
-        session, metadata
-    )
+    pathway, age_group, child_name, child_dob = _stripe_pathway_and_age(session, metadata)
 
     # Deduplicate by Stripe session ID
-    existing = (
-        db.query(ClientRecord)
-        .filter(ClientRecord.stripe_session_id == session_id)
-        .first()
-    )
+    existing = db.query(ClientRecord).filter(ClientRecord.stripe_session_id == session_id).first()
     if existing:
         logger.info(
             "Stripe webhook duplicate | session=%s already recorded as client=%s",
@@ -546,8 +523,7 @@ async def receive_stripe_webhook(
     db.refresh(client)
 
     logger.info(
-        "Stripe payment saved | session=%s client=%s email=%s pathway=%s "
-        "age_group=%s child_name=%s child_dob=%s service=%s amount=%s%s client_id=%s assessment_id=%s",
+        "Stripe payment saved | session=%s client=%s email=%s pathway=%s age_group=%s child_name=%s child_dob=%s service=%s amount=%s%s client_id=%s assessment_id=%s",
         session_id,
         client_name,
         client_email,
@@ -610,9 +586,7 @@ async def receive_stripe_webhook(
     )
 
 
-@router.post(
-    "/stripe/test", response_model=WebhookResult, status_code=status.HTTP_200_OK
-)
+@router.post("/stripe/test", response_model=WebhookResult, status_code=status.HTTP_200_OK)
 def test_stripe_webhook() -> WebhookResult:
     """Fire a mock Stripe checkout.session.completed without real payment."""
     require_non_production()

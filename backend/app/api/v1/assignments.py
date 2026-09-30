@@ -26,13 +26,9 @@ def my_assignments(
         None,
         description="Filter by registration date (YYYY-MM-DD), end inclusive (UTC)",
     ),
-    status: str | None = Query(
-        None, description="Case-insensitive substring match on client.status"
-    ),
+    status: str | None = Query(None, description="Case-insensitive substring match on client.status"),
 ) -> dict:
-    q = clients_query(db, user).filter(
-        ClientRecord.assigned_clinician_user_id == user.id
-    )
+    q = clients_query(db, user).filter(ClientRecord.assigned_clinician_user_id == user.id)
 
     if status and status.strip():
         q = q.filter(ClientRecord.status.ilike(f"%{status.strip()}%"))
@@ -43,9 +39,7 @@ def my_assignments(
         q = q.filter(ClientRecord.created_at >= start)
     if date_to:
         dt = date_cls.fromisoformat(date_to)
-        end = datetime(
-            dt.year, dt.month, dt.day, 23, 59, 59, 999999, tzinfo=timezone.utc
-        )
+        end = datetime(dt.year, dt.month, dt.day, 23, 59, 59, 999999, tzinfo=timezone.utc)
         q = q.filter(ClientRecord.created_at <= end)
 
     rows = q.order_by(ClientRecord.created_at.desc()).all()

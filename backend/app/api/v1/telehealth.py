@@ -35,9 +35,7 @@ async def _create_whereby_room(room_name: str, duration_minutes: int) -> dict | 
     try:
         import httpx
 
-        end_date = (
-            datetime.now(timezone.utc) + timedelta(minutes=duration_minutes)
-        ).strftime("%Y-%m-%dT%H:%M:%SZ")
+        end_date = (datetime.now(timezone.utc) + timedelta(minutes=duration_minutes)).strftime("%Y-%m-%dT%H:%M:%SZ")
         async with httpx.AsyncClient() as client:
             r = await client.post(
                 f"{_WHEREBY_API_URL}/meetings",
@@ -64,11 +62,7 @@ async def _create_whereby_room(room_name: str, duration_minutes: int) -> dict | 
 async def create_or_get_room(
     body: RoomCreateBody,
     db: Session = Depends(get_db),
-    user: UserRecord = Depends(
-        require_roles(
-            "clinician", "senior-clinician", "clinical-admin", "super-platform-admin"
-        )
-    ),
+    user: UserRecord = Depends(require_roles("clinician", "senior-clinician", "clinical-admin", "super-platform-admin")),
 ) -> dict:
     """Create or retrieve a Whereby video room for a client session."""
     client = get_client_for_user(db, user, body.client_id)
@@ -106,11 +100,7 @@ async def create_or_get_room(
 async def get_room(
     client_id: str,
     db: Session = Depends(get_db),
-    user: UserRecord = Depends(
-        require_roles(
-            "clinician", "senior-clinician", "clinical-admin", "super-platform-admin"
-        )
-    ),
+    user: UserRecord = Depends(require_roles("clinician", "senior-clinician", "clinical-admin", "super-platform-admin")),
 ) -> dict:
     """Get the video room for a client (creates if needed)."""
     client = get_client_for_user(db, user, client_id)

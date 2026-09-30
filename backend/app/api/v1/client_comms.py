@@ -27,32 +27,18 @@ _STAFF_ROLES = (
 )
 
 
-def _get_client_by_token(
-    token: str, db: Session, request: Request | None = None
-) -> ClientRecord:
+def _get_client_by_token(token: str, db: Session, request: Request | None = None) -> ClientRecord:
     if request:
         session_val = request.cookies.get("portal_session")
         if session_val:
-            c = (
-                db.query(ClientRecord)
-                .filter(ClientRecord.portal_session_token == session_val)
-                .first()
-            )
+            c = db.query(ClientRecord).filter(ClientRecord.portal_session_token == session_val).first()
             client = c if c else None
         else:
             client = None
         if client is None:
-            client = (
-                db.query(ClientRecord)
-                .filter(ClientRecord.booking_access_token == token)
-                .first()
-            )
+            client = db.query(ClientRecord).filter(ClientRecord.booking_access_token == token).first()
     else:
-        client = (
-            db.query(ClientRecord)
-            .filter(ClientRecord.booking_access_token == token)
-            .first()
-        )
+        client = db.query(ClientRecord).filter(ClientRecord.booking_access_token == token).first()
     if not client:
         raise HTTPException(status_code=404, detail="Invalid or expired portal token")
     return client
@@ -64,19 +50,10 @@ def _msgs_out(msgs: list[ClientPortalMessage]) -> ClientPortalMessageList:
     return ClientPortalMessageList(items=items, total=len(items), unread=unread)
 
 
-@public_router.get(
-    "/client-comms/{token}/messages", response_model=ClientPortalMessageList
-)
-def client_list_messages(
-    token: str, request: Request, db: Session = Depends(get_db)
-) -> ClientPortalMessageList:
+@public_router.get("/client-comms/{token}/messages", response_model=ClientPortalMessageList)
+def client_list_messages(token: str, request: Request, db: Session = Depends(get_db)) -> ClientPortalMessageList:
     client = _get_client_by_token(token, db, request)
-    msgs = (
-        db.query(ClientPortalMessage)
-        .filter(ClientPortalMessage.client_id == client.id)
-        .order_by(ClientPortalMessage.created_at.asc())
-        .all()
-    )
+    msgs = db.query(ClientPortalMessage).filter(ClientPortalMessage.client_id == client.id).order_by(ClientPortalMessage.created_at.asc()).all()
     for m in msgs:
         if m.direction == "clinic_to_client" and not m.is_read:
             m.is_read = True
@@ -118,12 +95,7 @@ def staff_list_messages(
 ) -> ClientPortalMessageList:
     if user.role not in _STAFF_ROLES:
         raise HTTPException(status_code=403, detail="Access denied")
-    msgs = (
-        db.query(ClientPortalMessage)
-        .filter(ClientPortalMessage.client_id == client_id)
-        .order_by(ClientPortalMessage.created_at.asc())
-        .all()
-    )
+    msgs = db.query(ClientPortalMessage).filter(ClientPortalMessage.client_id == client_id).order_by(ClientPortalMessage.created_at.asc()).all()
     for m in msgs:
         if m.direction == "client_to_clinic" and not m.is_read:
             m.is_read = True
@@ -131,9 +103,7 @@ def staff_list_messages(
     return _msgs_out(msgs)
 
 
-@router.post(
-    "/{client_id}/messages", response_model=ClientPortalMessageOut, status_code=201
-)
+@router.post("/{client_id}/messages", response_model=ClientPortalMessageOut, status_code=201)
 def staff_send_message(
     client_id: str,
     body: ClientPortalMessageSend,

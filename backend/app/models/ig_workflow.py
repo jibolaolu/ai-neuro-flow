@@ -16,9 +16,7 @@ class CaldicottRequest(Base):
     guardian_id = Column(Integer, nullable=True)  # assigned Caldicott guardian
 
     # Request details
-    request_type = Column(
-        String(60), nullable=False
-    )  # data-share | subject-access | third-party | research
+    request_type = Column(String(60), nullable=False)  # data-share | subject-access | third-party | research
     purpose = Column(Text, nullable=False)
     data_described = Column(Text, nullable=False)  # what data will be shared
     recipients = Column(Text, nullable=True)  # who receives the data
@@ -32,9 +30,7 @@ class CaldicottRequest(Base):
     minimisation_notes = Column(Text, nullable=True)
 
     # Decision
-    status = Column(
-        String(30), default="pending"
-    )  # pending | approved | rejected | deferred
+    status = Column(String(30), default="pending")  # pending | approved | rejected | deferred
     decision_notes = Column(Text, nullable=True)
     decided_at = Column(DateTime, nullable=True)
 
@@ -70,9 +66,7 @@ class CaldicottRequest(Base):
             "status": self.status,
             "decision_notes": self.decision_notes,
             "decided_at": self.decided_at.isoformat() if self.decided_at else None,
-            "dspt_evidence": json.loads(self.dspt_evidence)
-            if self.dspt_evidence
-            else [],
+            "dspt_evidence": json.loads(self.dspt_evidence) if self.dspt_evidence else [],
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 
@@ -88,9 +82,7 @@ class DsptChecklist(Base):
 
     # 10 mandatory DSPT standards (stored as JSON completion status)
     standards = Column(Text, nullable=True)  # JSON {std_id: {status, evidence, notes}}
-    overall_status = Column(
-        String(30), default="not-started"
-    )  # not-started | in-progress | standards-met | exceeded
+    overall_status = Column(String(30), default="not-started")  # not-started | in-progress | standards-met | exceeded
 
     submitted_at = Column(DateTime, nullable=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -108,7 +100,5 @@ class DsptChecklist(Base):
             "year": self.year,
             "standards": stds,
             "overall_status": self.overall_status,
-            "submitted_at": self.submitted_at.isoformat()
-            if self.submitted_at
-            else None,
+            "submitted_at": self.submitted_at.isoformat() if self.submitted_at else None,
         }

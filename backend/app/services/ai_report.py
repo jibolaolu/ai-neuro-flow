@@ -22,9 +22,7 @@ _SYSTEM_PROMPT = (
 )
 
 
-def _build_prompt(
-    client_name: str, age: int | None, scores: dict, pathway: str = "adult"
-) -> str:
+def _build_prompt(client_name: str, age: int | None, scores: dict, pathway: str = "adult") -> str:
     asrs = scores.get("asrs", {})
     phq9 = scores.get("phq9", {})
     gad7 = scores.get("gad7", {})
@@ -60,24 +58,16 @@ def _build_prompt(
         ]
 
     if gad7:
-        lines.append(
-            f"GAD-7 (Anxiety): {gad7.get('total')}/21 - {gad7.get('severity')}"
-        )
+        lines.append(f"GAD-7 (Anxiety): {gad7.get('total')}/21 - {gad7.get('severity')}")
 
     if wfirs:
-        lines.append(
-            f"WFIRS-S Overall mean: {wfirs.get('overall_mean')}/3.0 - {wfirs.get('impairment_level')} functional impairment"
-        )
+        lines.append(f"WFIRS-S Overall mean: {wfirs.get('overall_mean')}/3.0 - {wfirs.get('impairment_level')} functional impairment")
         for d in wfirs.get("domains") or []:
-            lines.append(
-                f"  WFIRS {d['domain']}: mean {d['mean']}, elevated items {d['elevated_count']}/{d['items_total']}"
-            )
+            lines.append(f"  WFIRS {d['domain']}: mean {d['mean']}, elevated items {d['elevated_count']}/{d['items_total']}")
 
     # ── Child / adolescent instruments ───────────────────────────────────────
     if sdq:
-        version_label = (
-            "SDQ Self-Report" if sdq.get("version") == "self" else "SDQ Parent-Report"
-        )
+        version_label = "SDQ Self-Report" if sdq.get("version") == "self" else "SDQ Parent-Report"
         lines += [
             f"{version_label} Total Difficulties: {sdq.get('total_difficulties')}/40 - {sdq.get('total_band')}",
             f"  Emotional symptoms:        {sdq.get('emotional_symptoms')}/10 ({sdq.get('emotional_band')})",
@@ -106,8 +96,7 @@ def _build_prompt(
     lines += [
         "",
         "TASK:",
-        "You are a specialist ADHD/Autism clinical assistant producing a pre-assessment overview for a "
-        "senior clinician. Based solely on the scores above, produce:",
+        "You are a specialist ADHD/Autism clinical assistant producing a pre-assessment overview for a senior clinician. Based solely on the scores above, produce:",
         "",
         "1. diagnostic_impression: An object with:",
         "   - likelihood: one of LOW / MODERATE / HIGH / VERY HIGH",
@@ -118,15 +107,12 @@ def _build_prompt(
         "",
         "2. clinical_summary: 2-3 sentences describing the overall clinical picture",
         "",
-        "3. recommendations: A list of 4-7 specific recommendations for the assessing clinician "
-        "(what to explore, screen for, or consider)",
+        "3. recommendations: A list of 4-7 specific recommendations for the assessing clinician (what to explore, screen for, or consider)",
         "",
-        "4. flags: List any urgent flags (e.g. suicidal ideation, severe conduct problems, "
-        "safeguarding, LAC status). Empty list if none.",
+        "4. flags: List any urgent flags (e.g. suicidal ideation, severe conduct problems, safeguarding, LAC status). Empty list if none.",
         "",
         "Respond with valid JSON only, exactly this structure:",
-        '{"diagnostic_impression": {"likelihood": "...", "presentation": "...", "reasoning": "..."},'
-        ' "clinical_summary": "...", "recommendations": ["...", "..."], "flags": []}',
+        '{"diagnostic_impression": {"likelihood": "...", "presentation": "...", "reasoning": "..."}, "clinical_summary": "...", "recommendations": ["...", "..."], "flags": []}',
         "",
         "Important: This is a screening aid only. Do not make a diagnosis. The clinician will verify everything.",
     ]
@@ -159,12 +145,8 @@ def generate_ai_report(
         import anthropic  # type: ignore
         from app.core.config import settings
 
-        api_key = (
-            settings.anthropic_api_key or None
-        )  # None → SDK reads ANTHROPIC_API_KEY env var
-        claude = (
-            anthropic.Anthropic(api_key=api_key) if api_key else anthropic.Anthropic()
-        )
+        api_key = settings.anthropic_api_key or None  # None → SDK reads ANTHROPIC_API_KEY env var
+        claude = anthropic.Anthropic(api_key=api_key) if api_key else anthropic.Anthropic()
 
         prompt = _build_prompt(client_name, age, scores, pathway=pathway)
         model = settings.anthropic_model

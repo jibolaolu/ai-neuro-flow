@@ -126,11 +126,7 @@ def _send_invoice_email(invoice: InvoiceRecord, db: Session | None = None) -> No
                 f"Invoice: {invoice.invoice_number}\n"
                 f"Description: {invoice.description}\n"
                 f"Amount: £{invoice.amount_gbp:.2f}"
-                + (
-                    f" + VAT (20%) = £{invoice.total_gbp:.2f}"
-                    if invoice.vat_rate
-                    else ""
-                )
+                + (f" + VAT (20%) = £{invoice.total_gbp:.2f}" if invoice.vat_rate else "")
                 + due_str
                 + payment_section
                 + (f"\n\nNotes: {invoice.notes}" if invoice.notes else "")
@@ -217,9 +213,7 @@ def create_invoice(
         client_email=body.client_email,
         invoice_number=invoice_number,
         description=body.description,
-        line_items_json=json.dumps([li.model_dump() for li in body.line_items])
-        if body.line_items
-        else None,
+        line_items_json=json.dumps([li.model_dump() for li in body.line_items]) if body.line_items else None,
         amount_gbp=amount,
         vat_rate=body.vat_rate,
         invoice_date=now,
@@ -322,9 +316,7 @@ def void_invoice(
     record = _get_or_404(db, invoice_id)
     _check_clinic(record, user)
     if record.status == INV_STATUS_PAID:
-        raise HTTPException(
-            400, detail="Cannot void a paid invoice. Use a credit note instead."
-        )
+        raise HTTPException(400, detail="Cannot void a paid invoice. Use a credit note instead.")
 
     record.status = INV_STATUS_VOID
     db.commit()

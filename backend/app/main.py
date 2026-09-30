@@ -29,11 +29,7 @@ app = FastAPI(
 )
 
 _cors_origins = settings.cors_origins()
-_cors_regex = (
-    r"https?://([\w-]+\.)*localtest\.me(:\d+)?$"
-    if settings.environment == "development"
-    else None
-)
+_cors_regex = r"https?://([\w-]+\.)*localtest\.me(:\d+)?$" if settings.environment == "development" else None
 
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(
@@ -77,9 +73,7 @@ def startup() -> None:
         from app.db.tenant_migrate import ensure_default_organization
 
         ensure_default_organization(engine)
-    logger.info(
-        "%s API ready | env=%s", settings.platform_display_name, settings.environment
-    )
+    logger.info("%s API ready | env=%s", settings.platform_display_name, settings.environment)
 
 
 @app.on_event("shutdown")

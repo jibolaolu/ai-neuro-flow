@@ -20,9 +20,7 @@ class AuditLog(Base):
     target_id = Column(String, nullable=True, index=True)
     target_name = Column(String, nullable=True)
     detail = Column(Text, nullable=True)
-    created_at = Column(
-        DateTime, default=lambda: datetime.now(timezone.utc), index=True
-    )
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
 
 
 class AuditLogOut(BaseModel):

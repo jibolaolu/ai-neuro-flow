@@ -74,9 +74,7 @@ def _clinic_id_from_user(user: UserRecord) -> str:
     return user.clinic_id or user.organization_id or "unknown"
 
 
-def _send_acceptance_letter(
-    referral: RTCReferralRecord, db: "Session | None" = None
-) -> None:
+def _send_acceptance_letter(referral: RTCReferralRecord, db: "Session | None" = None) -> None:
     if not referral.gp_email and not referral.patient_email:
         return
     recipient = referral.gp_email or referral.patient_email
@@ -102,9 +100,7 @@ def _send_acceptance_letter(
         pass  # email send failure must not block the accept action
 
 
-def _send_rejection_letter(
-    referral: RTCReferralRecord, db: "Session | None" = None
-) -> None:
+def _send_rejection_letter(referral: RTCReferralRecord, db: "Session | None" = None) -> None:
     recipient = referral.gp_email or referral.patient_email
     if not recipient:
         return
@@ -140,11 +136,7 @@ def list_pathways() -> dict:
 @router.post("/parse-letter")
 def parse_gp_letter(
     body: ParseLetterBody,
-    user: UserRecord = Depends(
-        require_roles(
-            "clinical-admin", "super-platform-admin", "senior-clinician", "clinician"
-        )
-    ),
+    user: UserRecord = Depends(require_roles("clinical-admin", "super-platform-admin", "senior-clinician", "clinician")),
 ) -> dict:
     """
     Use an LLM to extract structured fields from a pasted GP referral letter.
@@ -222,9 +214,7 @@ def parse_gp_letter(
     # DOB patterns: DD/MM/YYYY or DD Month YYYY
     dob = re.search(r"\b(\d{1,2})[/\-](\d{1,2})[/\-](\d{4})\b", text)
     if dob:
-        fields["patient_dob"] = (
-            f"{dob.group(3)}-{dob.group(2).zfill(2)}-{dob.group(1).zfill(2)}"
-        )
+        fields["patient_dob"] = f"{dob.group(3)}-{dob.group(2).zfill(2)}-{dob.group(1).zfill(2)}"
 
     # Pathway detection
     for p in PATHWAYS:
@@ -247,11 +237,7 @@ def parse_gp_letter(
 def list_referrals(
     status: str | None = None,
     db: Session = Depends(get_db),
-    user: UserRecord = Depends(
-        require_roles(
-            "clinical-admin", "super-platform-admin", "senior-clinician", "clinician"
-        )
-    ),
+    user: UserRecord = Depends(require_roles("clinical-admin", "super-platform-admin", "senior-clinician", "clinician")),
 ) -> dict:
     clinic_id = _clinic_id_from_user(user)
     q = db.query(RTCReferralRecord)
@@ -267,11 +253,7 @@ def list_referrals(
 def create_referral(
     body: RTCReferralCreate,
     db: Session = Depends(get_db),
-    user: UserRecord = Depends(
-        require_roles(
-            "clinical-admin", "super-platform-admin", "senior-clinician", "clinician"
-        )
-    ),
+    user: UserRecord = Depends(require_roles("clinical-admin", "super-platform-admin", "senior-clinician", "clinician")),
 ) -> dict:
     if body.pathway not in PATHWAYS:
         raise HTTPException(400, detail=f"Unknown pathway. Valid: {PATHWAYS}")
@@ -315,11 +297,7 @@ def create_referral(
 def get_referral(
     referral_id: str,
     db: Session = Depends(get_db),
-    user: UserRecord = Depends(
-        require_roles(
-            "clinical-admin", "super-platform-admin", "senior-clinician", "clinician"
-        )
-    ),
+    user: UserRecord = Depends(require_roles("clinical-admin", "super-platform-admin", "senior-clinician", "clinician")),
 ) -> dict:
     record = _get_or_404(db, referral_id)
     _check_clinic(record, user)
@@ -336,9 +314,7 @@ def accept_referral(
     record = _get_or_404(db, referral_id)
     _check_clinic(record, user)
     if record.status not in (RTC_STATUS_PENDING,):
-        raise HTTPException(
-            400, detail=f"Cannot accept referral in status '{record.status}'"
-        )
+        raise HTTPException(400, detail=f"Cannot accept referral in status '{record.status}'")
 
     record.status = RTC_STATUS_ACCEPTED
     record.eligibility_confirmed = True
@@ -365,9 +341,7 @@ def reject_referral(
     record = _get_or_404(db, referral_id)
     _check_clinic(record, user)
     if record.status not in (RTC_STATUS_PENDING,):
-        raise HTTPException(
-            400, detail=f"Cannot reject referral in status '{record.status}'"
-        )
+        raise HTTPException(400, detail=f"Cannot reject referral in status '{record.status}'")
 
     record.status = RTC_STATUS_REJECTED
     record.rejection_reason = body.rejection_reason
@@ -392,9 +366,7 @@ def convert_to_client(
     record = _get_or_404(db, referral_id)
     _check_clinic(record, user)
     if record.status != RTC_STATUS_ACCEPTED:
-        raise HTTPException(
-            400, detail="Only accepted referrals can be converted to clients."
-        )
+        raise HTTPException(400, detail="Only accepted referrals can be converted to clients.")
     if record.converted_client_id:
         raise HTTPException(400, detail="Referral already converted.")
 
