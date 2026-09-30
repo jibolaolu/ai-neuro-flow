@@ -1,8 +1,8 @@
-"""Platform system settings — key/value configuration store."""
+﻿"""Platform system settings — key/value configuration store."""
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -71,7 +71,7 @@ def upsert_setting(
     return SettingOut.model_validate(row)
 
 
-@router.delete("/{key}", status_code=204, response_class=Response)
+@router.delete("/{key}", status_code=204, response_model=None)
 def delete_setting(
     key: str,
     db: Session = Depends(get_db),

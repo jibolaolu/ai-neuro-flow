@@ -1,9 +1,9 @@
-"""HR module API — feature settings matrix + all HR CRUD endpoints."""
+﻿"""HR module API — feature settings matrix + all HR CRUD endpoints."""
 
 import json
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db, require_roles
@@ -188,7 +188,7 @@ def update_leave(
     return HrLeaveOut.model_validate(rec)
 
 
-@router.delete("/leave/{leave_id}", status_code=204, response_class=Response)
+@router.delete("/leave/{leave_id}", status_code=204, response_model=None)
 def delete_leave(
     leave_id: str,
     db: Session = Depends(get_db),
@@ -323,7 +323,7 @@ def create_supervision(
     return HrSupervisionOut.model_validate(rec)
 
 
-@router.delete("/supervision/{sup_id}", status_code=204, response_class=Response)
+@router.delete("/supervision/{sup_id}", status_code=204, response_model=None)
 def delete_supervision(
     sup_id: str,
     db: Session = Depends(get_db),
@@ -398,7 +398,7 @@ def update_training(
     return HrTrainingOut.model_validate(rec)
 
 
-@router.delete("/training/{tr_id}", status_code=204, response_class=Response)
+@router.delete("/training/{tr_id}", status_code=204, response_model=None)
 def delete_training(
     tr_id: str,
     db: Session = Depends(get_db),

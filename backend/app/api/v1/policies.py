@@ -1,9 +1,9 @@
-"""Policy library — CRUD and AI generation."""
+﻿"""Policy library — CRUD and AI generation."""
 
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db, require_roles
@@ -99,7 +99,7 @@ def update_policy(
     return PolicyOut.model_validate(record)
 
 
-@router.delete("/{policy_id}", status_code=204, response_class=Response)
+@router.delete("/{policy_id}", status_code=204, response_model=None)
 def delete_policy(
     policy_id: str,
     db: Session = Depends(get_db),

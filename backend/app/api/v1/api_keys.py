@@ -1,4 +1,4 @@
-"""
+﻿"""
 API key management for clinic integrations.
 
 Keys use the format  nf_live_<32hex>  and are stored as SHA-256 hashes.
@@ -13,7 +13,7 @@ Tiers:
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -179,7 +179,7 @@ def update_api_key(
     return ApiKeyOut.model_validate(record.__dict__)
 
 
-@router.delete("/{key_id}", status_code=204, response_class=Response)
+@router.delete("/{key_id}", status_code=204, response_model=None)
 def revoke_api_key(
     key_id: str,
     db: Session = Depends(get_db),

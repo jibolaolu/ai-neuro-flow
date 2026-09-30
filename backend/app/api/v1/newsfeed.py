@@ -1,10 +1,10 @@
-"""Staff newsfeed — admin posts, clinical staff reads."""
+﻿"""Staff newsfeed — admin posts, clinical staff reads."""
 
 import json
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db, require_roles
@@ -94,7 +94,7 @@ def update_post(
     return NewsfeedPostOut.model_validate(post)
 
 
-@router.delete("/{post_id}", status_code=204, response_class=Response)
+@router.delete("/{post_id}", status_code=204, response_model=None)
 def delete_post(
     post_id: str,
     db: Session = Depends(get_db),

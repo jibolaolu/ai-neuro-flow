@@ -1,4 +1,4 @@
-"""
+﻿"""
 Web Push subscription management.
 Stores push subscriptions per user so the backend can send push notifications.
 Gracefully skips actual push delivery if pywebpush is not installed.
@@ -10,7 +10,7 @@ import json
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -42,7 +42,7 @@ class PushPayload(BaseModel):
     tag: str | None = None
 
 
-@router.post("/subscribe", status_code=204, response_class=Response)
+@router.post("/subscribe", status_code=204, response_model=None)
 def subscribe(
     sub: PushSubscription,
     db: Session = Depends(get_db),
@@ -56,7 +56,7 @@ def subscribe(
     return None
 
 
-@router.delete("/unsubscribe", status_code=204, response_class=Response)
+@router.delete("/unsubscribe", status_code=204, response_model=None)
 def unsubscribe(
     sub: PushSubscription,
     db: Session = Depends(get_db),

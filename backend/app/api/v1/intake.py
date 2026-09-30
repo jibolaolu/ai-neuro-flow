@@ -1,4 +1,4 @@
-"""
+﻿"""
 Intake API — two paths that both run the same automation pipeline.
 
 ─────────────────────────────────────────────────────────────────────────────
@@ -31,7 +31,7 @@ import uuid
 from datetime import date, datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.orm import Session
 
@@ -603,7 +603,7 @@ def create_webhook_config(
     return WebhookConfigCreated(**out.model_dump(), signing_secret=raw_secret)
 
 
-@router.delete("/webhooks/{config_id}", status_code=204, response_class=Response)
+@router.delete("/webhooks/{config_id}", status_code=204, response_model=None)
 def delete_webhook_config(
     config_id: str,
     db: Session = Depends(get_db),
