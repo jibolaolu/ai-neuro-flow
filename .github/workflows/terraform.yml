@@ -16,7 +16,7 @@ on:
         description: "Target environment"
         required: true
         type: choice
-        options: [dev, staging, prod]
+        options: [dev, prod]
       action:
         description: "Terraform action"
         required: true
@@ -39,7 +39,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        env: [dev, staging, prod]
+        env: [dev, prod]
 
     steps:
       - uses: actions/checkout@v4
@@ -187,26 +187,17 @@ jobs:
 
       - name: Set environment secrets
         run: |
-          case "${{ github.event.inputs.environment }}" in
-            staging)
-              echo "TF_VAR_db_password=${{ secrets.STAGING_DB_PASSWORD }}" >> $GITHUB_ENV
-              echo "TF_VAR_jwt_secret=${{ secrets.STAGING_JWT_SECRET }}" >> $GITHUB_ENV
-              echo "TF_VAR_stripe_secret_key=${{ secrets.STAGING_STRIPE_SECRET_KEY }}" >> $GITHUB_ENV
-              echo "TF_VAR_stripe_webhook_secret=${{ secrets.STAGING_STRIPE_WEBHOOK_SECRET }}" >> $GITHUB_ENV
-              ;;
-            prod)
-              echo "TF_VAR_db_password=${{ secrets.PROD_DB_PASSWORD }}" >> $GITHUB_ENV
-              echo "TF_VAR_jwt_secret=${{ secrets.PROD_JWT_SECRET }}" >> $GITHUB_ENV
-              echo "TF_VAR_stripe_secret_key=${{ secrets.PROD_STRIPE_SECRET_KEY }}" >> $GITHUB_ENV
-              echo "TF_VAR_stripe_webhook_secret=${{ secrets.PROD_STRIPE_WEBHOOK_SECRET }}" >> $GITHUB_ENV
-              ;;
-            *)
-              echo "TF_VAR_db_password=${{ secrets.DEV_DB_PASSWORD }}" >> $GITHUB_ENV
-              echo "TF_VAR_jwt_secret=${{ secrets.DEV_JWT_SECRET }}" >> $GITHUB_ENV
-              echo "TF_VAR_stripe_secret_key=${{ secrets.DEV_STRIPE_SECRET_KEY }}" >> $GITHUB_ENV
-              echo "TF_VAR_stripe_webhook_secret=${{ secrets.DEV_STRIPE_WEBHOOK_SECRET }}" >> $GITHUB_ENV
-              ;;
-          esac
+          if [ "${{ github.event.inputs.environment }}" = "prod" ]; then
+            echo "TF_VAR_db_password=${{ secrets.PROD_DB_PASSWORD }}" >> $GITHUB_ENV
+            echo "TF_VAR_jwt_secret=${{ secrets.PROD_JWT_SECRET }}" >> $GITHUB_ENV
+            echo "TF_VAR_stripe_secret_key=${{ secrets.PROD_STRIPE_SECRET_KEY }}" >> $GITHUB_ENV
+            echo "TF_VAR_stripe_webhook_secret=${{ secrets.PROD_STRIPE_WEBHOOK_SECRET }}" >> $GITHUB_ENV
+          else
+            echo "TF_VAR_db_password=${{ secrets.DEV_DB_PASSWORD }}" >> $GITHUB_ENV
+            echo "TF_VAR_jwt_secret=${{ secrets.DEV_JWT_SECRET }}" >> $GITHUB_ENV
+            echo "TF_VAR_stripe_secret_key=${{ secrets.DEV_STRIPE_SECRET_KEY }}" >> $GITHUB_ENV
+            echo "TF_VAR_stripe_webhook_secret=${{ secrets.DEV_STRIPE_WEBHOOK_SECRET }}" >> $GITHUB_ENV
+          fi
 
       - name: Terraform apply
         working-directory: terraform/environments/${{ github.event.inputs.environment }}
