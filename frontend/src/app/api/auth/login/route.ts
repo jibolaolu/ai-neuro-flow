@@ -70,7 +70,7 @@ function detectBaseUrl(req: NextRequest): string {
 export async function GET(request: NextRequest) {
   const baseURL = detectBaseUrl(request);
   const auth0 = initAuth0({ baseURL });
-  const loginRes = await auth0.handleLogin(request, {
+  const loginRes = await auth0.handleLogin(request, {}, {
     returnTo: "/api/auth/sync",
     authorizationParams: {
       scope: "openid profile email",
