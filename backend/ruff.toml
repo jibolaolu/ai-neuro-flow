@@ -1,0 +1,12 @@
+line-length = 200
+
+[lint]
+select = ["E", "F"]
+
+[lint.per-file-ignores]
+# alembic migrations manipulate sys.path before other imports
+"app/db/migrations/**/*.py" = ["E402"]
+# setup_logging must fire before any logging imports
+"app/main.py" = ["E402"]
+# clinical letter templates contain long prose strings that cannot be line-wrapped
+"app/api/v1/prescriptions.py" = ["E501"]

@@ -1,4 +1,4 @@
-locals {
+﻿locals {
   name_prefix       = "${var.project_name}-${var.environment}"
   frontend_hostname = var.frontend_domain
   api_hostname      = var.api_domain
@@ -12,7 +12,7 @@ locals {
   }
 }
 
-# ── Networking ────────────────────────────────────────────────────────────────
+# â”€â”€ Networking â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 module "networking" {
   source = "../../modules/networking"
 
@@ -25,7 +25,7 @@ module "networking" {
   tags                      = local.common_tags
 }
 
-# ── ECR repositories ──────────────────────────────────────────────────────────
+# â”€â”€ ECR repositories â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 module "ecr" {
   source = "../../modules/ecr"
 
@@ -34,7 +34,7 @@ module "ecr" {
   tags         = local.common_tags
 }
 
-# ── ECS cluster ───────────────────────────────────────────────────────────────
+# â”€â”€ ECS cluster â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 module "ecs_cluster" {
   source = "../../modules/ecs-cluster"
 
@@ -42,10 +42,10 @@ module "ecs_cluster" {
   tags        = local.common_tags
 }
 
-# ── Security groups ───────────────────────────────────────────────────────────
+# â”€â”€ Security groups â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 resource "aws_security_group" "alb" {
   name        = "${local.name_prefix}-alb-sg"
-  description = "ALB — public HTTP and HTTPS ingress"
+  description = "ALB â€” public HTTP and HTTPS ingress"
   vpc_id      = module.networking.vpc_id
 
   ingress {
@@ -76,7 +76,7 @@ resource "aws_security_group" "alb" {
 
 resource "aws_security_group" "frontend_service" {
   name        = "${local.name_prefix}-frontend-sg"
-  description = "Frontend ECS service — ingress from ALB only"
+  description = "Frontend ECS service â€” ingress from ALB only"
   vpc_id      = module.networking.vpc_id
 
   ingress {
@@ -99,7 +99,7 @@ resource "aws_security_group" "frontend_service" {
 
 resource "aws_security_group" "backend_service" {
   name        = "${local.name_prefix}-backend-sg"
-  description = "Backend ECS service — ingress from ALB and AI workers"
+  description = "Backend ECS service â€” ingress from ALB and AI workers"
   vpc_id      = module.networking.vpc_id
 
   ingress {
@@ -130,7 +130,7 @@ resource "aws_security_group" "backend_service" {
 
 resource "aws_security_group" "ai_workers_service" {
   name        = "${local.name_prefix}-workers-sg"
-  description = "AI workers — egress only"
+  description = "AI workers â€” egress only"
   vpc_id      = module.networking.vpc_id
 
   egress {
@@ -145,7 +145,7 @@ resource "aws_security_group" "ai_workers_service" {
 
 resource "aws_security_group" "database" {
   name        = "${local.name_prefix}-db-sg"
-  description = "PostgreSQL — ingress from backend only"
+  description = "PostgreSQL â€” ingress from backend only"
   vpc_id      = module.networking.vpc_id
 
   ingress {
@@ -166,7 +166,7 @@ resource "aws_security_group" "database" {
   tags = merge(local.common_tags, { Name = "${local.name_prefix}-db-sg" })
 }
 
-# ── ACM certificate (covers both frontend and API subdomains) ─────────────────
+# â”€â”€ ACM certificate (covers both frontend and API subdomains) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 resource "aws_acm_certificate" "this" {
   domain_name               = local.frontend_hostname
   subject_alternative_names = [local.api_hostname]
@@ -205,7 +205,7 @@ resource "aws_acm_certificate_validation" "this" {
   validation_record_fqdns = [for record in aws_route53_record.cert_validation : record.fqdn]
 }
 
-# ── ALB ───────────────────────────────────────────────────────────────────────
+# â”€â”€ ALB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 module "alb" {
   source = "../../modules/alb"
 
@@ -218,7 +218,7 @@ module "alb" {
   tags                    = local.common_tags
 }
 
-# HTTPS listener (redirects HTTP → HTTPS and forwards to frontend by default)
+# HTTPS listener (redirects HTTP â†’ HTTPS and forwards to frontend by default)
 resource "aws_lb_listener" "https" {
   load_balancer_arn = module.alb.alb_arn
   port              = 443
@@ -250,7 +250,7 @@ resource "aws_lb_listener_rule" "https_backend_api" {
   }
 }
 
-# HTTP → HTTPS redirect
+# HTTP â†’ HTTPS redirect
 resource "aws_lb_listener_rule" "http_redirect" {
   listener_arn = module.alb.http_listener_arn
   priority     = 1
@@ -271,7 +271,7 @@ resource "aws_lb_listener_rule" "http_redirect" {
   }
 }
 
-# ── RDS ───────────────────────────────────────────────────────────────────────
+# â”€â”€ RDS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 module "rds" {
   source = "../../modules/rds"
 
@@ -286,7 +286,7 @@ module "rds" {
   tags                   = local.common_tags
 }
 
-# ── S3 uploads bucket ─────────────────────────────────────────────────────────
+# â”€â”€ S3 uploads bucket â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 resource "aws_s3_bucket" "uploads" {
   bucket        = "eagles-${var.environment}-neuroflow-uploads"
   force_destroy = false
@@ -349,7 +349,7 @@ resource "aws_iam_role_policy" "task_s3_uploads" {
   })
 }
 
-# ── ECS services ─────────────────────────────────────────────────────────────
+# â”€â”€ ECS services â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 module "frontend_service" {
   source = "../../modules/ecs-service"
 
@@ -455,7 +455,7 @@ module "ai_workers_service" {
   tags = local.common_tags
 }
 
-# ── Route53 DNS ───────────────────────────────────────────────────────────────
+# â”€â”€ Route53 DNS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 resource "aws_route53_record" "frontend" {
   zone_id = data.aws_route53_zone.this.zone_id
   name    = local.frontend_hostname
@@ -479,3 +479,4 @@ resource "aws_route53_record" "api" {
     evaluate_target_health = true
   }
 }
+
