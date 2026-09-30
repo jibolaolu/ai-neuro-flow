@@ -454,7 +454,7 @@ module "ai_workers_service" {
   log_group_name          = module.ecs_cluster.log_group_name
   aws_region              = var.aws_region
   environment_variables = [
-    { name = "API_BASE_URL", value = "http://localhost:${var.backend_container_port}" },
+    { name = "API_BASE_URL", value = local.api_url },
     { name = "ANTHROPIC_API_KEY", value = var.anthropic_api_key },
     { name = "ANTHROPIC_MODEL", value = var.anthropic_model },
   ]

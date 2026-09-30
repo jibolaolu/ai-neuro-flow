@@ -1,7 +1,11 @@
+import logging
 import os
+import time
 from dataclasses import dataclass
 
 import requests
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -21,4 +25,12 @@ class ReportGenerator:
 
 
 if __name__ == "__main__":
-    print(ReportGenerator().run({"task": "sample report"}))
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    logger.info("AI workers service starting")
+    while True:
+        try:
+            result = ReportGenerator().run({"task": "health-check"})
+            logger.info("Backend reachable: %s", result.get("backend_status"))
+        except Exception as exc:
+            logger.warning("Backend health check failed (will retry in 60s): %s", exc)
+        time.sleep(60)
