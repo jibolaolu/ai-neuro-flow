@@ -185,16 +185,35 @@ jobs:
         working-directory: terraform/environments/${{ github.event.inputs.environment }}
         run: terraform init
 
+      - name: Set environment secrets
+        run: |
+          case "${{ github.event.inputs.environment }}" in
+            staging)
+              echo "TF_VAR_db_password=${{ secrets.STAGING_DB_PASSWORD }}" >> $GITHUB_ENV
+              echo "TF_VAR_jwt_secret=${{ secrets.STAGING_JWT_SECRET }}" >> $GITHUB_ENV
+              echo "TF_VAR_stripe_secret_key=${{ secrets.STAGING_STRIPE_SECRET_KEY }}" >> $GITHUB_ENV
+              echo "TF_VAR_stripe_webhook_secret=${{ secrets.STAGING_STRIPE_WEBHOOK_SECRET }}" >> $GITHUB_ENV
+              ;;
+            prod)
+              echo "TF_VAR_db_password=${{ secrets.PROD_DB_PASSWORD }}" >> $GITHUB_ENV
+              echo "TF_VAR_jwt_secret=${{ secrets.PROD_JWT_SECRET }}" >> $GITHUB_ENV
+              echo "TF_VAR_stripe_secret_key=${{ secrets.PROD_STRIPE_SECRET_KEY }}" >> $GITHUB_ENV
+              echo "TF_VAR_stripe_webhook_secret=${{ secrets.PROD_STRIPE_WEBHOOK_SECRET }}" >> $GITHUB_ENV
+              ;;
+            *)
+              echo "TF_VAR_db_password=${{ secrets.DEV_DB_PASSWORD }}" >> $GITHUB_ENV
+              echo "TF_VAR_jwt_secret=${{ secrets.DEV_JWT_SECRET }}" >> $GITHUB_ENV
+              echo "TF_VAR_stripe_secret_key=${{ secrets.DEV_STRIPE_SECRET_KEY }}" >> $GITHUB_ENV
+              echo "TF_VAR_stripe_webhook_secret=${{ secrets.DEV_STRIPE_WEBHOOK_SECRET }}" >> $GITHUB_ENV
+              ;;
+          esac
+
       - name: Terraform apply
         working-directory: terraform/environments/${{ github.event.inputs.environment }}
         env:
-          TF_VAR_db_password:            ${{ secrets[format('{0}_DB_PASSWORD', upper(github.event.inputs.environment))] }}
-          TF_VAR_jwt_secret:             ${{ secrets[format('{0}_JWT_SECRET', upper(github.event.inputs.environment))] }}
-          TF_VAR_anthropic_api_key:      ${{ secrets.ANTHROPIC_API_KEY }}
-          TF_VAR_sendgrid_api_key:       ${{ secrets.SENDGRID_API_KEY }}
-          TF_VAR_stripe_secret_key:      ${{ secrets[format('{0}_STRIPE_SECRET_KEY', upper(github.event.inputs.environment))] }}
-          TF_VAR_stripe_webhook_secret:  ${{ secrets[format('{0}_STRIPE_WEBHOOK_SECRET', upper(github.event.inputs.environment))] }}
-          TF_VAR_stripe_price_starter:      ${{ secrets.STRIPE_PRICE_STARTER }}
-          TF_VAR_stripe_price_professional: ${{ secrets.STRIPE_PRICE_PROFESSIONAL }}
-          TF_VAR_stripe_price_enterprise:   ${{ secrets.STRIPE_PRICE_ENTERPRISE }}
+          TF_VAR_anthropic_api_key:         ${{ secrets.ANTHROPIC_API_KEY }}
+          TF_VAR_sendgrid_api_key:           ${{ secrets.SENDGRID_API_KEY }}
+          TF_VAR_stripe_price_starter:       ${{ secrets.STRIPE_PRICE_STARTER }}
+          TF_VAR_stripe_price_professional:  ${{ secrets.STRIPE_PRICE_PROFESSIONAL }}
+          TF_VAR_stripe_price_enterprise:    ${{ secrets.STRIPE_PRICE_ENTERPRISE }}
         run: terraform apply -auto-approve
