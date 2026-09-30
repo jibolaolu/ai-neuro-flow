@@ -124,7 +124,7 @@ jobs:
 
     env:
       ENV_NAME: dev
-      CLUSTER: neuroflow-dev
+      CLUSTER: neuroflow-dev-cluster
       IMAGE_TAG: ${{ needs.build-push.outputs.image_tag }}
 
     steps:
@@ -187,7 +187,7 @@ jobs:
 
     env:
       ENV_NAME: ${{ github.event.inputs.environment }}
-      CLUSTER: neuroflow-${{ github.event.inputs.environment }}
+      CLUSTER: neuroflow-${{ github.event.inputs.environment }}-cluster
       IMAGE_TAG: ${{ needs.build-push.outputs.image_tag }}
 
     steps:
