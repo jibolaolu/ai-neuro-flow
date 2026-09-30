@@ -348,12 +348,12 @@ module "frontend_service" {
   log_group_name          = module.ecs_cluster.log_group_name
   aws_region              = var.aws_region
   environment_variables = [
-    { name = "NEXT_PUBLIC_API_URL",         value = local.api_url },
-    { name = "BACKEND_URL",                  value = "http://localhost:${var.backend_container_port}" },
-    { name = "NEXT_PUBLIC_PLATFORM_NAME",    value = var.platform_display_name },
+    { name = "NEXT_PUBLIC_API_URL", value = local.api_url },
+    { name = "BACKEND_URL", value = "http://localhost:${var.backend_container_port}" },
+    { name = "NEXT_PUBLIC_PLATFORM_NAME", value = var.platform_display_name },
     { name = "NEXT_PUBLIC_PLATFORM_TAGLINE", value = var.platform_tagline },
-    { name = "NEXT_PUBLIC_SUPPORT_EMAIL",    value = var.support_email },
-    { name = "NODE_ENV",                     value = "production" },
+    { name = "NEXT_PUBLIC_SUPPORT_EMAIL", value = var.support_email },
+    { name = "NODE_ENV", value = "production" },
   ]
   tags = local.common_tags
 }
@@ -380,25 +380,25 @@ module "backend_service" {
   log_group_name          = module.ecs_cluster.log_group_name
   aws_region              = var.aws_region
   environment_variables = [
-    { name = "DATABASE_URL",              value = "postgresql://${var.db_username}:${var.db_password}@${module.rds.endpoint}/${var.db_name}" },
-    { name = "ENVIRONMENT",               value = var.environment },
-    { name = "JWT_SECRET",                value = var.jwt_secret },
-    { name = "ANTHROPIC_API_KEY",         value = var.anthropic_api_key },
-    { name = "ANTHROPIC_MODEL",           value = var.anthropic_model },
-    { name = "SENDGRID_API_KEY",          value = var.sendgrid_api_key },
-    { name = "SENDGRID_FROM_EMAIL",       value = var.sendgrid_from_email },
-    { name = "STRIPE_SECRET_KEY",         value = var.stripe_secret_key },
-    { name = "STRIPE_WEBHOOK_SECRET",     value = var.stripe_webhook_secret },
-    { name = "STRIPE_PRICE_STARTER",      value = var.stripe_price_starter },
+    { name = "DATABASE_URL", value = "postgresql://${var.db_username}:${var.db_password}@${module.rds.endpoint}/${var.db_name}" },
+    { name = "ENVIRONMENT", value = var.environment },
+    { name = "JWT_SECRET", value = var.jwt_secret },
+    { name = "ANTHROPIC_API_KEY", value = var.anthropic_api_key },
+    { name = "ANTHROPIC_MODEL", value = var.anthropic_model },
+    { name = "SENDGRID_API_KEY", value = var.sendgrid_api_key },
+    { name = "SENDGRID_FROM_EMAIL", value = var.sendgrid_from_email },
+    { name = "STRIPE_SECRET_KEY", value = var.stripe_secret_key },
+    { name = "STRIPE_WEBHOOK_SECRET", value = var.stripe_webhook_secret },
+    { name = "STRIPE_PRICE_STARTER", value = var.stripe_price_starter },
     { name = "STRIPE_PRICE_PROFESSIONAL", value = var.stripe_price_professional },
-    { name = "STRIPE_PRICE_ENTERPRISE",   value = var.stripe_price_enterprise },
-    { name = "PLATFORM_BASE_URL",         value = local.frontend_url },
-    { name = "FRONTEND_URL",              value = local.frontend_url },
-    { name = "PLATFORM_DISPLAY_NAME",     value = var.platform_display_name },
-    { name = "SUPPORT_EMAIL",             value = var.support_email },
-    { name = "ADMIN_NOTIFICATION_EMAIL",  value = var.admin_notification_email },
-    { name = "S3_BUCKET_NAME",            value = aws_s3_bucket.uploads.bucket },
-    { name = "AWS_REGION",                value = var.aws_region },
+    { name = "STRIPE_PRICE_ENTERPRISE", value = var.stripe_price_enterprise },
+    { name = "PLATFORM_BASE_URL", value = local.frontend_url },
+    { name = "FRONTEND_URL", value = local.frontend_url },
+    { name = "PLATFORM_DISPLAY_NAME", value = var.platform_display_name },
+    { name = "SUPPORT_EMAIL", value = var.support_email },
+    { name = "ADMIN_NOTIFICATION_EMAIL", value = var.admin_notification_email },
+    { name = "S3_BUCKET_NAME", value = aws_s3_bucket.uploads.bucket },
+    { name = "AWS_REGION", value = var.aws_region },
   ]
   tags = local.common_tags
 }
@@ -424,9 +424,9 @@ module "ai_workers_service" {
   log_group_name          = module.ecs_cluster.log_group_name
   aws_region              = var.aws_region
   environment_variables = [
-    { name = "API_BASE_URL",      value = "http://localhost:${var.backend_container_port}" },
+    { name = "API_BASE_URL", value = "http://localhost:${var.backend_container_port}" },
     { name = "ANTHROPIC_API_KEY", value = var.anthropic_api_key },
-    { name = "ANTHROPIC_MODEL",   value = var.anthropic_model },
+    { name = "ANTHROPIC_MODEL", value = var.anthropic_model },
   ]
   tags = local.common_tags
 }

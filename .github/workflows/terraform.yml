@@ -1,15 +1,6 @@
-name: Terraform
+name: Terraform — Plan & Apply
 
 on:
-  push:
-    branches: [master, main]
-    paths:
-      - "terraform/**"
-      - ".github/workflows/terraform.yml"
-  pull_request:
-    branches: [master, main]
-    paths:
-      - "terraform/**"
   workflow_dispatch:
     inputs:
       environment:
@@ -21,7 +12,7 @@ on:
         description: "Terraform action"
         required: true
         type: choice
-        options: [plan, apply]
+        options: [plan, apply, destroy]
 
 env:
   TF_VERSION: "1.9.5"
@@ -33,13 +24,31 @@ permissions:
   pull-requests: write
 
 jobs:
-  # ── Validate (all envs, every PR) ──────────────────────────────────────────
-  validate:
-    name: Validate (${{ matrix.env }})
+  # ── Resolve parameters ────────────────────────────────────────────────────────
+  resolve:
+    name: Resolve parameters
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        env: [dev, prod]
+    outputs:
+      environment: ${{ steps.params.outputs.environment }}
+      action:      ${{ steps.params.outputs.action }}
+      tf_dir:      ${{ steps.params.outputs.tf_dir }}
+
+    steps:
+      - name: Set parameters
+        id: params
+        run: |
+          ENV="${{ github.event.inputs.environment }}"
+          ACTION="${{ github.event.inputs.action }}"
+          echo "environment=${ENV}"  >> $GITHUB_OUTPUT
+          echo "action=${ACTION}"    >> $GITHUB_OUTPUT
+          echo "tf_dir=terraform/environments/${ENV}" >> $GITHUB_OUTPUT
+
+  # ── Terraform plan ────────────────────────────────────────────────────────────
+  plan:
+    name: Terraform plan (${{ needs.resolve.outputs.environment }})
+    runs-on: ubuntu-latest
+    needs: resolve
+    environment: ${{ needs.resolve.outputs.environment }}
 
     steps:
       - uses: actions/checkout@v4
@@ -55,156 +64,172 @@ jobs:
           aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region:            ${{ env.AWS_REGION }}
-
-      - name: Terraform fmt check
-        working-directory: terraform/environments/${{ matrix.env }}
-        run: terraform fmt -check -recursive
-
-      - name: Terraform init
-        working-directory: terraform/environments/${{ matrix.env }}
-        run: terraform init -backend=false
-
-      - name: Terraform validate
-        working-directory: terraform/environments/${{ matrix.env }}
-        run: terraform validate
-
-  # ── Plan (PR only — posts plan as comment) ────────────────────────────────
-  plan-dev:
-    name: Plan dev
-    runs-on: ubuntu-latest
-    needs: validate
-    if: github.event_name == 'pull_request'
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: ${{ env.TF_VERSION }}
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region:            ${{ env.AWS_REGION }}
-
-      - name: Terraform init
-        working-directory: terraform/environments/dev
-        run: terraform init
-
-      - name: Terraform plan
-        id: plan
-        working-directory: terraform/environments/dev
-        env:
-          TF_VAR_db_password:            ${{ secrets.DEV_DB_PASSWORD }}
-          TF_VAR_jwt_secret:             ${{ secrets.DEV_JWT_SECRET }}
-          TF_VAR_anthropic_api_key:      ${{ secrets.ANTHROPIC_API_KEY }}
-          TF_VAR_sendgrid_api_key:       ${{ secrets.SENDGRID_API_KEY }}
-          TF_VAR_stripe_secret_key:      ${{ secrets.DEV_STRIPE_SECRET_KEY }}
-          TF_VAR_stripe_webhook_secret:  ${{ secrets.DEV_STRIPE_WEBHOOK_SECRET }}
-        run: terraform plan -no-color -out=tfplan 2>&1 | tee plan.txt
-
-      - name: Post plan to PR
-        uses: actions/github-script@v7
-        if: always()
-        with:
-          script: |
-            const fs = require('fs');
-            const plan = fs.readFileSync('terraform/environments/dev/plan.txt', 'utf8');
-            const truncated = plan.length > 60000 ? plan.slice(-60000) + '\n... (truncated)' : plan;
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `### Terraform plan — dev\n\`\`\`\n${truncated}\n\`\`\``
-            });
-
-  # ── Auto-apply to dev on push to master ───────────────────────────────────
-  apply-dev:
-    name: Apply dev
-    runs-on: ubuntu-latest
-    needs: validate
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main')
-    environment: dev
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: ${{ env.TF_VERSION }}
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region:            ${{ env.AWS_REGION }}
-
-      - name: Terraform init
-        working-directory: terraform/environments/dev
-        run: terraform init
-
-      - name: Terraform apply
-        working-directory: terraform/environments/dev
-        env:
-          TF_VAR_db_password:            ${{ secrets.DEV_DB_PASSWORD }}
-          TF_VAR_jwt_secret:             ${{ secrets.DEV_JWT_SECRET }}
-          TF_VAR_anthropic_api_key:      ${{ secrets.ANTHROPIC_API_KEY }}
-          TF_VAR_sendgrid_api_key:       ${{ secrets.SENDGRID_API_KEY }}
-          TF_VAR_stripe_secret_key:      ${{ secrets.DEV_STRIPE_SECRET_KEY }}
-          TF_VAR_stripe_webhook_secret:  ${{ secrets.DEV_STRIPE_WEBHOOK_SECRET }}
-        run: terraform apply -auto-approve
-
-  # ── Manual apply to staging / prod ────────────────────────────────────────
-  apply-manual:
-    name: Apply ${{ github.event.inputs.environment }}
-    runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply'
-    environment: ${{ github.event.inputs.environment }}
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: ${{ env.TF_VERSION }}
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region:            ${{ env.AWS_REGION }}
-
-      - name: Terraform init
-        working-directory: terraform/environments/${{ github.event.inputs.environment }}
-        run: terraform init
 
       - name: Set environment secrets
         run: |
-          if [ "${{ github.event.inputs.environment }}" = "prod" ]; then
-            echo "TF_VAR_db_password=${{ secrets.PROD_DB_PASSWORD }}" >> $GITHUB_ENV
-            echo "TF_VAR_jwt_secret=${{ secrets.PROD_JWT_SECRET }}" >> $GITHUB_ENV
+          if [ "${{ needs.resolve.outputs.environment }}" = "prod" ]; then
+            echo "TF_VAR_db_password=${{ secrets.PROD_DB_PASSWORD }}"             >> $GITHUB_ENV
+            echo "TF_VAR_jwt_secret=${{ secrets.PROD_JWT_SECRET }}"               >> $GITHUB_ENV
             echo "TF_VAR_stripe_secret_key=${{ secrets.PROD_STRIPE_SECRET_KEY }}" >> $GITHUB_ENV
             echo "TF_VAR_stripe_webhook_secret=${{ secrets.PROD_STRIPE_WEBHOOK_SECRET }}" >> $GITHUB_ENV
           else
-            echo "TF_VAR_db_password=${{ secrets.DEV_DB_PASSWORD }}" >> $GITHUB_ENV
-            echo "TF_VAR_jwt_secret=${{ secrets.DEV_JWT_SECRET }}" >> $GITHUB_ENV
-            echo "TF_VAR_stripe_secret_key=${{ secrets.DEV_STRIPE_SECRET_KEY }}" >> $GITHUB_ENV
+            echo "TF_VAR_db_password=${{ secrets.DEV_DB_PASSWORD }}"              >> $GITHUB_ENV
+            echo "TF_VAR_jwt_secret=${{ secrets.DEV_JWT_SECRET }}"                >> $GITHUB_ENV
+            echo "TF_VAR_stripe_secret_key=${{ secrets.DEV_STRIPE_SECRET_KEY }}"  >> $GITHUB_ENV
             echo "TF_VAR_stripe_webhook_secret=${{ secrets.DEV_STRIPE_WEBHOOK_SECRET }}" >> $GITHUB_ENV
           fi
 
-      - name: Terraform apply
-        working-directory: terraform/environments/${{ github.event.inputs.environment }}
+      - name: Terraform fmt check
+        working-directory: ${{ needs.resolve.outputs.tf_dir }}
+        run: terraform fmt -check -recursive
+
+      - name: Terraform init
+        working-directory: ${{ needs.resolve.outputs.tf_dir }}
+        run: terraform init
+
+      - name: Terraform validate
+        working-directory: ${{ needs.resolve.outputs.tf_dir }}
+        run: terraform validate
+
+      - name: Terraform plan
+        id: plan
+        working-directory: ${{ needs.resolve.outputs.tf_dir }}
         env:
           TF_VAR_anthropic_api_key:         ${{ secrets.ANTHROPIC_API_KEY }}
           TF_VAR_sendgrid_api_key:           ${{ secrets.SENDGRID_API_KEY }}
           TF_VAR_stripe_price_starter:       ${{ secrets.STRIPE_PRICE_STARTER }}
           TF_VAR_stripe_price_professional:  ${{ secrets.STRIPE_PRICE_PROFESSIONAL }}
           TF_VAR_stripe_price_enterprise:    ${{ secrets.STRIPE_PRICE_ENTERPRISE }}
-        run: terraform apply -auto-approve
+        run: |
+          terraform plan -no-color -out=tfplan 2>&1 | tee plan.txt
+          echo "PLAN_EXIT=${PIPESTATUS[0]}" >> $GITHUB_ENV
+
+      - name: Upload plan artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-${{ needs.resolve.outputs.environment }}
+          path: |
+            ${{ needs.resolve.outputs.tf_dir }}/tfplan
+            ${{ needs.resolve.outputs.tf_dir }}/plan.txt
+          retention-days: 1
+
+      - name: Summary
+        run: |
+          echo "## Terraform Plan — ${{ needs.resolve.outputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          tail -40 ${{ needs.resolve.outputs.tf_dir }}/plan.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+  # ── Terraform apply ───────────────────────────────────────────────────────────
+  apply:
+    name: Terraform apply (${{ needs.resolve.outputs.environment }})
+    runs-on: ubuntu-latest
+    needs: [resolve, plan]
+    if: needs.resolve.outputs.action == 'apply'
+    environment: ${{ needs.resolve.outputs.environment }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ env.AWS_REGION }}
+
+      - name: Set environment secrets
+        run: |
+          if [ "${{ needs.resolve.outputs.environment }}" = "prod" ]; then
+            echo "TF_VAR_db_password=${{ secrets.PROD_DB_PASSWORD }}"             >> $GITHUB_ENV
+            echo "TF_VAR_jwt_secret=${{ secrets.PROD_JWT_SECRET }}"               >> $GITHUB_ENV
+            echo "TF_VAR_stripe_secret_key=${{ secrets.PROD_STRIPE_SECRET_KEY }}" >> $GITHUB_ENV
+            echo "TF_VAR_stripe_webhook_secret=${{ secrets.PROD_STRIPE_WEBHOOK_SECRET }}" >> $GITHUB_ENV
+          else
+            echo "TF_VAR_db_password=${{ secrets.DEV_DB_PASSWORD }}"              >> $GITHUB_ENV
+            echo "TF_VAR_jwt_secret=${{ secrets.DEV_JWT_SECRET }}"                >> $GITHUB_ENV
+            echo "TF_VAR_stripe_secret_key=${{ secrets.DEV_STRIPE_SECRET_KEY }}"  >> $GITHUB_ENV
+            echo "TF_VAR_stripe_webhook_secret=${{ secrets.DEV_STRIPE_WEBHOOK_SECRET }}" >> $GITHUB_ENV
+          fi
+
+      - name: Terraform init
+        working-directory: ${{ needs.resolve.outputs.tf_dir }}
+        run: terraform init
+
+      - name: Download plan artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tfplan-${{ needs.resolve.outputs.environment }}
+          path: ${{ needs.resolve.outputs.tf_dir }}
+
+      - name: Terraform apply
+        working-directory: ${{ needs.resolve.outputs.tf_dir }}
+        env:
+          TF_VAR_anthropic_api_key:         ${{ secrets.ANTHROPIC_API_KEY }}
+          TF_VAR_sendgrid_api_key:           ${{ secrets.SENDGRID_API_KEY }}
+          TF_VAR_stripe_price_starter:       ${{ secrets.STRIPE_PRICE_STARTER }}
+          TF_VAR_stripe_price_professional:  ${{ secrets.STRIPE_PRICE_PROFESSIONAL }}
+          TF_VAR_stripe_price_enterprise:    ${{ secrets.STRIPE_PRICE_ENTERPRISE }}
+        run: terraform apply -auto-approve tfplan
+
+      - name: Summary
+        run: |
+          echo "## Terraform Apply complete ✅" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ needs.resolve.outputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Actor:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+
+  # ── Terraform destroy (manual safety gate) ────────────────────────────────────
+  destroy:
+    name: Terraform DESTROY (${{ needs.resolve.outputs.environment }})
+    runs-on: ubuntu-latest
+    needs: [resolve, plan]
+    if: needs.resolve.outputs.action == 'destroy'
+    environment: ${{ needs.resolve.outputs.environment }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ env.AWS_REGION }}
+
+      - name: Set environment secrets
+        run: |
+          if [ "${{ needs.resolve.outputs.environment }}" = "prod" ]; then
+            echo "TF_VAR_db_password=${{ secrets.PROD_DB_PASSWORD }}"             >> $GITHUB_ENV
+            echo "TF_VAR_jwt_secret=${{ secrets.PROD_JWT_SECRET }}"               >> $GITHUB_ENV
+            echo "TF_VAR_stripe_secret_key=${{ secrets.PROD_STRIPE_SECRET_KEY }}" >> $GITHUB_ENV
+            echo "TF_VAR_stripe_webhook_secret=${{ secrets.PROD_STRIPE_WEBHOOK_SECRET }}" >> $GITHUB_ENV
+          else
+            echo "TF_VAR_db_password=${{ secrets.DEV_DB_PASSWORD }}"              >> $GITHUB_ENV
+            echo "TF_VAR_jwt_secret=${{ secrets.DEV_JWT_SECRET }}"                >> $GITHUB_ENV
+            echo "TF_VAR_stripe_secret_key=${{ secrets.DEV_STRIPE_SECRET_KEY }}"  >> $GITHUB_ENV
+            echo "TF_VAR_stripe_webhook_secret=${{ secrets.DEV_STRIPE_WEBHOOK_SECRET }}" >> $GITHUB_ENV
+          fi
+
+      - name: Terraform init
+        working-directory: ${{ needs.resolve.outputs.tf_dir }}
+        run: terraform init
+
+      - name: Terraform destroy
+        working-directory: ${{ needs.resolve.outputs.tf_dir }}
+        env:
+          TF_VAR_anthropic_api_key:         ${{ secrets.ANTHROPIC_API_KEY }}
+          TF_VAR_sendgrid_api_key:           ${{ secrets.SENDGRID_API_KEY }}
+          TF_VAR_stripe_price_starter:       ${{ secrets.STRIPE_PRICE_STARTER }}
+          TF_VAR_stripe_price_professional:  ${{ secrets.STRIPE_PRICE_PROFESSIONAL }}
+          TF_VAR_stripe_price_enterprise:    ${{ secrets.STRIPE_PRICE_ENTERPRISE }}
+        run: terraform destroy -auto-approve
