@@ -15,7 +15,7 @@ on:
         options: [plan, apply, destroy]
 
 env:
-  TF_VERSION: "1.9.5"
+  TF_VERSION: "1.14.8"   # >= 1.10 required for S3 native state locking
   AWS_REGION: eu-west-2
 
 permissions:

@@ -1,5 +1,5 @@
 terraform {
-  required_version = ">= 1.6.0"
+  required_version = ">= 1.10.0"
 
   required_providers {
     aws = {
@@ -9,11 +9,11 @@ terraform {
   }
 
   backend "s3" {
-    bucket         = "eagles-solutions-tfstate"
-    key            = "apps/neuroflow/prod.tfstate"
-    region         = "eu-west-2"
-    dynamodb_table = "eagles-solutions-tfstate-lock"
-    encrypt        = true
+    bucket       = "eagles-solutions-tfstate"
+    key          = "apps/neuroflow/prod.tfstate"
+    region       = "eu-west-2"
+    use_lockfile = true
+    encrypt      = true
   }
 }
 
