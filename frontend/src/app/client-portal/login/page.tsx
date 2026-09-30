@@ -1,5 +1,10 @@
+import { Suspense } from "react";
 import { ClientPortalLogin } from "./ClientPortalLogin";
 
 export default function ClientPortalLoginPage() {
-  return <ClientPortalLogin />;
+  return (
+    <Suspense>
+      <ClientPortalLogin />
+    </Suspense>
+  );
 }

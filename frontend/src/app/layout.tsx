@@ -1,5 +1,6 @@
 import "./globals.css";
 import type { ReactNode } from "react";
+import type { Viewport } from "next";
 import { Inter } from "next/font/google";
 import Script from "next/script";
 
@@ -9,12 +10,15 @@ const inter = Inter({
   display: "swap",
 });
 
+export const viewport: Viewport = {
+  themeColor: "#1d4ed8",
+};
+
 export const metadata = {
   title: "Neuro Flow Platform",
   description:
     "Care coordination platform for ADHD and autism assessments, referrals, reporting, and billing.",
   manifest: "/manifest.json",
-  themeColor: "#1d4ed8",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
