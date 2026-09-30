@@ -90,18 +90,56 @@ export function LoginForm({ auth0 }: Props) {
 
 function Auth0LoginBlock({ accountError }: { accountError: string }) {
   return (
-    <div className="workflow-stack" style={{ gap: "1rem" }}>
-      {accountError && <p className="form-error">{accountError}</p>}
+    <div className="workflow-stack" style={{ gap: "1.25rem" }}>
+      {accountError && (
+        <div style={{
+          background: "var(--danger-50, #fef2f2)",
+          border: "1px solid var(--danger-100, #fecaca)",
+          borderRadius: "var(--radius-sm, 6px)",
+          padding: "12px 14px",
+          display: "flex",
+          gap: 10,
+          alignItems: "flex-start",
+        }}>
+          <span style={{ fontSize: 16, flexShrink: 0 }}>⚠️</span>
+          <p style={{ margin: 0, fontSize: "0.85rem", color: "var(--danger, #dc2626)" }}>{accountError}</p>
+        </div>
+      )}
+
       <a
         href={auth0LoginUrl()}
-        className="primary-action"
-        style={{ width: "100%", justifyContent: "center", textAlign: "center", display: "flex" }}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 10,
+          width: "100%",
+          padding: "13px 24px",
+          background: "var(--brand, #1d4ed8)",
+          color: "#fff",
+          borderRadius: "var(--radius-sm, 6px)",
+          fontWeight: 700,
+          fontSize: "0.95rem",
+          textDecoration: "none",
+          boxShadow: "0 1px 3px rgba(0,0,0,.15)",
+          transition: "opacity .15s",
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.9")}
+        onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
       >
-        Sign in with Auth0
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+        </svg>
+        Continue securely with Auth0
       </a>
-      <p style={{ margin: 0, fontSize: "0.8rem", color: "var(--text-muted)" }}>
-        You will be redirected to our secure identity provider. Use the email your clinic registered for you.
-      </p>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-muted)", fontSize: "0.78rem" }}>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+        </svg>
+        <span>Redirects to our secure identity provider. Use the email your clinic registered for you.</span>
+      </div>
     </div>
   );
 }

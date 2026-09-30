@@ -354,6 +354,12 @@ module "frontend_service" {
     { name = "NEXT_PUBLIC_PLATFORM_TAGLINE", value = var.platform_tagline },
     { name = "NEXT_PUBLIC_SUPPORT_EMAIL", value = var.support_email },
     { name = "NODE_ENV", value = "production" },
+    { name = "AUTH0_SECRET", value = var.auth0_secret },
+    { name = "AUTH0_ISSUER_BASE_URL", value = var.auth0_issuer_base_url },
+    { name = "AUTH0_CLIENT_ID", value = var.auth0_client_id },
+    { name = "AUTH0_CLIENT_SECRET", value = var.auth0_client_secret },
+    { name = "AUTH0_BASE_URL", value = local.frontend_url },
+    { name = "AUTH0_AUDIENCE", value = var.auth0_audience },
   ]
   tags = local.common_tags
 }

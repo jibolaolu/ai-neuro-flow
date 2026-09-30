@@ -248,3 +248,36 @@ variable "admin_notification_email" {
   type        = string
   default     = "admin@neuroflow.eaglessolutions.co.uk"
 }
+
+# ── Auth0 (injected as TF_VAR_* by GitHub Actions) ───────────────────────────
+variable "auth0_secret" {
+  description = "Long random secret used to encrypt Auth0 session cookies."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "auth0_issuer_base_url" {
+  description = "Auth0 tenant URL, e.g. https://your-tenant.eu.auth0.com"
+  type        = string
+  default     = ""
+}
+
+variable "auth0_client_id" {
+  description = "Auth0 application Client ID."
+  type        = string
+  default     = ""
+}
+
+variable "auth0_client_secret" {
+  description = "Auth0 application Client Secret."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "auth0_audience" {
+  description = "Auth0 API audience identifier."
+  type        = string
+  default     = ""
+}

@@ -72,11 +72,21 @@ jobs:
             echo "TF_VAR_jwt_secret=${{ secrets.PROD_JWT_SECRET }}"               >> $GITHUB_ENV
             echo "TF_VAR_stripe_secret_key=${{ secrets.PROD_STRIPE_SECRET_KEY }}" >> $GITHUB_ENV
             echo "TF_VAR_stripe_webhook_secret=${{ secrets.PROD_STRIPE_WEBHOOK_SECRET }}" >> $GITHUB_ENV
+            echo "TF_VAR_auth0_secret=${{ secrets.PROD_AUTH0_SECRET }}"                   >> $GITHUB_ENV
+            echo "TF_VAR_auth0_issuer_base_url=${{ secrets.PROD_AUTH0_ISSUER_BASE_URL }}" >> $GITHUB_ENV
+            echo "TF_VAR_auth0_client_id=${{ secrets.PROD_AUTH0_CLIENT_ID }}"             >> $GITHUB_ENV
+            echo "TF_VAR_auth0_client_secret=${{ secrets.PROD_AUTH0_CLIENT_SECRET }}"     >> $GITHUB_ENV
+            echo "TF_VAR_auth0_audience=${{ secrets.PROD_AUTH0_AUDIENCE }}"               >> $GITHUB_ENV
           else
             echo "TF_VAR_db_password=${{ secrets.DEV_DB_PASSWORD }}"              >> $GITHUB_ENV
             echo "TF_VAR_jwt_secret=${{ secrets.DEV_JWT_SECRET }}"                >> $GITHUB_ENV
             echo "TF_VAR_stripe_secret_key=${{ secrets.DEV_STRIPE_SECRET_KEY }}"  >> $GITHUB_ENV
             echo "TF_VAR_stripe_webhook_secret=${{ secrets.DEV_STRIPE_WEBHOOK_SECRET }}" >> $GITHUB_ENV
+            echo "TF_VAR_auth0_secret=${{ secrets.DEV_AUTH0_SECRET }}"                   >> $GITHUB_ENV
+            echo "TF_VAR_auth0_issuer_base_url=${{ secrets.DEV_AUTH0_ISSUER_BASE_URL }}" >> $GITHUB_ENV
+            echo "TF_VAR_auth0_client_id=${{ secrets.DEV_AUTH0_CLIENT_ID }}"             >> $GITHUB_ENV
+            echo "TF_VAR_auth0_client_secret=${{ secrets.DEV_AUTH0_CLIENT_SECRET }}"     >> $GITHUB_ENV
+            echo "TF_VAR_auth0_audience=${{ secrets.DEV_AUTH0_AUDIENCE }}"               >> $GITHUB_ENV
           fi
 
       - name: Terraform fmt check
@@ -150,11 +160,21 @@ jobs:
             echo "TF_VAR_jwt_secret=${{ secrets.PROD_JWT_SECRET }}"               >> $GITHUB_ENV
             echo "TF_VAR_stripe_secret_key=${{ secrets.PROD_STRIPE_SECRET_KEY }}" >> $GITHUB_ENV
             echo "TF_VAR_stripe_webhook_secret=${{ secrets.PROD_STRIPE_WEBHOOK_SECRET }}" >> $GITHUB_ENV
+            echo "TF_VAR_auth0_secret=${{ secrets.PROD_AUTH0_SECRET }}"                   >> $GITHUB_ENV
+            echo "TF_VAR_auth0_issuer_base_url=${{ secrets.PROD_AUTH0_ISSUER_BASE_URL }}" >> $GITHUB_ENV
+            echo "TF_VAR_auth0_client_id=${{ secrets.PROD_AUTH0_CLIENT_ID }}"             >> $GITHUB_ENV
+            echo "TF_VAR_auth0_client_secret=${{ secrets.PROD_AUTH0_CLIENT_SECRET }}"     >> $GITHUB_ENV
+            echo "TF_VAR_auth0_audience=${{ secrets.PROD_AUTH0_AUDIENCE }}"               >> $GITHUB_ENV
           else
             echo "TF_VAR_db_password=${{ secrets.DEV_DB_PASSWORD }}"              >> $GITHUB_ENV
             echo "TF_VAR_jwt_secret=${{ secrets.DEV_JWT_SECRET }}"                >> $GITHUB_ENV
             echo "TF_VAR_stripe_secret_key=${{ secrets.DEV_STRIPE_SECRET_KEY }}"  >> $GITHUB_ENV
             echo "TF_VAR_stripe_webhook_secret=${{ secrets.DEV_STRIPE_WEBHOOK_SECRET }}" >> $GITHUB_ENV
+            echo "TF_VAR_auth0_secret=${{ secrets.DEV_AUTH0_SECRET }}"                   >> $GITHUB_ENV
+            echo "TF_VAR_auth0_issuer_base_url=${{ secrets.DEV_AUTH0_ISSUER_BASE_URL }}" >> $GITHUB_ENV
+            echo "TF_VAR_auth0_client_id=${{ secrets.DEV_AUTH0_CLIENT_ID }}"             >> $GITHUB_ENV
+            echo "TF_VAR_auth0_client_secret=${{ secrets.DEV_AUTH0_CLIENT_SECRET }}"     >> $GITHUB_ENV
+            echo "TF_VAR_auth0_audience=${{ secrets.DEV_AUTH0_AUDIENCE }}"               >> $GITHUB_ENV
           fi
 
       - name: Terraform init
@@ -213,11 +233,21 @@ jobs:
             echo "TF_VAR_jwt_secret=${{ secrets.PROD_JWT_SECRET }}"               >> $GITHUB_ENV
             echo "TF_VAR_stripe_secret_key=${{ secrets.PROD_STRIPE_SECRET_KEY }}" >> $GITHUB_ENV
             echo "TF_VAR_stripe_webhook_secret=${{ secrets.PROD_STRIPE_WEBHOOK_SECRET }}" >> $GITHUB_ENV
+            echo "TF_VAR_auth0_secret=${{ secrets.PROD_AUTH0_SECRET }}"                   >> $GITHUB_ENV
+            echo "TF_VAR_auth0_issuer_base_url=${{ secrets.PROD_AUTH0_ISSUER_BASE_URL }}" >> $GITHUB_ENV
+            echo "TF_VAR_auth0_client_id=${{ secrets.PROD_AUTH0_CLIENT_ID }}"             >> $GITHUB_ENV
+            echo "TF_VAR_auth0_client_secret=${{ secrets.PROD_AUTH0_CLIENT_SECRET }}"     >> $GITHUB_ENV
+            echo "TF_VAR_auth0_audience=${{ secrets.PROD_AUTH0_AUDIENCE }}"               >> $GITHUB_ENV
           else
             echo "TF_VAR_db_password=${{ secrets.DEV_DB_PASSWORD }}"              >> $GITHUB_ENV
             echo "TF_VAR_jwt_secret=${{ secrets.DEV_JWT_SECRET }}"                >> $GITHUB_ENV
             echo "TF_VAR_stripe_secret_key=${{ secrets.DEV_STRIPE_SECRET_KEY }}"  >> $GITHUB_ENV
             echo "TF_VAR_stripe_webhook_secret=${{ secrets.DEV_STRIPE_WEBHOOK_SECRET }}" >> $GITHUB_ENV
+            echo "TF_VAR_auth0_secret=${{ secrets.DEV_AUTH0_SECRET }}"                   >> $GITHUB_ENV
+            echo "TF_VAR_auth0_issuer_base_url=${{ secrets.DEV_AUTH0_ISSUER_BASE_URL }}" >> $GITHUB_ENV
+            echo "TF_VAR_auth0_client_id=${{ secrets.DEV_AUTH0_CLIENT_ID }}"             >> $GITHUB_ENV
+            echo "TF_VAR_auth0_client_secret=${{ secrets.DEV_AUTH0_CLIENT_SECRET }}"     >> $GITHUB_ENV
+            echo "TF_VAR_auth0_audience=${{ secrets.DEV_AUTH0_AUDIENCE }}"               >> $GITHUB_ENV
           fi
 
       - name: Terraform init
