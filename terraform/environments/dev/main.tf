@@ -1,4 +1,4 @@
-﻿locals {
+locals {
   name_prefix       = "${var.project_name}-${var.environment}"
   frontend_hostname = var.frontend_domain
   api_hostname      = var.api_domain
