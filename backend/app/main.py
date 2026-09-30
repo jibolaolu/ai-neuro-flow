@@ -1,4 +1,4 @@
-﻿import logging
+import logging
 import time
 
 from fastapi import FastAPI, Request
@@ -42,7 +42,12 @@ app.add_middleware(
     allow_origin_regex=_cors_regex,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "Stripe-Signature", "X-WC-Webhook-Signature"],
+    allow_headers=[
+        "Authorization",
+        "Content-Type",
+        "Stripe-Signature",
+        "X-WC-Webhook-Signature",
+    ],
 )
 
 
@@ -72,7 +77,9 @@ def startup() -> None:
         from app.db.tenant_migrate import ensure_default_organization
 
         ensure_default_organization(engine)
-    logger.info("%s API ready | env=%s", settings.platform_display_name, settings.environment)
+    logger.info(
+        "%s API ready | env=%s", settings.platform_display_name, settings.environment
+    )
 
 
 @app.on_event("shutdown")

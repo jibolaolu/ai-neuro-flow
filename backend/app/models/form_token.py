@@ -49,7 +49,7 @@ class FormToken(Base):
     recipient_email = Column(String, nullable=False)
     recipient_name = Column(String, nullable=True)
     status = Column(String, default=STATUS_PENDING)
-    responses = Column(Text, nullable=True)           # JSON string
+    responses = Column(Text, nullable=True)  # JSON string
     sent_at = Column(DateTime, nullable=True)
     submitted_at = Column(DateTime, nullable=True)
     reminder_sent_at = Column(DateTime, nullable=True)
@@ -57,6 +57,7 @@ class FormToken(Base):
 
 
 # Pydantic schemas
+
 
 class FormInfo(BaseModel):
     token: str

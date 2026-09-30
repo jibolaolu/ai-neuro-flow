@@ -28,10 +28,10 @@ class UserRecord(Base):
     address_line = Column(String, nullable=True)
     date_of_birth = Column(String, nullable=True)  # ISO date YYYY-MM-DD
     postcode = Column(String, nullable=True)
-    pay_rate = Column(String, nullable=True)          # numeric string e.g. "350.00"
-    pay_type = Column(String, nullable=True)          # per_day | per_assessment | per_annum
+    pay_rate = Column(String, nullable=True)  # numeric string e.g. "350.00"
+    pay_type = Column(String, nullable=True)  # per_day | per_assessment | per_annum
     preferred_assessment_type = Column(String, nullable=True)  # child | adult | both
-    supervisor_id = Column(String, nullable=True)     # user.id of assigned supervisor
+    supervisor_id = Column(String, nullable=True)  # user.id of assigned supervisor
     report_review_rate = Column(String, nullable=True)
     screening_pay_rate = Column(String, nullable=True)
 

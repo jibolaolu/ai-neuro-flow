@@ -1,4 +1,5 @@
 """Direct messaging model between admin and clinical staff."""
+
 import json
 from datetime import datetime, timezone
 

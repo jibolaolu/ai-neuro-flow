@@ -1,6 +1,10 @@
 from pydantic import BaseModel
 
-from app.models.workflow import ReportHandoffPayload, SessionBrieferPayload, WorkflowTask
+from app.models.workflow import (
+    ReportHandoffPayload,
+    SessionBrieferPayload,
+    WorkflowTask,
+)
 
 
 class Assessment(BaseModel):

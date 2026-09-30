@@ -3,13 +3,14 @@ Web Push subscription management.
 Stores push subscriptions per user so the backend can send push notifications.
 Gracefully skips actual push delivery if pywebpush is not installed.
 """
+
 from __future__ import annotations
 
 import json
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 

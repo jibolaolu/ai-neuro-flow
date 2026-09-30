@@ -1,6 +1,7 @@
 """Central platform branding — override via environment / Settings.
 For per-clinic (tenant) branding, use get_clinic_branding(db, clinic_id).
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -23,6 +24,7 @@ COOKIE_USER = settings.auth_user_cookie_name
 class ClinicBranding:
     """Resolved branding for a specific clinic tenant.
     Falls back to platform defaults for any unset field."""
+
     clinic_id: str | None
     display_name: str
     support_email: str
@@ -41,12 +43,18 @@ def get_clinic_branding(db: "Session", clinic_id: str | None) -> ClinicBranding:
 
     org = None
     if clinic_id:
-        org = db.query(OrganizationRecord).filter(OrganizationRecord.id == clinic_id).first()
+        org = (
+            db.query(OrganizationRecord)
+            .filter(OrganizationRecord.id == clinic_id)
+            .first()
+        )
 
     return ClinicBranding(
         clinic_id=clinic_id,
         display_name=(org.display_name or org.name) if org else PLATFORM_DISPLAY_NAME,
-        support_email=org.support_email if (org and org.support_email) else SUPPORT_EMAIL,
+        support_email=org.support_email
+        if (org and org.support_email)
+        else SUPPORT_EMAIL,
         contact_phone=org.contact_phone if org else None,
         address=org.address if org else None,
         website=org.website if org else None,

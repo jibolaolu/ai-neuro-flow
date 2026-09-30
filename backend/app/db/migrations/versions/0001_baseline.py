@@ -12,6 +12,7 @@ On an existing SQLite dev database, the tables already exist. Alembic marks
 this migration as applied without running DDL when you stamp with:
     alembic stamp 0001
 """
+
 from typing import Sequence, Union
 
 import sqlalchemy as sa
@@ -89,10 +90,16 @@ def upgrade() -> None:
         sa.Column("assigned_clinician_user_id", sa.String, nullable=True, index=True),
         sa.Column("confirmed_session_at", sa.DateTime, nullable=True),
         sa.Column("report_due_at", sa.DateTime, nullable=True),
-        sa.Column("booking_access_token", sa.String, nullable=True, unique=True, index=True),
-        sa.Column("portal_magic_token", sa.String, nullable=True, unique=True, index=True),
+        sa.Column(
+            "booking_access_token", sa.String, nullable=True, unique=True, index=True
+        ),
+        sa.Column(
+            "portal_magic_token", sa.String, nullable=True, unique=True, index=True
+        ),
         sa.Column("portal_magic_token_expires_at", sa.DateTime, nullable=True),
-        sa.Column("portal_session_token", sa.String, nullable=True, unique=True, index=True),
+        sa.Column(
+            "portal_session_token", sa.String, nullable=True, unique=True, index=True
+        ),
         sa.Column("portal_session_expires_at", sa.DateTime, nullable=True),
         sa.Column("is_active", sa.String, default="true"),
         sa.Column("created_at", sa.DateTime, nullable=True),

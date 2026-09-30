@@ -20,18 +20,26 @@ service = BookingService()
 
 # ── Auto-invoice helper ───────────────────────────────────────────────────────
 
-def _auto_invoice_for_booking(db: Session, clinic_id: int, client_id: int,
-                               booking_ref: str, amount_gbp: float = 0.0,
-                               description: str = "Assessment appointment") -> InvoiceRecord | None:
+
+def _auto_invoice_for_booking(
+    db: Session,
+    clinic_id: int,
+    client_id: int,
+    booking_ref: str,
+    amount_gbp: float = 0.0,
+    description: str = "Assessment appointment",
+) -> InvoiceRecord | None:
     """Create an invoice automatically when a booking is marked complete."""
     try:
-        line_items = [{"description": description, "quantity": 1, "unit_price": amount_gbp}]
+        line_items = [
+            {"description": description, "quantity": 1, "unit_price": amount_gbp}
+        ]
         inv = InvoiceRecord(
             clinic_id=clinic_id,
             client_id=client_id,
             booking_ref=booking_ref,
             amount_gbp=amount_gbp,
-            vat_rate=0.0,          # medical services are VAT-exempt
+            vat_rate=0.0,  # medical services are VAT-exempt
             status="draft",
             due_date=date.today() + timedelta(days=14),
             line_items_json=json.dumps(line_items),
@@ -58,13 +66,17 @@ class ConfirmSessionBody(BaseModel):
 @router.get("/")
 def list_bookings(
     db: Session = Depends(get_db),
-    _user: UserRecord = Depends(require_roles("clinical-admin", "super-platform-admin")),
+    _user: UserRecord = Depends(
+        require_roles("clinical-admin", "super-platform-admin")
+    ),
 ) -> dict:
     return {"items": service.list_bookings(db)}
 
 
 @router.post("/confirm-session")
-def confirm_assessment_session(payload: ConfirmSessionBody, db: Session = Depends(get_db)) -> dict:
+def confirm_assessment_session(
+    payload: ConfirmSessionBody, db: Session = Depends(get_db)
+) -> dict:
     """Generate video meeting URL and send SendGrid confirmations."""
     client = db.query(ClientRecord).filter(ClientRecord.id == payload.client_id).first()
     if client is None:
@@ -111,14 +123,18 @@ class CompleteSessionBody(BaseModel):
 def complete_session(
     payload: CompleteSessionBody,
     db: Session = Depends(get_db),
-    _user: UserRecord = Depends(require_roles("clinical-admin", "clinician", "super-platform-admin")),
+    _user: UserRecord = Depends(
+        require_roles("clinical-admin", "clinician", "super-platform-admin")
+    ),
 ) -> dict:
     """Mark a session complete and optionally auto-generate an invoice."""
     clinic_id = getattr(_user, "clinic_id", 1) or 1
     invoice = None
     if payload.auto_invoice:
         invoice = _auto_invoice_for_booking(
-            db, clinic_id, payload.client_id,
+            db,
+            clinic_id,
+            payload.client_id,
             payload.booking_id,
             payload.invoice_amount_gbp,
             payload.invoice_description,
@@ -132,7 +148,9 @@ def complete_session(
 
 
 @router.post("/webhooks/stripe")
-def stripe_booking_webhook(payload: BookingWebhookPayload, db: Session = Depends(get_db)) -> dict:
+def stripe_booking_webhook(
+    payload: BookingWebhookPayload, db: Session = Depends(get_db)
+) -> dict:
     booking = service.process_payment_webhook(payload, db)
     return {
         "message": "Booking workflow started",
@@ -144,7 +162,9 @@ def stripe_booking_webhook(payload: BookingWebhookPayload, db: Session = Depends
 def get_booking(
     booking_id: str,
     db: Session = Depends(get_db),
-    _user: UserRecord = Depends(require_roles("clinical-admin", "super-platform-admin")),
+    _user: UserRecord = Depends(
+        require_roles("clinical-admin", "super-platform-admin")
+    ),
 ) -> dict:
     booking = service.get_booking(booking_id, db)
     if booking is None:

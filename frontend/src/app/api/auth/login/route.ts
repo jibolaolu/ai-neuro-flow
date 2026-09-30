@@ -70,14 +70,14 @@ function detectBaseUrl(req: NextRequest): string {
 export async function GET(request: NextRequest) {
   const baseURL = detectBaseUrl(request);
   const auth0 = initAuth0({ baseURL });
-  const loginRes = await auth0.handleLogin({
+  const loginRes = await auth0.handleLogin(request, {
     returnTo: "/api/auth/sync",
     authorizationParams: {
       scope: "openid profile email",
       prompt: "login",
       ...(audience ? { audience } : {}),
     },
-  })(request);
+  });
   // Store the detected origin so the callback handler (/api/auth/[auth0]) uses
   // the same baseURL for the token exchange redirect_uri.
   const headers = new Headers(loginRes.headers);

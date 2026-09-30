@@ -23,9 +23,16 @@ def get_waitlist(
     - awaiting_clinician: forms done but no clinician assigned
     - awaiting_booking: clinician assigned but no session booked
     """
-    clients = db.query(ClientRecord).filter(
-        ClientRecord.status.notin_(["Complete", "Assessment Complete", "Report Issued"])
-    ).order_by(ClientRecord.created_at).all()
+    clients = (
+        db.query(ClientRecord)
+        .filter(
+            ClientRecord.status.notin_(
+                ["Complete", "Assessment Complete", "Report Issued"]
+            )
+        )
+        .order_by(ClientRecord.created_at)
+        .all()
+    )
 
     awaiting_forms = []
     awaiting_clinician = []
@@ -43,40 +50,55 @@ def get_waitlist(
             days_waiting = None
             if c.created_at:
                 from datetime import datetime, timezone
-                created = c.created_at.replace(tzinfo=timezone.utc) if c.created_at.tzinfo is None else c.created_at
+
+                created = (
+                    c.created_at.replace(tzinfo=timezone.utc)
+                    if c.created_at.tzinfo is None
+                    else c.created_at
+                )
                 days_waiting = (datetime.now(timezone.utc) - created).days
-            awaiting_forms.append({
-                "id": c.id,
-                "full_name": c.full_name,
-                "email": c.email,
-                "pathway": c.pathway,
-                "status": c.status,
-                "forms_sent": any_forms,
-                "forms_completed": sum(1 for f in forms if f.status == "submitted"),
-                "forms_total": len(forms),
-                "days_waiting": days_waiting,
-                "booking_access_token": c.booking_access_token,
-            })
+            awaiting_forms.append(
+                {
+                    "id": c.id,
+                    "full_name": c.full_name,
+                    "email": c.email,
+                    "pathway": c.pathway,
+                    "status": c.status,
+                    "forms_sent": any_forms,
+                    "forms_completed": sum(1 for f in forms if f.status == "submitted"),
+                    "forms_total": len(forms),
+                    "days_waiting": days_waiting,
+                    "booking_access_token": c.booking_access_token,
+                }
+            )
         elif not c.assigned_clinician_user_id:
-            awaiting_clinician.append({
-                "id": c.id,
-                "full_name": c.full_name,
-                "email": c.email,
-                "pathway": c.pathway,
-                "status": c.status,
-                "booking_access_token": c.booking_access_token,
-            })
+            awaiting_clinician.append(
+                {
+                    "id": c.id,
+                    "full_name": c.full_name,
+                    "email": c.email,
+                    "pathway": c.pathway,
+                    "status": c.status,
+                    "booking_access_token": c.booking_access_token,
+                }
+            )
         else:
-            clinician = db.query(UserRecord).filter(UserRecord.id == c.assigned_clinician_user_id).first()
-            awaiting_booking.append({
-                "id": c.id,
-                "full_name": c.full_name,
-                "email": c.email,
-                "pathway": c.pathway,
-                "status": c.status,
-                "clinician_name": clinician.full_name if clinician else None,
-                "booking_access_token": c.booking_access_token,
-            })
+            clinician = (
+                db.query(UserRecord)
+                .filter(UserRecord.id == c.assigned_clinician_user_id)
+                .first()
+            )
+            awaiting_booking.append(
+                {
+                    "id": c.id,
+                    "full_name": c.full_name,
+                    "email": c.email,
+                    "pathway": c.pathway,
+                    "status": c.status,
+                    "clinician_name": clinician.full_name if clinician else None,
+                    "booking_access_token": c.booking_access_token,
+                }
+            )
 
     return {
         "awaiting_forms": awaiting_forms,
@@ -100,5 +122,7 @@ def send_booking_invite(
     try:
         email_svc.send_booking_invite(client)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to send invite: {e}") from e
+        raise HTTPException(
+            status_code=500, detail=f"Failed to send invite: {e}"
+        ) from e
     return {"ok": True, "message": f"Booking invite sent to {client.email}"}

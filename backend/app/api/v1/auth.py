@@ -33,7 +33,9 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)) -> LoginResponse
             detail="Invalid email or password",
         )
     if not user.is_active:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account inactive")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Account inactive"
+        )
 
     extra = {"clinic_id": user.clinic_id} if user.clinic_id else None
     token = create_access_token(subject=user.id, role=user.role, extra=extra)

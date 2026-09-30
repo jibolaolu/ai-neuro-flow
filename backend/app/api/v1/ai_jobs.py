@@ -7,7 +7,6 @@ Platform/clinic admins can see all jobs for their clinic.
 
 from __future__ import annotations
 
-import json
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -30,8 +29,8 @@ router = APIRouter(redirect_slashes=False)
 @router.get("", response_model=AIJobList)
 def list_jobs(
     worker_type: str | None = None,
-    job_status:  str | None = None,
-    db:   Session    = Depends(get_db),
+    job_status: str | None = None,
+    db: Session = Depends(get_db),
     user: UserRecord = Depends(get_current_user),
 ):
     q = db.query(AIJobRecord)
@@ -57,7 +56,7 @@ def list_jobs(
 @router.post("", response_model=AIJobOut, status_code=status.HTTP_201_CREATED)
 def create_job(
     payload: AIJobCreate,
-    db:   Session    = Depends(get_db),
+    db: Session = Depends(get_db),
     user: UserRecord = Depends(get_current_user),
 ):
     cid = effective_clinic_id(user)
@@ -74,7 +73,7 @@ def create_job(
 @router.get("/{job_id}", response_model=AIJobOut)
 def get_job(
     job_id: str,
-    db:   Session    = Depends(get_db),
+    db: Session = Depends(get_db),
     user: UserRecord = Depends(get_current_user),
 ):
     job = db.query(AIJobRecord).filter(AIJobRecord.id == job_id).first()
@@ -93,7 +92,7 @@ def get_job(
 @router.delete("/{job_id}", status_code=204)
 def cancel_job(
     job_id: str,
-    db:   Session    = Depends(get_db),
+    db: Session = Depends(get_db),
     user: UserRecord = Depends(get_current_user),
 ):
     job = db.query(AIJobRecord).filter(AIJobRecord.id == job_id).first()
@@ -103,7 +102,11 @@ def cancel_job(
         raise HTTPException(400, "Only queued jobs can be cancelled")
 
     cid = effective_clinic_id(user)
-    if not is_platform_admin(user) and job.clinic_id != cid and job.created_by != user.id:
+    if (
+        not is_platform_admin(user)
+        and job.clinic_id != cid
+        and job.created_by != user.id
+    ):
         raise HTTPException(403, "Access denied")
 
     db.delete(job)

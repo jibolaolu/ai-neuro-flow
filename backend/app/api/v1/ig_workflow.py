@@ -3,6 +3,7 @@ Caldicott / Information Governance workflow.
 Manages data-sharing approvals, Caldicott principle assessments,
 and DSPT (Data Security & Protection Toolkit) evidence tracking.
 """
+
 from __future__ import annotations
 
 import json
@@ -21,16 +22,56 @@ router = APIRouter()
 
 # ── DSPT standard definitions ─────────────────────────────────────────────────
 DSPT_STANDARDS = [
-    {"id": "1", "title": "Personal Confidential Data", "description": "Staff understand their responsibilities for handling personal confidential data"},
-    {"id": "2", "title": "Staff Responsibilities", "description": "All staff complete annual data security training"},
-    {"id": "3", "title": "Training", "description": "Training completion rate ≥95% of workforce"},
-    {"id": "4", "title": "Managing Data Access", "description": "Access to systems is controlled and audited"},
-    {"id": "5", "title": "Process Reviews", "description": "Processes are reviewed following security incidents"},
-    {"id": "6", "title": "Responding to Incidents", "description": "Cyber incidents and near misses are reported"},
-    {"id": "7", "title": "Continuity Planning", "description": "Continuity plans are in place for data and cyber security incidents"},
-    {"id": "8", "title": "Unsupported Systems", "description": "Unsupported systems that store or process personal data have been identified"},
-    {"id": "9", "title": "IT Protection", "description": "Strategies are in place to protect the organisation from malware"},
-    {"id": "10", "title": "Accountable Suppliers", "description": "Data processors and ICT suppliers have a contract that reflects data security obligations"},
+    {
+        "id": "1",
+        "title": "Personal Confidential Data",
+        "description": "Staff understand their responsibilities for handling personal confidential data",
+    },
+    {
+        "id": "2",
+        "title": "Staff Responsibilities",
+        "description": "All staff complete annual data security training",
+    },
+    {
+        "id": "3",
+        "title": "Training",
+        "description": "Training completion rate ≥95% of workforce",
+    },
+    {
+        "id": "4",
+        "title": "Managing Data Access",
+        "description": "Access to systems is controlled and audited",
+    },
+    {
+        "id": "5",
+        "title": "Process Reviews",
+        "description": "Processes are reviewed following security incidents",
+    },
+    {
+        "id": "6",
+        "title": "Responding to Incidents",
+        "description": "Cyber incidents and near misses are reported",
+    },
+    {
+        "id": "7",
+        "title": "Continuity Planning",
+        "description": "Continuity plans are in place for data and cyber security incidents",
+    },
+    {
+        "id": "8",
+        "title": "Unsupported Systems",
+        "description": "Unsupported systems that store or process personal data have been identified",
+    },
+    {
+        "id": "9",
+        "title": "IT Protection",
+        "description": "Strategies are in place to protect the organisation from malware",
+    },
+    {
+        "id": "10",
+        "title": "Accountable Suppliers",
+        "description": "Data processors and ICT suppliers have a contract that reflects data security obligations",
+    },
 ]
 
 CALDICOTT_PRINCIPLES = {
@@ -43,10 +84,18 @@ CALDICOTT_PRINCIPLES = {
     "7": "The duty to share can be as important as the duty to protect",
 }
 
-REQUEST_TYPES = ["data-share", "subject-access", "third-party-disclosure", "research", "audit", "safeguarding"]
+REQUEST_TYPES = [
+    "data-share",
+    "subject-access",
+    "third-party-disclosure",
+    "research",
+    "audit",
+    "safeguarding",
+]
 
 
 # ── Schemas ───────────────────────────────────────────────────────────────────
+
 
 class CaldicottCreate(BaseModel):
     request_type: str
@@ -66,12 +115,13 @@ class CaldicottDecision(BaseModel):
 
 class DsptUpdate(BaseModel):
     standard_id: str
-    status: str   # "met" | "not-met" | "in-progress" | "not-applicable"
+    status: str  # "met" | "not-met" | "in-progress" | "not-applicable"
     evidence: Optional[str] = None
     notes: Optional[str] = None
 
 
 # ── Caldicott request endpoints ───────────────────────────────────────────────
+
 
 @router.get("/caldicott")
 def list_requests(
@@ -95,7 +145,9 @@ def create_request(
 ):
     cid = effective_clinic_id(user)
     if body.request_type not in REQUEST_TYPES:
-        raise HTTPException(status_code=400, detail=f"Invalid request_type. Valid: {REQUEST_TYPES}")
+        raise HTTPException(
+            status_code=400, detail=f"Invalid request_type. Valid: {REQUEST_TYPES}"
+        )
     req = CaldicottRequest(
         clinic_id=cid,
         requester_id=user.id,
@@ -121,10 +173,14 @@ def get_request(
     user: Any = Depends(get_current_user),
 ):
     cid = effective_clinic_id(user)
-    req = db.query(CaldicottRequest).filter(
-        CaldicottRequest.id == req_id,
-        CaldicottRequest.clinic_id == cid,
-    ).first()
+    req = (
+        db.query(CaldicottRequest)
+        .filter(
+            CaldicottRequest.id == req_id,
+            CaldicottRequest.clinic_id == cid,
+        )
+        .first()
+    )
     if not req:
         raise HTTPException(status_code=404, detail="Request not found")
     return {**req.to_dict(), "principle_definitions": CALDICOTT_PRINCIPLES}
@@ -138,14 +194,20 @@ def decide(
     user: Any = Depends(get_current_user),
 ):
     cid = effective_clinic_id(user)
-    req = db.query(CaldicottRequest).filter(
-        CaldicottRequest.id == req_id,
-        CaldicottRequest.clinic_id == cid,
-    ).first()
+    req = (
+        db.query(CaldicottRequest)
+        .filter(
+            CaldicottRequest.id == req_id,
+            CaldicottRequest.clinic_id == cid,
+        )
+        .first()
+    )
     if not req:
         raise HTTPException(status_code=404, detail="Request not found")
     if body.decision not in ("approved", "rejected", "deferred"):
-        raise HTTPException(status_code=400, detail="decision must be approved | rejected | deferred")
+        raise HTTPException(
+            status_code=400, detail="decision must be approved | rejected | deferred"
+        )
     req.status = body.decision
     req.decision_notes = body.notes
     req.decided_at = datetime.utcnow()
@@ -168,6 +230,7 @@ def get_request_types():
 
 # ── DSPT checklist endpoints ──────────────────────────────────────────────────
 
+
 @router.get("/dspt")
 def get_dspt(
     db: Session = Depends(get_db),
@@ -180,7 +243,16 @@ def get_dspt(
         return {
             "clinic_id": cid,
             "year": "2025-26",
-            "standards": {s["id"]: {"title": s["title"], "description": s["description"], "status": "not-started", "evidence": None, "notes": None} for s in DSPT_STANDARDS},
+            "standards": {
+                s["id"]: {
+                    "title": s["title"],
+                    "description": s["description"],
+                    "status": "not-started",
+                    "evidence": None,
+                    "notes": None,
+                }
+                for s in DSPT_STANDARDS
+            },
             "overall_status": "not-started",
             "submitted_at": None,
         }
@@ -249,7 +321,9 @@ def submit_dspt(
     cid = effective_clinic_id(user)
     row = db.query(DsptChecklist).filter(DsptChecklist.clinic_id == cid).first()
     if not row:
-        raise HTTPException(status_code=400, detail="No DSPT checklist found — complete standards first")
+        raise HTTPException(
+            status_code=400, detail="No DSPT checklist found — complete standards first"
+        )
     row.submitted_at = datetime.utcnow()
     row.updated_at = datetime.utcnow()
     db.commit()

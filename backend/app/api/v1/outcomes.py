@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -29,7 +28,7 @@ def _outcome_id() -> str:
 @router.get("", response_model=OutcomeList)
 def list_outcomes(
     client_id: str | None = None,
-    db:   Session    = Depends(get_db),
+    db: Session = Depends(get_db),
     user: UserRecord = Depends(require_roles(*_CLINICAL_ROLES)),
 ):
     q = db.query(OutcomeRecord)
@@ -42,11 +41,13 @@ def list_outcomes(
     return OutcomeList(items=rows, total=len(rows))
 
 
-@router.post("/{client_id}", response_model=OutcomeOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/{client_id}", response_model=OutcomeOut, status_code=status.HTTP_201_CREATED
+)
 def create_outcome(
     client_id: str,
-    payload:   OutcomeCreate,
-    db:   Session    = Depends(get_db),
+    payload: OutcomeCreate,
+    db: Session = Depends(get_db),
     user: UserRecord = Depends(require_roles(*_CLINICAL_ROLES)),
 ):
     client = get_client_for_user(db, user, client_id)
@@ -56,12 +57,15 @@ def create_outcome(
     # Optionally generate AI outcome prediction
     ai_prediction: str | None = None
     try:
-        profile = db.query(ClientProfileRecord).filter(
-            ClientProfileRecord.client_id == client_id
-        ).first()
+        profile = (
+            db.query(ClientProfileRecord)
+            .filter(ClientProfileRecord.client_id == client_id)
+            .first()
+        )
         scores = json.loads(profile.scores or "{}") if profile else {}
         if scores:
             from app.ai.llm_gateway import llm_gateway
+
             pred = llm_gateway.call_json(
                 "Based on the following assessment scores, predict treatment outcomes. "
                 "Return JSON: {predicted_response: string, prognosis: string, "
@@ -83,7 +87,9 @@ def create_outcome(
         recorded_by_name=getattr(user, "full_name", None) or user.email,
         final_diagnosis=payload.final_diagnosis,
         treatment_plan=payload.treatment_plan,
-        referrals_made=json.dumps(payload.referrals_made) if payload.referrals_made else None,
+        referrals_made=json.dumps(payload.referrals_made)
+        if payload.referrals_made
+        else None,
         follow_up_date=payload.follow_up_date,
         client_feedback=payload.client_feedback,
         outcome_score=payload.outcome_score,
@@ -99,7 +105,7 @@ def create_outcome(
 @router.get("/{client_id}/latest", response_model=OutcomeOut)
 def get_latest_outcome(
     client_id: str,
-    db:   Session    = Depends(get_db),
+    db: Session = Depends(get_db),
     user: UserRecord = Depends(require_roles(*_CLINICAL_ROLES)),
 ):
     get_client_for_user(db, user, client_id)

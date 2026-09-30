@@ -13,11 +13,11 @@ Tiers:
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_db, require_roles
+from app.api.deps import get_db, require_roles
 from app.models.api_key import ApiKeyRecord, generate_api_key
 from app.models.user import UserRecord
 from app.services.tenant import effective_clinic_id
@@ -27,51 +27,53 @@ router = APIRouter()
 
 # ── Response/request schemas ──────────────────────────────────────────────────
 
+
 class ApiKeyOut(BaseModel):
-    id:             str
-    label:          str
-    tier:           str
-    key_prefix:     str         # "nf_live_a1b2c3d4" — safe to display
-    active:         bool
+    id: str
+    label: str
+    tier: str
+    key_prefix: str  # "nf_live_a1b2c3d4" — safe to display
+    active: bool
     requests_total: int
-    last_used_at:   Optional[datetime]
-    created_at:     datetime
-    created_by:     Optional[str]
+    last_used_at: Optional[datetime]
+    created_at: datetime
+    created_by: Optional[str]
 
 
 class ApiKeyCreated(ApiKeyOut):
-    raw_key: str    # returned ONCE — copy immediately
+    raw_key: str  # returned ONCE — copy immediately
 
 
 class CreateKeyRequest(BaseModel):
     label: str
-    tier:  str = "basic"   # basic | pro | partner
+    tier: str = "basic"  # basic | pro | partner
 
 
 class PatchKeyRequest(BaseModel):
-    label:  Optional[str] = None
+    label: Optional[str] = None
     active: Optional[bool] = None
 
 
 # ── Tier catalogue (static — no DB needed) ────────────────────────────────────
+
 
 @router.get("/tiers")
 def list_tiers() -> dict:
     return {
         "tiers": [
             {
-                "id":                 "basic",
-                "label":              "Basic",
-                "price_monthly_gbp":  49,
+                "id": "basic",
+                "label": "Basic",
+                "price_monthly_gbp": 49,
                 "features": [
                     "Submit new clients (POST /intake/client)",
                     "100 API calls / day",
                 ],
             },
             {
-                "id":                 "pro",
-                "label":              "Pro",
-                "price_monthly_gbp":  149,
+                "id": "pro",
+                "label": "Pro",
+                "price_monthly_gbp": 149,
                 "features": [
                     "Full client read/write + form tracking",
                     "Webhook registration and management",
@@ -80,9 +82,9 @@ def list_tiers() -> dict:
                 ],
             },
             {
-                "id":                 "partner",
-                "label":              "Partner",
-                "price_monthly_gbp":  399,
+                "id": "partner",
+                "label": "Partner",
+                "price_monthly_gbp": 399,
                 "features": [
                     "All Pro features",
                     "White-label configuration",
@@ -96,12 +98,16 @@ def list_tiers() -> dict:
 
 # ── CRUD ──────────────────────────────────────────────────────────────────────
 
+
 @router.get("/", response_model=list[ApiKeyOut])
 def list_api_keys(
-    db:   Session    = Depends(get_db),
-    user: UserRecord = Depends(require_roles(
-        "clinical-admin", "super-platform-admin",
-    )),
+    db: Session = Depends(get_db),
+    user: UserRecord = Depends(
+        require_roles(
+            "clinical-admin",
+            "super-platform-admin",
+        )
+    ),
 ) -> list[ApiKeyOut]:
     clinic_id = effective_clinic_id(user)
     keys = (
@@ -116,17 +122,22 @@ def list_api_keys(
 @router.post("/", response_model=ApiKeyCreated, status_code=201)
 def create_api_key(
     body: CreateKeyRequest,
-    db:   Session    = Depends(get_db),
-    user: UserRecord = Depends(require_roles(
-        "clinical-admin", "super-platform-admin",
-    )),
+    db: Session = Depends(get_db),
+    user: UserRecord = Depends(
+        require_roles(
+            "clinical-admin",
+            "super-platform-admin",
+        )
+    ),
 ) -> ApiKeyCreated:
     """
     Create a new API key.  The raw key is returned in this response ONLY —
     it cannot be recovered afterwards.
     """
     if body.tier not in {"basic", "pro", "partner"}:
-        raise HTTPException(status_code=400, detail="tier must be basic, pro, or partner")
+        raise HTTPException(
+            status_code=400, detail="tier must be basic, pro, or partner"
+        )
 
     clinic_id = effective_clinic_id(user)
     raw, key_hash, key_prefix = generate_api_key()
@@ -153,11 +164,14 @@ def create_api_key(
 @router.patch("/{key_id}", response_model=ApiKeyOut)
 def update_api_key(
     key_id: str,
-    body:   PatchKeyRequest,
-    db:     Session    = Depends(get_db),
-    user:   UserRecord = Depends(require_roles(
-        "clinical-admin", "super-platform-admin",
-    )),
+    body: PatchKeyRequest,
+    db: Session = Depends(get_db),
+    user: UserRecord = Depends(
+        require_roles(
+            "clinical-admin",
+            "super-platform-admin",
+        )
+    ),
 ) -> ApiKeyOut:
     clinic_id = effective_clinic_id(user)
     record = (
@@ -179,10 +193,13 @@ def update_api_key(
 @router.delete("/{key_id}", status_code=204)
 def revoke_api_key(
     key_id: str,
-    db:     Session    = Depends(get_db),
-    user:   UserRecord = Depends(require_roles(
-        "clinical-admin", "super-platform-admin",
-    )),
+    db: Session = Depends(get_db),
+    user: UserRecord = Depends(
+        require_roles(
+            "clinical-admin",
+            "super-platform-admin",
+        )
+    ),
 ) -> None:
     clinic_id = effective_clinic_id(user)
     record = (

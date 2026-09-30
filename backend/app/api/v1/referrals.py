@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_db, require_roles
+from app.api.deps import get_db, require_roles
 from app.models.client import ClientRecord
 from app.models.rtc_referral import (
     PATHWAYS,
@@ -26,57 +26,63 @@ router = APIRouter()
 
 # ── Schemas ────────────────────────────────────────────────────────────────────
 
+
 class RTCReferralCreate(BaseModel):
-    patient_name:           str
-    patient_dob:            str | None = None
-    patient_nhs_number:     str | None = None
-    patient_email:          str | None = None
-    patient_phone:          str | None = None
-    patient_address:        str | None = None
-    gp_name:                str | None = None
-    gp_practice:            str | None = None
-    gp_email:               str | None = None
-    icb_name:               str | None = None
-    referrer_name:          str | None = None
-    pathway:                str
-    priority:               str = "routine"
-    presenting_concerns:    str | None = None
-    relevant_history:       str | None = None
-    previous_assessments:   str | None = None
-    referred_date:          str | None = None
+    patient_name: str
+    patient_dob: str | None = None
+    patient_nhs_number: str | None = None
+    patient_email: str | None = None
+    patient_phone: str | None = None
+    patient_address: str | None = None
+    gp_name: str | None = None
+    gp_practice: str | None = None
+    gp_email: str | None = None
+    icb_name: str | None = None
+    referrer_name: str | None = None
+    pathway: str
+    priority: str = "routine"
+    presenting_concerns: str | None = None
+    relevant_history: str | None = None
+    previous_assessments: str | None = None
+    referred_date: str | None = None
 
 
 class RTCAcceptBody(BaseModel):
-    acceptance_notes:   str | None = None
-    send_letter:        bool = True
+    acceptance_notes: str | None = None
+    send_letter: bool = True
 
 
 class RTCRejectBody(BaseModel):
-    rejection_reason:   str
+    rejection_reason: str
 
 
 class RTCConvertBody(BaseModel):
     """Convert an accepted referral into a client record."""
-    clinician_user_id:  str | None = None
-    clinic_id:          str | None = None   # override if not on token
+
+    clinician_user_id: str | None = None
+    clinic_id: str | None = None  # override if not on token
 
 
 class ParseLetterBody(BaseModel):
-    letter_text: str   # raw pasted text of the GP referral letter
+    letter_text: str  # raw pasted text of the GP referral letter
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
+
 
 def _clinic_id_from_user(user: UserRecord) -> str:
     return user.clinic_id or user.organization_id or "unknown"
 
 
-def _send_acceptance_letter(referral: RTCReferralRecord, db: "Session | None" = None) -> None:
+def _send_acceptance_letter(
+    referral: RTCReferralRecord, db: "Session | None" = None
+) -> None:
     if not referral.gp_email and not referral.patient_email:
         return
     recipient = referral.gp_email or referral.patient_email
     try:
         from app.core.branding import get_clinic_branding
+
         branding = get_clinic_branding(db, referral.clinic_id) if db else None
         clinic_name = branding.display_name if branding else "Clinical Team"
         email_svc.send_generic_notification(
@@ -96,12 +102,15 @@ def _send_acceptance_letter(referral: RTCReferralRecord, db: "Session | None" = 
         pass  # email send failure must not block the accept action
 
 
-def _send_rejection_letter(referral: RTCReferralRecord, db: "Session | None" = None) -> None:
+def _send_rejection_letter(
+    referral: RTCReferralRecord, db: "Session | None" = None
+) -> None:
     recipient = referral.gp_email or referral.patient_email
     if not recipient:
         return
     try:
         from app.core.branding import get_clinic_branding
+
         branding = get_clinic_branding(db, referral.clinic_id) if db else None
         clinic_name = branding.display_name if branding else "Clinical Team"
         email_svc.send_generic_notification(
@@ -122,6 +131,7 @@ def _send_rejection_letter(referral: RTCReferralRecord, db: "Session | None" = N
 
 # ── Endpoints ──────────────────────────────────────────────────────────────────
 
+
 @router.get("/pathways")
 def list_pathways() -> dict:
     return {"pathways": PATHWAYS}
@@ -130,9 +140,11 @@ def list_pathways() -> dict:
 @router.post("/parse-letter")
 def parse_gp_letter(
     body: ParseLetterBody,
-    user: UserRecord = Depends(require_roles(
-        "clinical-admin", "super-platform-admin", "senior-clinician", "clinician"
-    )),
+    user: UserRecord = Depends(
+        require_roles(
+            "clinical-admin", "super-platform-admin", "senior-clinician", "clinician"
+        )
+    ),
 ) -> dict:
     """
     Use an LLM to extract structured fields from a pasted GP referral letter.
@@ -145,6 +157,7 @@ def parse_gp_letter(
     # Try AI extraction first
     try:
         from app.ai.llm_gateway import llm_gateway
+
         prompt = (
             "You are a clinical admin assistant. Extract the following fields from the GP "
             "referral letter below and return ONLY a valid JSON object with these keys "
@@ -160,7 +173,7 @@ def parse_gp_letter(
         )
         raw = llm_gateway.simple_completion(prompt=prompt, max_tokens=600)
         # Extract JSON from response
-        json_match = re.search(r'\{.*\}', raw, re.DOTALL)
+        json_match = re.search(r"\{.*\}", raw, re.DOTALL)
         if json_match:
             extracted = json.loads(json_match.group())
             # Sanitise pathway
@@ -171,31 +184,47 @@ def parse_gp_letter(
         pass
 
     # Regex heuristics fallback
-    fields: dict = {k: None for k in [
-        "patient_name", "patient_dob", "patient_nhs_number", "patient_email",
-        "patient_phone", "patient_address", "gp_name", "gp_practice", "gp_email",
-        "icb_name", "pathway", "priority", "presenting_concerns", "referred_date",
-    ]}
+    fields: dict = {
+        k: None
+        for k in [
+            "patient_name",
+            "patient_dob",
+            "patient_nhs_number",
+            "patient_email",
+            "patient_phone",
+            "patient_address",
+            "gp_name",
+            "gp_practice",
+            "gp_email",
+            "icb_name",
+            "pathway",
+            "priority",
+            "presenting_concerns",
+            "referred_date",
+        ]
+    }
 
     # NHS number — 10 digits, often spaced as 3-3-4
-    nhs = re.search(r'\b(\d{3}\s*\d{3}\s*\d{4})\b', text)
+    nhs = re.search(r"\b(\d{3}\s*\d{3}\s*\d{4})\b", text)
     if nhs:
         fields["patient_nhs_number"] = nhs.group(1).replace(" ", "")
 
     # Email
-    email = re.search(r'\b[\w.+-]+@[\w-]+\.[a-z]{2,}\b', text, re.IGNORECASE)
+    email = re.search(r"\b[\w.+-]+@[\w-]+\.[a-z]{2,}\b", text, re.IGNORECASE)
     if email:
         fields["patient_email"] = email.group()
 
     # Phone
-    phone = re.search(r'\b(?:\+44\s?|0)(?:\d[\s-]?){9,10}\b', text)
+    phone = re.search(r"\b(?:\+44\s?|0)(?:\d[\s-]?){9,10}\b", text)
     if phone:
         fields["patient_phone"] = phone.group().strip()
 
     # DOB patterns: DD/MM/YYYY or DD Month YYYY
-    dob = re.search(r'\b(\d{1,2})[/\-](\d{1,2})[/\-](\d{4})\b', text)
+    dob = re.search(r"\b(\d{1,2})[/\-](\d{1,2})[/\-](\d{4})\b", text)
     if dob:
-        fields["patient_dob"] = f"{dob.group(3)}-{dob.group(2).zfill(2)}-{dob.group(1).zfill(2)}"
+        fields["patient_dob"] = (
+            f"{dob.group(3)}-{dob.group(2).zfill(2)}-{dob.group(1).zfill(2)}"
+        )
 
     # Pathway detection
     for p in PATHWAYS:
@@ -206,7 +235,7 @@ def parse_gp_letter(
         fields["pathway"] = PATHWAYS[0]
 
     # Priority
-    if re.search(r'\burgent\b', text, re.IGNORECASE):
+    if re.search(r"\burgent\b", text, re.IGNORECASE):
         fields["priority"] = "urgent"
     else:
         fields["priority"] = "routine"
@@ -218,9 +247,11 @@ def parse_gp_letter(
 def list_referrals(
     status: str | None = None,
     db: Session = Depends(get_db),
-    user: UserRecord = Depends(require_roles(
-        "clinical-admin", "super-platform-admin", "senior-clinician", "clinician"
-    )),
+    user: UserRecord = Depends(
+        require_roles(
+            "clinical-admin", "super-platform-admin", "senior-clinician", "clinician"
+        )
+    ),
 ) -> dict:
     clinic_id = _clinic_id_from_user(user)
     q = db.query(RTCReferralRecord)
@@ -236,9 +267,11 @@ def list_referrals(
 def create_referral(
     body: RTCReferralCreate,
     db: Session = Depends(get_db),
-    user: UserRecord = Depends(require_roles(
-        "clinical-admin", "super-platform-admin", "senior-clinician", "clinician"
-    )),
+    user: UserRecord = Depends(
+        require_roles(
+            "clinical-admin", "super-platform-admin", "senior-clinician", "clinician"
+        )
+    ),
 ) -> dict:
     if body.pathway not in PATHWAYS:
         raise HTTPException(400, detail=f"Unknown pathway. Valid: {PATHWAYS}")
@@ -282,9 +315,11 @@ def create_referral(
 def get_referral(
     referral_id: str,
     db: Session = Depends(get_db),
-    user: UserRecord = Depends(require_roles(
-        "clinical-admin", "super-platform-admin", "senior-clinician", "clinician"
-    )),
+    user: UserRecord = Depends(
+        require_roles(
+            "clinical-admin", "super-platform-admin", "senior-clinician", "clinician"
+        )
+    ),
 ) -> dict:
     record = _get_or_404(db, referral_id)
     _check_clinic(record, user)
@@ -301,7 +336,9 @@ def accept_referral(
     record = _get_or_404(db, referral_id)
     _check_clinic(record, user)
     if record.status not in (RTC_STATUS_PENDING,):
-        raise HTTPException(400, detail=f"Cannot accept referral in status '{record.status}'")
+        raise HTTPException(
+            400, detail=f"Cannot accept referral in status '{record.status}'"
+        )
 
     record.status = RTC_STATUS_ACCEPTED
     record.eligibility_confirmed = True
@@ -328,7 +365,9 @@ def reject_referral(
     record = _get_or_404(db, referral_id)
     _check_clinic(record, user)
     if record.status not in (RTC_STATUS_PENDING,):
-        raise HTTPException(400, detail=f"Cannot reject referral in status '{record.status}'")
+        raise HTTPException(
+            400, detail=f"Cannot reject referral in status '{record.status}'"
+        )
 
     record.status = RTC_STATUS_REJECTED
     record.rejection_reason = body.rejection_reason
@@ -353,11 +392,14 @@ def convert_to_client(
     record = _get_or_404(db, referral_id)
     _check_clinic(record, user)
     if record.status != RTC_STATUS_ACCEPTED:
-        raise HTTPException(400, detail="Only accepted referrals can be converted to clients.")
+        raise HTTPException(
+            400, detail="Only accepted referrals can be converted to clients."
+        )
     if record.converted_client_id:
         raise HTTPException(400, detail="Referral already converted.")
 
     import uuid as _uuid
+
     clinic_id = _clinic_id_from_user(user)
     client = ClientRecord(
         id=f"CLT-{_uuid.uuid4().hex[:8].upper()}",
@@ -386,6 +428,7 @@ def convert_to_client(
 
 # ── Private helpers ────────────────────────────────────────────────────────────
 
+
 def _get_or_404(db: Session, referral_id: str) -> RTCReferralRecord:
     r = db.query(RTCReferralRecord).filter(RTCReferralRecord.id == referral_id).first()
     if not r:
@@ -403,28 +446,28 @@ def _check_clinic(record: RTCReferralRecord, user: UserRecord) -> None:
 
 def _row_out(r: RTCReferralRecord) -> dict:
     return {
-        "id":                   r.id,
-        "clinic_id":            r.clinic_id,
-        "patient_name":         r.patient_name,
-        "patient_dob":          r.patient_dob,
-        "patient_nhs_number":   r.patient_nhs_number,
-        "patient_email":        r.patient_email,
-        "patient_phone":        r.patient_phone,
-        "gp_name":              r.gp_name,
-        "gp_practice":          r.gp_practice,
-        "gp_email":             r.gp_email,
-        "icb_name":             r.icb_name,
-        "pathway":              r.pathway,
-        "priority":             r.priority,
-        "presenting_concerns":  r.presenting_concerns,
-        "status":               r.status,
-        "rejection_reason":     r.rejection_reason,
-        "acceptance_notes":     r.acceptance_notes,
-        "eligibility_confirmed":r.eligibility_confirmed,
+        "id": r.id,
+        "clinic_id": r.clinic_id,
+        "patient_name": r.patient_name,
+        "patient_dob": r.patient_dob,
+        "patient_nhs_number": r.patient_nhs_number,
+        "patient_email": r.patient_email,
+        "patient_phone": r.patient_phone,
+        "gp_name": r.gp_name,
+        "gp_practice": r.gp_practice,
+        "gp_email": r.gp_email,
+        "icb_name": r.icb_name,
+        "pathway": r.pathway,
+        "priority": r.priority,
+        "presenting_concerns": r.presenting_concerns,
+        "status": r.status,
+        "rejection_reason": r.rejection_reason,
+        "acceptance_notes": r.acceptance_notes,
+        "eligibility_confirmed": r.eligibility_confirmed,
         "acceptance_letter_sent": r.acceptance_letter_sent,
-        "converted_client_id":  r.converted_client_id,
-        "referred_date":        r.referred_date.isoformat() if r.referred_date else None,
-        "accepted_at":          r.accepted_at.isoformat() if r.accepted_at else None,
-        "rejected_at":          r.rejected_at.isoformat() if r.rejected_at else None,
-        "created_at":           r.created_at.isoformat() if r.created_at else None,
+        "converted_client_id": r.converted_client_id,
+        "referred_date": r.referred_date.isoformat() if r.referred_date else None,
+        "accepted_at": r.accepted_at.isoformat() if r.accepted_at else None,
+        "rejected_at": r.rejected_at.isoformat() if r.rejected_at else None,
+        "created_at": r.created_at.isoformat() if r.created_at else None,
     }

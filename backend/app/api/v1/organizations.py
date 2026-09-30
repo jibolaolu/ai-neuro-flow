@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_db, require_roles
+from app.api.deps import get_db, require_roles
 from app.core.auth0 import auth0_enabled
 from app.core.config import settings
 from app.core.security import create_access_token, hash_password
@@ -21,7 +21,7 @@ from app.models.organization import (
     SUB_TRIALING,
 )
 from app.models.user import UserOut, UserRecord
-from app.services.tenant import assert_user_in_tenant, get_organization, require_clinic_member
+from app.services.tenant import get_organization, require_clinic_member
 
 router = APIRouter()
 
@@ -38,7 +38,9 @@ def _normalize_slug(slug: str) -> str:
 
 
 @router.post("/signup", response_model=dict, status_code=status.HTTP_201_CREATED)
-def signup_organization(payload: OrganizationSignup, db: Session = Depends(get_db)) -> dict:
+def signup_organization(
+    payload: OrganizationSignup, db: Session = Depends(get_db)
+) -> dict:
     """Register a new clinic (organization) and its first clinical admin."""
     if not settings.allow_public_signup:
         raise HTTPException(
@@ -104,7 +106,9 @@ def signup_organization(payload: OrganizationSignup, db: Session = Depends(get_d
 @router.get("/me", response_model=OrganizationOut)
 def get_my_organization(
     db: Session = Depends(get_db),
-    user: UserRecord = Depends(require_roles("clinical-admin", "senior-clinician", "clinician")),
+    user: UserRecord = Depends(
+        require_roles("clinical-admin", "senior-clinician", "clinician")
+    ),
 ) -> OrganizationOut:
     cid = require_clinic_member(user)
     org = get_organization(db, cid)
@@ -125,9 +129,15 @@ def update_my_organization(
     if not org:
         raise HTTPException(status_code=404, detail="Organization not found")
     allowed = {
-        "display_name", "support_email", "contact_phone",
-        "address", "website", "logo_url",
-        "registered_company_number", "cqc_registration_number", "ico_registration_number",
+        "display_name",
+        "support_email",
+        "contact_phone",
+        "address",
+        "website",
+        "logo_url",
+        "registered_company_number",
+        "cqc_registration_number",
+        "ico_registration_number",
     }
     for key, value in body.items():
         if key in allowed:

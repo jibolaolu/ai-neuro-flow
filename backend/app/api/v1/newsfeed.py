@@ -1,18 +1,30 @@
 """Staff newsfeed — admin posts, clinical staff reads."""
+
 import json
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db, require_roles
-from app.models.newsfeed import NewsfeedCreate, NewsfeedList, NewsfeedPost, NewsfeedPostOut, NewsfeedUpdate
+from app.models.newsfeed import (
+    NewsfeedCreate,
+    NewsfeedList,
+    NewsfeedPost,
+    NewsfeedPostOut,
+    NewsfeedUpdate,
+)
 from app.models.user import UserRecord
 
 router = APIRouter()
 
-STAFF_ROLES = {"clinician", "senior-clinician", "clinical-admin", "super-platform-admin"}
+STAFF_ROLES = {
+    "clinician",
+    "senior-clinician",
+    "clinical-admin",
+    "super-platform-admin",
+}
 
 VISIBILITY_FOR_ROLE = {
     "clinician": {"all_staff", "clinicians_only"},
@@ -39,7 +51,9 @@ def list_posts(
         .all()
     )
     visible = [p for p in all_posts if _can_see(user.role, p.visibility)]
-    return NewsfeedList(items=[NewsfeedPostOut.model_validate(p) for p in visible], total=len(visible))
+    return NewsfeedList(
+        items=[NewsfeedPostOut.model_validate(p) for p in visible], total=len(visible)
+    )
 
 
 @router.post("/", response_model=NewsfeedPostOut, status_code=201)

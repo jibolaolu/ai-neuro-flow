@@ -7,7 +7,6 @@ Called when a client document is uploaded. Runs asynchronously via AI job queue.
 from __future__ import annotations
 
 import logging
-from pathlib import Path
 
 from app.ai.rag_engine import rag_engine
 from app.ai.llm_gateway import llm_gateway
@@ -36,11 +35,21 @@ class DocumentIntelligence:
 
         if not text.strip():
             logger.warning("No text extracted from %s", file_path)
-            return {"doc_id": doc_id, "text_len": 0, "indexed": False, "error": "No text extracted"}
+            return {
+                "doc_id": doc_id,
+                "text_len": 0,
+                "indexed": False,
+                "error": "No text extracted",
+            }
 
         # 2. AI extraction for clinical document types
         ai_summary = {}
-        if document_type in ("gp_letter", "school_report", "previous_assessment", "medical_report"):
+        if document_type in (
+            "gp_letter",
+            "school_report",
+            "previous_assessment",
+            "medical_report",
+        ):
             try:
                 ai_summary = llm_gateway.call_json(
                     f"Extract key clinical information from this {document_type.replace('_', ' ')}. "
@@ -60,17 +69,17 @@ class DocumentIntelligence:
             text=text,
             clinic_id=clinic_id,
             metadata={
-                "client_id":     client_id,
-                "doc_id":        doc_id,
+                "client_id": client_id,
+                "doc_id": doc_id,
                 "document_type": document_type,
             },
         )
 
         return {
-            "doc_id":     doc_id,
-            "text_len":   len(text),
-            "sections":   extracted.get("sections", []),
-            "indexed":    indexed,
+            "doc_id": doc_id,
+            "text_len": len(text),
+            "sections": extracted.get("sections", []),
+            "indexed": indexed,
             "ai_summary": ai_summary,
             "ocr_preview": text[:500],
         }
@@ -92,7 +101,8 @@ class DocumentIntelligence:
         )
         # Filter to this client only
         matches = [
-            m for m in results.get("matches", [])
+            m
+            for m in results.get("matches", [])
             if m.get("metadata", {}).get("client_id") == client_id
         ]
         return matches

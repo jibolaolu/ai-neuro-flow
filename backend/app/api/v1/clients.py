@@ -1,4 +1,4 @@
-﻿import secrets
+import secrets
 import uuid
 from pathlib import Path, PurePosixPath
 
@@ -8,7 +8,7 @@ from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.orm import Session
 from starlette.responses import FileResponse
 
-from app.api.deps import get_current_user, get_db, require_roles
+from app.api.deps import get_db, require_roles
 from app.services.tenant import (
     assert_client_tenant,
     clients_query,
@@ -17,7 +17,7 @@ from app.services.tenant import (
     is_platform_admin,
     require_clinic_member,
 )
-from app.core.config import document_upload_root, settings
+from app.core.config import settings
 from app.services import storage as storage_svc
 from app.api.v1.forms import sync_client_profile_from_submitted_forms
 from app.models.client import (
@@ -33,7 +33,11 @@ from app.models.client_case_note import (
     CaseNoteOut,
     ClientCaseNoteRecord,
 )
-from app.models.client_document import ClientDocumentList, ClientDocumentOut, ClientDocumentRecord
+from app.models.client_document import (
+    ClientDocumentList,
+    ClientDocumentOut,
+    ClientDocumentRecord,
+)
 from app.models.client_profile import ClientProfileRecord
 from app.models.email_send_log import EmailSendLog, EmailSendLogList, EmailSendLogOut
 from app.models.user import UserRecord
@@ -49,7 +53,10 @@ class ClientCreateBody(BaseModel):
     email: EmailStr
     phone: str = ""
     pathway: str = "Adult ADHD"
-    clinic_id: str | None = None  # required when super-platform-admin creates on behalf of a clinic
+    clinic_id: str | None = (
+        None  # required when super-platform-admin creates on behalf of a clinic
+    )
+
 
 MIME_SUFFIX: dict[str, str] = {
     "application/pdf": ".pdf",
@@ -67,7 +74,9 @@ EXT_MIME: dict[str, str] = {
 }
 
 
-def _resolve_mime_and_suffix(content_type: str | None, filename: str) -> tuple[str, str]:
+def _resolve_mime_and_suffix(
+    content_type: str | None, filename: str
+) -> tuple[str, str]:
     ct = (content_type or "").split(";")[0].strip().lower()
     if ct in MIME_SUFFIX:
         return ct, MIME_SUFFIX[ct]
@@ -108,7 +117,9 @@ def _assert_care_team_access(record: ClientRecord, user: UserRecord) -> None:
                 detail="You are not assigned to this client",
             )
         return
-    raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions"
+    )
 
 
 def _to_client_out(
@@ -155,7 +166,9 @@ def _to_client_out(
     )
 
 
-def _to_clinician_out(record: ClientRecord, profile: ClientProfileRecord | None) -> ClientClinicianOut:
+def _to_clinician_out(
+    record: ClientRecord, profile: ClientProfileRecord | None
+) -> ClientClinicianOut:
     return ClientClinicianOut(
         id=record.id,
         full_name=record.full_name,
@@ -188,7 +201,9 @@ def _to_clinician_out(record: ClientRecord, profile: ClientProfileRecord | None)
 def get_client_email_log(
     client_id: str,
     db: Session = Depends(get_db),
-    actor: UserRecord = Depends(require_roles("clinical-admin", "super-platform-admin")),
+    actor: UserRecord = Depends(
+        require_roles("clinical-admin", "super-platform-admin")
+    ),
 ) -> EmailSendLogList:
     """Outbound email audit (Clinical Admin only - not exposed to clinicians)."""
     get_client_for_user(db, actor, client_id)
@@ -219,7 +234,11 @@ def get_client_clinical_view(
             detail="This client is not assigned to you",
         )
     sync_client_profile_from_submitted_forms(db, record)
-    profile = db.query(ClientProfileRecord).filter(ClientProfileRecord.client_id == record.id).first()
+    profile = (
+        db.query(ClientProfileRecord)
+        .filter(ClientProfileRecord.client_id == record.id)
+        .first()
+    )
     return _to_clinician_out(record, profile)
 
 
@@ -228,17 +247,27 @@ def get_client_care_record(
     client_id: str,
     db: Session = Depends(get_db),
     user: UserRecord = Depends(
-        require_roles("clinician", "senior-clinician", "clinical-admin", "super-platform-admin"),
+        require_roles(
+            "clinician", "senior-clinician", "clinical-admin", "super-platform-admin"
+        ),
     ),
 ) -> ClientOut:
     """Full client record for tabbed UI (assigned clinicians + admins)."""
     record = get_client_for_user(db, user, client_id)
     _assert_care_team_access(record, user)
     sync_client_profile_from_submitted_forms(db, record)
-    profile = db.query(ClientProfileRecord).filter(ClientProfileRecord.client_id == record.id).first()
+    profile = (
+        db.query(ClientProfileRecord)
+        .filter(ClientProfileRecord.client_id == record.id)
+        .first()
+    )
     clinician_name: str | None = None
     if record.assigned_clinician_user_id:
-        clin = db.query(UserRecord).filter(UserRecord.id == record.assigned_clinician_user_id).first()
+        clin = (
+            db.query(UserRecord)
+            .filter(UserRecord.id == record.assigned_clinician_user_id)
+            .first()
+        )
         clinician_name = clin.full_name if clin else None
     return _to_client_out(record, profile, clinician_name=clinician_name)
 
@@ -248,7 +277,9 @@ def list_case_notes(
     client_id: str,
     db: Session = Depends(get_db),
     user: UserRecord = Depends(
-        require_roles("clinician", "senior-clinician", "clinical-admin", "super-platform-admin"),
+        require_roles(
+            "clinician", "senior-clinician", "clinical-admin", "super-platform-admin"
+        ),
     ),
 ) -> CaseNoteList:
     record = get_client_for_user(db, user, client_id)
@@ -259,7 +290,9 @@ def list_case_notes(
         .order_by(ClientCaseNoteRecord.created_at.desc())
         .all()
     )
-    return CaseNoteList(items=[CaseNoteOut.model_validate(r) for r in rows], total=len(rows))
+    return CaseNoteList(
+        items=[CaseNoteOut.model_validate(r) for r in rows], total=len(rows)
+    )
 
 
 @router.post("/{client_id}/case-notes", response_model=CaseNoteOut)
@@ -268,7 +301,9 @@ def create_case_note(
     body: CaseNoteCreate,
     db: Session = Depends(get_db),
     user: UserRecord = Depends(
-        require_roles("clinician", "senior-clinician", "clinical-admin", "super-platform-admin"),
+        require_roles(
+            "clinician", "senior-clinician", "clinical-admin", "super-platform-admin"
+        ),
     ),
 ) -> CaseNoteOut:
     record = get_client_for_user(db, user, client_id)
@@ -292,7 +327,9 @@ def list_client_documents(
     client_id: str,
     db: Session = Depends(get_db),
     user: UserRecord = Depends(
-        require_roles("clinician", "senior-clinician", "clinical-admin", "super-platform-admin"),
+        require_roles(
+            "clinician", "senior-clinician", "clinical-admin", "super-platform-admin"
+        ),
     ),
 ) -> ClientDocumentList:
     record = get_client_for_user(db, user, client_id)
@@ -303,7 +340,9 @@ def list_client_documents(
         .order_by(ClientDocumentRecord.created_at.desc())
         .all()
     )
-    return ClientDocumentList(items=[_document_to_out(r) for r in rows], total=len(rows))
+    return ClientDocumentList(
+        items=[_document_to_out(r) for r in rows], total=len(rows)
+    )
 
 
 @router.post("/{client_id}/documents", response_model=ClientDocumentOut)
@@ -315,7 +354,9 @@ async def upload_client_document(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     user: UserRecord = Depends(
-        require_roles("clinician", "senior-clinician", "clinical-admin", "super-platform-admin"),
+        require_roles(
+            "clinician", "senior-clinician", "clinical-admin", "super-platform-admin"
+        ),
     ),
 ) -> ClientDocumentOut:
     record = get_client_for_user(db, user, client_id)
@@ -341,11 +382,15 @@ async def upload_client_document(
         chunks.append(chunk)
 
     if total == 0:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Empty file upload")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Empty file upload"
+        )
 
     file_bytes = b"".join(chunks)
     try:
-        rel_path = await storage_svc.store_upload(file_bytes, client_id, suffix, mime_type)
+        rel_path = await storage_svc.store_upload(
+            file_bytes, client_id, suffix, mime_type
+        )
     except Exception:
         raise HTTPException(status_code=500, detail="Could not store file") from None
 
@@ -376,7 +421,9 @@ def download_client_document_file(
     download: bool = False,
     db: Session = Depends(get_db),
     user: UserRecord = Depends(
-        require_roles("clinician", "senior-clinician", "clinical-admin", "super-platform-admin"),
+        require_roles(
+            "clinician", "senior-clinician", "clinical-admin", "super-platform-admin"
+        ),
     ),
 ):
     record = get_client_for_user(db, user, client_id)
@@ -391,7 +438,9 @@ def download_client_document_file(
         .first()
     )
     if not doc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
+        )
 
     if storage_svc.use_s3():
         # Redirect to a short-lived presigned S3 URL
@@ -416,12 +465,16 @@ def download_client_document_file(
 def resend_slot_selection_invite(
     client_id: str,
     db: Session = Depends(get_db),
-    actor: UserRecord = Depends(require_roles("clinical-admin", "super-platform-admin")),
+    actor: UserRecord = Depends(
+        require_roles("clinical-admin", "super-platform-admin")
+    ),
 ) -> dict:
     """Resend the client email with the personalised booking link (manual reminder)."""
     record = get_client_for_user(db, actor, client_id)
     if record.confirmed_session_at:
-        raise HTTPException(status_code=400, detail="Client already has a confirmed session time")
+        raise HTTPException(
+            status_code=400, detail="Client already has a confirmed session time"
+        )
     if record.status != "Forms Returned, Ready to Schedule":
         raise HTTPException(
             status_code=400,
@@ -432,7 +485,9 @@ def resend_slot_selection_invite(
         db.commit()
         db.refresh(record)
 
-    platform_url = (settings.platform_base_url or "").rstrip("/") or "http://localhost:3004"
+    platform_url = (settings.platform_base_url or "").rstrip(
+        "/"
+    ) or "http://localhost:3004"
     ok = email_svc.send_slot_selection_invite(
         to_email=record.email,
         client_name=record.full_name,
@@ -449,7 +504,9 @@ def assign_clinician(
     client_id: str,
     body: ClientAssignBody,
     db: Session = Depends(get_db),
-    actor: UserRecord = Depends(require_roles("clinical-admin", "super-platform-admin")),
+    actor: UserRecord = Depends(
+        require_roles("clinical-admin", "super-platform-admin")
+    ),
 ) -> ClientOut:
     record = get_client_for_user(db, actor, client_id)
     if body.clinician_user_id is not None:
@@ -459,11 +516,17 @@ def assign_clinician(
         if u.role not in ("clinician", "senior-clinician"):
             raise HTTPException(status_code=400, detail="User is not a clinician")
         if not is_platform_admin(actor) and u.clinic_id != actor.clinic_id:
-            raise HTTPException(status_code=403, detail="Clinician not in your organization")
+            raise HTTPException(
+                status_code=403, detail="Clinician not in your organization"
+            )
     record.assigned_clinician_user_id = body.clinician_user_id
     db.commit()
     db.refresh(record)
-    profile = db.query(ClientProfileRecord).filter(ClientProfileRecord.client_id == record.id).first()
+    profile = (
+        db.query(ClientProfileRecord)
+        .filter(ClientProfileRecord.client_id == record.id)
+        .first()
+    )
     return _to_client_out(record, profile)
 
 
@@ -471,13 +534,17 @@ def assign_clinician(
 def create_client_manual(
     body: ClientCreateBody,
     db: Session = Depends(get_db),
-    actor: UserRecord = Depends(require_roles("clinical-admin", "super-platform-admin")),
+    actor: UserRecord = Depends(
+        require_roles("clinical-admin", "super-platform-admin")
+    ),
 ) -> ClientOut:
     """Add a client manually (no patient payment — clinic subscription covers platform use)."""
     if is_platform_admin(actor):
         cid = (body.clinic_id or "").strip() or None
         if not cid:
-            raise HTTPException(status_code=400, detail="clinic_id required for platform admin")
+            raise HTTPException(
+                status_code=400, detail="clinic_id required for platform admin"
+            )
     else:
         cid = require_clinic_member(actor)
 
@@ -546,10 +613,18 @@ def get_client(
     record = get_client_for_user(db, user, client_id)
     _assert_care_team_access(record, user)
     sync_client_profile_from_submitted_forms(db, record)
-    profile = db.query(ClientProfileRecord).filter(ClientProfileRecord.client_id == record.id).first()
+    profile = (
+        db.query(ClientProfileRecord)
+        .filter(ClientProfileRecord.client_id == record.id)
+        .first()
+    )
     clinician_name: str | None = None
     if record.assigned_clinician_user_id:
-        clin = db.query(UserRecord).filter(UserRecord.id == record.assigned_clinician_user_id).first()
+        clin = (
+            db.query(UserRecord)
+            .filter(UserRecord.id == record.assigned_clinician_user_id)
+            .first()
+        )
         clinician_name = clin.full_name if clin else None
     return _to_client_out(record, profile, clinician_name=clinician_name)
 
@@ -558,12 +633,19 @@ def get_client(
 def get_ai_report(
     client_id: str,
     db: Session = Depends(get_db),
-    current_user: UserRecord = Depends(require_roles("clinical-admin", "senior-clinician", "super-platform-admin")),
+    current_user: UserRecord = Depends(
+        require_roles("clinical-admin", "senior-clinician", "super-platform-admin")
+    ),
 ) -> dict:
     """Return the AI pre-assessment overview. Admin and senior clinician only."""
     import json as _json
-    record = get_client_for_user(db, current_user, client_id)
-    profile = db.query(ClientProfileRecord).filter(ClientProfileRecord.client_id == client_id).first()
+
+    get_client_for_user(db, current_user, client_id)
+    profile = (
+        db.query(ClientProfileRecord)
+        .filter(ClientProfileRecord.client_id == client_id)
+        .first()
+    )
     if not profile or not profile.ai_clinical_report:
         return {"available": False}
     try:
@@ -578,13 +660,20 @@ def get_ai_report(
 def regenerate_ai_report(
     client_id: str,
     db: Session = Depends(get_db),
-    current_user: UserRecord = Depends(require_roles("clinical-admin", "senior-clinician", "super-platform-admin")),
+    current_user: UserRecord = Depends(
+        require_roles("clinical-admin", "senior-clinician", "super-platform-admin")
+    ),
 ) -> dict:
     """Re-run the AI report from saved scores (e.g. after model upgrade)."""
     import json as _json
     from app.services.ai_report import generate_ai_report
+
     record = get_client_for_user(db, current_user, client_id)
-    profile = db.query(ClientProfileRecord).filter(ClientProfileRecord.client_id == client_id).first()
+    profile = (
+        db.query(ClientProfileRecord)
+        .filter(ClientProfileRecord.client_id == client_id)
+        .first()
+    )
     if not profile or not profile.scores:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -596,6 +685,7 @@ def regenerate_ai_report(
     if dob_str:
         try:
             from datetime import date
+
             dob = date.fromisoformat(dob_str[:10])
             age = (date.today() - dob).days // 365
         except ValueError:
@@ -608,7 +698,9 @@ def regenerate_ai_report(
     else:
         pathway = "child"
     client_display_name = record.child_name or record.full_name
-    result = generate_ai_report(client_name=client_display_name, age=age, scores=scores, pathway=pathway)
+    result = generate_ai_report(
+        client_name=client_display_name, age=age, scores=scores, pathway=pathway
+    )
     profile.ai_clinical_report = _json.dumps(result)
     db.commit()
     return {"available": True, "report": result, "scores": scores}
@@ -617,25 +709,38 @@ def regenerate_ai_report(
 @router.get("/{client_id}/session-brief")
 def get_session_brief(
     client_id: str,
-    db:   Session    = Depends(get_db),
-    user: UserRecord = Depends(require_roles("clinician", "senior-clinician", "clinic-admin", "clinical-admin")),
+    db: Session = Depends(get_db),
+    user: UserRecord = Depends(
+        require_roles("clinician", "senior-clinician", "clinic-admin", "clinical-admin")
+    ),
 ):
     """AI-generated pre-session brief for the assigned clinician."""
     import json as _json
     from app.services.session_brief_service import SessionBriefService
 
-    record  = get_client_for_user(db, user, client_id)
-    profile = db.query(ClientProfileRecord).filter(ClientProfileRecord.client_id == client_id).first()
+    record = get_client_for_user(db, user, client_id)
+    profile = (
+        db.query(ClientProfileRecord)
+        .filter(ClientProfileRecord.client_id == client_id)
+        .first()
+    )
 
     scores = _json.loads(profile.scores or "{}") if profile else {}
-    clinician_name = getattr(record, "assigned_clinician_name", None) or "the assigned clinician"
-    session_time   = record.confirmed_session_at.isoformat() if record.confirmed_session_at else "TBC"
+    clinician_name = (
+        getattr(record, "assigned_clinician_name", None) or "the assigned clinician"
+    )
+    session_time = (
+        record.confirmed_session_at.isoformat()
+        if record.confirmed_session_at
+        else "TBC"
+    )
 
     # Gather recent case notes
     from app.models.client_case_note import ClientCaseNoteRecord
+
     notes = [
-        n.body for n in
-        db.query(ClientCaseNoteRecord)
+        n.body
+        for n in db.query(ClientCaseNoteRecord)
         .filter(ClientCaseNoteRecord.client_id == client_id)
         .order_by(ClientCaseNoteRecord.created_at.desc())
         .limit(5)
@@ -644,14 +749,14 @@ def get_session_brief(
 
     svc = SessionBriefService()
     payload = svc.build_ai_payload(
-        case_id        = record.assessment_id or client_id,
-        client_name    = record.full_name,
-        clinician_name = clinician_name,
-        session_time   = session_time,
-        pathway        = record.pathway or "ADHD",
-        age_group      = record.age_group or "Adult",
-        scores         = scores or None,
-        case_notes     = notes or None,
+        case_id=record.assessment_id or client_id,
+        client_name=record.full_name,
+        clinician_name=clinician_name,
+        session_time=session_time,
+        pathway=record.pathway or "ADHD",
+        age_group=record.age_group or "Adult",
+        scores=scores or None,
+        case_notes=notes or None,
     )
     return {"session_brief": payload.dict(), "client_id": client_id}
 
@@ -660,26 +765,32 @@ def get_session_brief(
 def schedule_client_follow_up(
     client_id: str,
     months_offsets: list[int] | None = None,
-    db:   Session    = Depends(get_db),
-    user: UserRecord = Depends(require_roles("clinician", "senior-clinician", "clinic-admin", "clinical-admin")),
+    db: Session = Depends(get_db),
+    user: UserRecord = Depends(
+        require_roles("clinician", "senior-clinician", "clinic-admin", "clinical-admin")
+    ),
 ):
     """Schedule post-assessment follow-up forms at 3, 6, 12 months."""
     import uuid as _uuid
     from datetime import timedelta
-    from app.models.follow_up_schedule import FollowUpScheduleRecord, FOLLOWUP_STATUS_PENDING
-    from app.services.tenant import effective_clinic_id
+    from app.models.follow_up_schedule import (
+        FollowUpScheduleRecord,
+        FOLLOWUP_STATUS_PENDING,
+    )
 
-    record    = get_client_for_user(db, user, client_id)
+    record = get_client_for_user(db, user, client_id)
     clinic_id = effective_clinic_id(user)
-    now       = __import__("datetime").datetime.now(__import__("datetime").timezone.utc)
-    offsets   = months_offsets or [3, 6, 12]
+    now = __import__("datetime").datetime.now(__import__("datetime").timezone.utc)
+    offsets = months_offsets or [3, 6, 12]
 
     existing = {
-        r.months_offset for r in
-        db.query(FollowUpScheduleRecord).filter(
+        r.months_offset
+        for r in db.query(FollowUpScheduleRecord)
+        .filter(
             FollowUpScheduleRecord.client_id == client_id,
             FollowUpScheduleRecord.status == FOLLOWUP_STATUS_PENDING,
-        ).all()
+        )
+        .all()
     }
 
     created = []
@@ -687,15 +798,15 @@ def schedule_client_follow_up(
         if months not in {3, 6, 12} or months in existing:
             continue
         rec = FollowUpScheduleRecord(
-            id              = f"FUP-{_uuid.uuid4().hex[:8].upper()}",
-            client_id       = client_id,
-            clinic_id       = clinic_id,
-            assessment_id   = record.assessment_id,
-            recipient_email = record.email,
-            client_name     = record.full_name,
-            months_offset   = months,
-            due_at          = now + timedelta(days=months * 30),
-            created_by      = user.id,
+            id=f"FUP-{_uuid.uuid4().hex[:8].upper()}",
+            client_id=client_id,
+            clinic_id=clinic_id,
+            assessment_id=record.assessment_id,
+            recipient_email=record.email,
+            client_name=record.full_name,
+            months_offset=months,
+            due_at=now + timedelta(days=months * 30),
+            created_by=user.id,
         )
         db.add(rec)
         created.append({"months_offset": months, "due_at": rec.due_at.isoformat()})

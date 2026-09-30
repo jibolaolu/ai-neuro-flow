@@ -1,4 +1,5 @@
 """HR module models — feature settings + all HR record types."""
+
 import json
 from datetime import datetime, timezone
 
@@ -7,26 +8,33 @@ from sqlalchemy import Boolean, Column, DateTime, Float, Integer, String, Text
 
 from app.db.base import Base
 
-HR_FEATURES = ["leave", "timesheets", "supervision", "training", "incidents", "contracts"]
+HR_FEATURES = [
+    "leave",
+    "timesheets",
+    "supervision",
+    "training",
+    "incidents",
+    "contracts",
+]
 
 HR_FEATURE_LABELS: dict[str, str] = {
-    "leave":       "Leave & Absence",
-    "timesheets":  "Timesheets",
+    "leave": "Leave & Absence",
+    "timesheets": "Timesheets",
     "supervision": "Supervision Records",
-    "training":    "Training & Compliance",
-    "incidents":   "Incident Reporting",
-    "contracts":   "Contracts & Documents",
+    "training": "Training & Compliance",
+    "incidents": "Incident Reporting",
+    "contracts": "Contracts & Documents",
 }
 
 ALL_ROLES = ["clinician", "senior-clinician", "clinical-admin"]
 
 HR_DEFAULT_ROLES: dict[str, list[str]] = {
-    "leave":       ["clinician", "senior-clinician", "clinical-admin"],
-    "timesheets":  ["clinician", "senior-clinician", "clinical-admin"],
+    "leave": ["clinician", "senior-clinician", "clinical-admin"],
+    "timesheets": ["clinician", "senior-clinician", "clinical-admin"],
     "supervision": ["senior-clinician", "clinical-admin"],
-    "training":    ["clinician", "senior-clinician", "clinical-admin"],
-    "incidents":   ["clinician", "senior-clinician", "clinical-admin"],
-    "contracts":   ["clinical-admin"],
+    "training": ["clinician", "senior-clinician", "clinical-admin"],
+    "incidents": ["clinician", "senior-clinician", "clinical-admin"],
+    "contracts": ["clinical-admin"],
 }
 
 
@@ -52,8 +60,11 @@ class HrLeaveRequestRecord(Base):
     reviewed_by_name = Column(String, nullable=True)
     review_note = Column(Text, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc),
-                        onupdate=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
 
 
 class HrTimesheetRecord(Base):
@@ -74,8 +85,11 @@ class HrTimesheetRecord(Base):
     reviewed_by_user_id = Column(String, nullable=True)
     reviewed_by_name = Column(String, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc),
-                        onupdate=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
 
 
 class HrSupervisionRecord(Base):
@@ -109,8 +123,11 @@ class HrTrainingRecord(Base):
     notes = Column(Text, nullable=True)
     created_by_user_id = Column(String, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc),
-                        onupdate=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
 
 
 class HrIncidentRecord(Base):
@@ -128,8 +145,11 @@ class HrIncidentRecord(Base):
     reviewed_by_user_id = Column(String, nullable=True)
     reviewed_by_name = Column(String, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc),
-                        onupdate=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
 
 
 class HrContractRecord(Base):
@@ -148,8 +168,11 @@ class HrContractRecord(Base):
     created_by_user_id = Column(String, nullable=True)
     created_by_name = Column(String, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc),
-                        onupdate=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
 
 
 def _roles_from_record(r: HrFeatureSettingRecord) -> list[str]:
@@ -173,31 +196,53 @@ class HrFeatureSettingUpdate(BaseModel):
 
 
 class HrLeaveOut(BaseModel):
-    id: str; user_id: str; user_name: str | None = None
-    leave_type: str; start_date: str; end_date: str; days: float | None = None
-    reason: str | None = None; status: str
-    reviewed_by_name: str | None = None; review_note: str | None = None
+    id: str
+    user_id: str
+    user_name: str | None = None
+    leave_type: str
+    start_date: str
+    end_date: str
+    days: float | None = None
+    reason: str | None = None
+    status: str
+    reviewed_by_name: str | None = None
+    review_note: str | None = None
     created_at: datetime | None = None
     model_config = ConfigDict(from_attributes=True)
 
 
 class HrLeaveCreate(BaseModel):
-    leave_type: str; start_date: str; end_date: str
-    days: float | None = None; reason: str | None = None
+    leave_type: str
+    start_date: str
+    end_date: str
+    days: float | None = None
+    reason: str | None = None
 
 
 class HrLeaveUpdate(BaseModel):
-    status: str | None = None; review_note: str | None = None
-    leave_type: str | None = None; start_date: str | None = None
-    end_date: str | None = None; days: float | None = None; reason: str | None = None
+    status: str | None = None
+    review_note: str | None = None
+    leave_type: str | None = None
+    start_date: str | None = None
+    end_date: str | None = None
+    days: float | None = None
+    reason: str | None = None
 
 
 class HrTimesheetOut(BaseModel):
-    id: str; user_id: str; user_name: str | None = None
+    id: str
+    user_id: str
+    user_name: str | None = None
     week_start: str
-    hours_mon: float = 0; hours_tue: float = 0; hours_wed: float = 0
-    hours_thu: float = 0; hours_fri: float = 0; hours_sat: float = 0; hours_sun: float = 0
-    notes: str | None = None; status: str
+    hours_mon: float = 0
+    hours_tue: float = 0
+    hours_wed: float = 0
+    hours_thu: float = 0
+    hours_fri: float = 0
+    hours_sat: float = 0
+    hours_sun: float = 0
+    notes: str | None = None
+    status: str
     reviewed_by_name: str | None = None
     created_at: datetime | None = None
     model_config = ConfigDict(from_attributes=True)
@@ -205,93 +250,151 @@ class HrTimesheetOut(BaseModel):
 
 class HrTimesheetCreate(BaseModel):
     week_start: str
-    hours_mon: float = 0; hours_tue: float = 0; hours_wed: float = 0
-    hours_thu: float = 0; hours_fri: float = 0; hours_sat: float = 0; hours_sun: float = 0
+    hours_mon: float = 0
+    hours_tue: float = 0
+    hours_wed: float = 0
+    hours_thu: float = 0
+    hours_fri: float = 0
+    hours_sat: float = 0
+    hours_sun: float = 0
     notes: str | None = None
 
 
 class HrTimesheetUpdate(BaseModel):
     status: str | None = None
-    hours_mon: float | None = None; hours_tue: float | None = None
-    hours_wed: float | None = None; hours_thu: float | None = None
-    hours_fri: float | None = None; hours_sat: float | None = None; hours_sun: float | None = None
+    hours_mon: float | None = None
+    hours_tue: float | None = None
+    hours_wed: float | None = None
+    hours_thu: float | None = None
+    hours_fri: float | None = None
+    hours_sat: float | None = None
+    hours_sun: float | None = None
     notes: str | None = None
 
 
 class HrSupervisionOut(BaseModel):
-    id: str; supervisee_user_id: str; supervisee_name: str | None = None
-    supervisor_user_id: str | None = None; supervisor_name: str | None = None
-    session_date: str; duration_minutes: int | None = None
-    session_type: str; notes: str | None = None
-    client_id: str | None = None; client_name: str | None = None; report_id: str | None = None
+    id: str
+    supervisee_user_id: str
+    supervisee_name: str | None = None
+    supervisor_user_id: str | None = None
+    supervisor_name: str | None = None
+    session_date: str
+    duration_minutes: int | None = None
+    session_type: str
+    notes: str | None = None
+    client_id: str | None = None
+    client_name: str | None = None
+    report_id: str | None = None
     created_at: datetime | None = None
     model_config = ConfigDict(from_attributes=True)
 
 
 class HrSupervisionCreate(BaseModel):
-    supervisee_user_id: str; session_date: str
+    supervisee_user_id: str
+    session_date: str
     supervisor_user_id: str | None = None
     duration_minutes: int | None = None
-    session_type: str = "individual"; notes: str | None = None
-    client_id: str | None = None; client_name: str | None = None; report_id: str | None = None
+    session_type: str = "individual"
+    notes: str | None = None
+    client_id: str | None = None
+    client_name: str | None = None
+    report_id: str | None = None
 
 
 class HrTrainingOut(BaseModel):
-    id: str; user_id: str; user_name: str | None = None
-    training_name: str; training_type: str | None = None
-    completed_date: str | None = None; expiry_date: str | None = None
-    status: str; notes: str | None = None
+    id: str
+    user_id: str
+    user_name: str | None = None
+    training_name: str
+    training_type: str | None = None
+    completed_date: str | None = None
+    expiry_date: str | None = None
+    status: str
+    notes: str | None = None
     created_at: datetime | None = None
     model_config = ConfigDict(from_attributes=True)
 
 
 class HrTrainingCreate(BaseModel):
-    user_id: str; training_name: str
-    training_type: str | None = None; completed_date: str | None = None
-    expiry_date: str | None = None; status: str = "pending"; notes: str | None = None
+    user_id: str
+    training_name: str
+    training_type: str | None = None
+    completed_date: str | None = None
+    expiry_date: str | None = None
+    status: str = "pending"
+    notes: str | None = None
 
 
 class HrTrainingUpdate(BaseModel):
-    training_name: str | None = None; training_type: str | None = None
-    completed_date: str | None = None; expiry_date: str | None = None
-    status: str | None = None; notes: str | None = None
+    training_name: str | None = None
+    training_type: str | None = None
+    completed_date: str | None = None
+    expiry_date: str | None = None
+    status: str | None = None
+    notes: str | None = None
 
 
 class HrIncidentOut(BaseModel):
-    id: str; reporter_user_id: str; reporter_name: str | None = None
-    incident_type: str | None = None; severity: str; title: str
-    description: str | None = None; incident_date: str; status: str
-    resolution_notes: str | None = None; reviewed_by_name: str | None = None
+    id: str
+    reporter_user_id: str
+    reporter_name: str | None = None
+    incident_type: str | None = None
+    severity: str
+    title: str
+    description: str | None = None
+    incident_date: str
+    status: str
+    resolution_notes: str | None = None
+    reviewed_by_name: str | None = None
     created_at: datetime | None = None
     model_config = ConfigDict(from_attributes=True)
 
 
 class HrIncidentCreate(BaseModel):
-    incident_type: str | None = None; severity: str = "low"
-    title: str; description: str | None = None; incident_date: str
+    incident_type: str | None = None
+    severity: str = "low"
+    title: str
+    description: str | None = None
+    incident_date: str
 
 
 class HrIncidentUpdate(BaseModel):
-    status: str | None = None; resolution_notes: str | None = None
-    severity: str | None = None; incident_type: str | None = None
+    status: str | None = None
+    resolution_notes: str | None = None
+    severity: str | None = None
+    incident_type: str | None = None
 
 
 class HrContractOut(BaseModel):
-    id: str; user_id: str; user_name: str | None = None
-    contract_type: str | None = None; title: str; status: str
-    file_name: str | None = None; signed_date: str | None = None
-    expiry_date: str | None = None; notes: str | None = None
-    created_by_name: str | None = None; created_at: datetime | None = None
+    id: str
+    user_id: str
+    user_name: str | None = None
+    contract_type: str | None = None
+    title: str
+    status: str
+    file_name: str | None = None
+    signed_date: str | None = None
+    expiry_date: str | None = None
+    notes: str | None = None
+    created_by_name: str | None = None
+    created_at: datetime | None = None
     model_config = ConfigDict(from_attributes=True)
 
 
 class HrContractCreate(BaseModel):
-    user_id: str; contract_type: str | None = None; title: str
-    status: str = "draft"; signed_date: str | None = None
-    expiry_date: str | None = None; notes: str | None = None
+    user_id: str
+    contract_type: str | None = None
+    title: str
+    status: str = "draft"
+    signed_date: str | None = None
+    expiry_date: str | None = None
+    notes: str | None = None
 
 
 class HrContractUpdate(BaseModel):
-    contract_type: str | None = None; title: str | None = None
-    status: str | None = None; signed_date: str | None = None
-    expiry_date: str | None = None; notes: str | None = None
+    contract_type: str | None = None
+    title: str | None = None
+    status: str | None = None
+    signed_date: str | None = None
+    expiry_date: str | None = None
+    notes: str | None = None

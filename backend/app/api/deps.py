@@ -12,7 +12,11 @@ from app.core.security import hash_password
 from app.core.token_decode import decode_token
 from app.db.session import SessionLocal
 from app.models.user import UserRecord
-from app.services.tenant import get_organization, is_platform_admin, organization_allows_access
+from app.services.tenant import (
+    get_organization,
+    is_platform_admin,
+    organization_allows_access,
+)
 
 security = HTTPBearer(auto_error=False)
 
@@ -163,11 +167,7 @@ def get_api_key_clinic(
         )
 
     key_hash = hash_key(raw_key)
-    record = (
-        db.query(ApiKeyRecord)
-        .filter(ApiKeyRecord.key_hash == key_hash)
-        .first()
-    )
+    record = db.query(ApiKeyRecord).filter(ApiKeyRecord.key_hash == key_hash).first()
     if not record or not record.active:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

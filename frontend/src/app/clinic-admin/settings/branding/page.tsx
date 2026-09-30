@@ -91,7 +91,7 @@ export default function ClinicBrandingPage() {
   const nav = getClinicAdminNav("/clinic-admin/settings/branding");
 
   return (
-    <RoleDashboardShell nav={nav} role="clinical-admin" pageTitle="Clinic Branding">
+    <RoleDashboardShell navGroups={nav} role="clinic-admin" roleLabel="Clinical Admin" sectionLabel="Settings" title="Clinic Branding">
       {loading ? (
         <p style={{ color: "var(--muted)", padding: 24 }}>Loading…</p>
       ) : (

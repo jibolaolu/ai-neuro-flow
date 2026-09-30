@@ -42,7 +42,9 @@ def validate_production_settings(s: Settings) -> None:
         errors.append("AUTH0_DOMAIN and AUTH0_AUDIENCE are required in production")
 
     if is_sqlite_url(s.database_url):
-        errors.append("DATABASE_URL must use PostgreSQL in production (sqlite is dev-only)")
+        errors.append(
+            "DATABASE_URL must use PostgreSQL in production (sqlite is dev-only)"
+        )
 
     if not s.frontend_url.startswith("https://"):
         errors.append("FRONTEND_URL must use https:// in production")

@@ -7,6 +7,7 @@ Create Date: 2026-09-01 00:00:00.000000
 Adds the per-clinic branding columns that get_clinic_branding() reads.
 Safe to run on an existing database — uses IF NOT EXISTS via batch_alter_table.
 """
+
 from typing import Sequence, Union
 
 import sqlalchemy as sa
@@ -27,15 +28,15 @@ def _column_exists(table: str, column: str) -> bool:
 
 def upgrade() -> None:
     branding_cols = [
-        ("display_name",               sa.String),
-        ("support_email",              sa.String),
-        ("contact_phone",              sa.String),
-        ("address",                    sa.String),
-        ("website",                    sa.String),
-        ("logo_url",                   sa.String),
-        ("registered_company_number",  sa.String),
-        ("cqc_registration_number",    sa.String),
-        ("ico_registration_number",    sa.String),
+        ("display_name", sa.String),
+        ("support_email", sa.String),
+        ("contact_phone", sa.String),
+        ("address", sa.String),
+        ("website", sa.String),
+        ("logo_url", sa.String),
+        ("registered_company_number", sa.String),
+        ("cqc_registration_number", sa.String),
+        ("ico_registration_number", sa.String),
     ]
 
     for col_name, col_type in branding_cols:

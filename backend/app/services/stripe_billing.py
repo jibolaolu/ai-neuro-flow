@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import logging
 import urllib.parse
 
@@ -40,7 +39,11 @@ def _request(method: str, path: str, data: dict | None = None) -> dict:
         return resp.json()
     except _requests.HTTPError as e:
         err_body = e.response.text if e.response is not None else str(e)
-        logger.error("Stripe API error %s: %s", e.response.status_code if e.response else "?", err_body)
+        logger.error(
+            "Stripe API error %s: %s",
+            e.response.status_code if e.response else "?",
+            err_body,
+        )
         raise RuntimeError(f"Stripe error: {err_body}") from e
 
 

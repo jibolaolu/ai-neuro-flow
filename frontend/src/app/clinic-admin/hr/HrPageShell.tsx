@@ -1,5 +1,5 @@
-import { RoleDashboardShell } from "../../../../components/role-dashboard-shell";
-import { getClinicAdminNav } from "../../../../lib/clinic-admin-nav";
+import { RoleDashboardShell } from "../../../components/role-dashboard-shell";
+import { getClinicAdminNav } from "../../../lib/clinic-admin-nav";
 
 export function HrPageShell({
   href,

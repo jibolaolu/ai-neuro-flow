@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 import bcrypt
-from jose import JWTError, jwt
+from jose import jwt
 
 from app.core.config import settings
 
@@ -19,7 +19,8 @@ def create_access_token(subject: str, role: str, extra: dict | None = None) -> s
         "sub": subject,
         "role": role,
         "iat": datetime.now(timezone.utc),
-        "exp": datetime.now(timezone.utc) + timedelta(minutes=settings.jwt_expiry_minutes),
+        "exp": datetime.now(timezone.utc)
+        + timedelta(minutes=settings.jwt_expiry_minutes),
     }
     if extra:
         payload.update(extra)

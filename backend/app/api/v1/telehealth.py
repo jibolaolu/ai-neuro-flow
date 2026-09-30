@@ -4,7 +4,7 @@ import hashlib
 import os
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -19,7 +19,7 @@ _WHEREBY_API_URL = "https://api.whereby.dev/v1"
 
 
 class RoomCreateBody(BaseModel):
-    client_id:  str
+    client_id: str
     duration_minutes: int = 90
 
 
@@ -34,9 +34,10 @@ async def _create_whereby_room(room_name: str, duration_minutes: int) -> dict | 
         return None
     try:
         import httpx
-        end_date = (datetime.now(timezone.utc) + timedelta(minutes=duration_minutes)).strftime(
-            "%Y-%m-%dT%H:%M:%SZ"
-        )
+
+        end_date = (
+            datetime.now(timezone.utc) + timedelta(minutes=duration_minutes)
+        ).strftime("%Y-%m-%dT%H:%M:%SZ")
         async with httpx.AsyncClient() as client:
             r = await client.post(
                 f"{_WHEREBY_API_URL}/meetings",
@@ -63,9 +64,11 @@ async def _create_whereby_room(room_name: str, duration_minutes: int) -> dict | 
 async def create_or_get_room(
     body: RoomCreateBody,
     db: Session = Depends(get_db),
-    user: UserRecord = Depends(require_roles(
-        "clinician", "senior-clinician", "clinical-admin", "super-platform-admin"
-    )),
+    user: UserRecord = Depends(
+        require_roles(
+            "clinician", "senior-clinician", "clinical-admin", "super-platform-admin"
+        )
+    ),
 ) -> dict:
     """Create or retrieve a Whereby video room for a client session."""
     client = get_client_for_user(db, user, body.client_id)
@@ -76,26 +79,26 @@ async def create_or_get_room(
 
     if whereby_data:
         return {
-            "provider":       "whereby",
-            "room_url":       whereby_data.get("roomUrl"),
-            "host_room_url":  whereby_data.get("hostRoomUrl"),
-            "embed_url":      whereby_data.get("roomUrl") + "?background=off&chat=off",
-            "meeting_id":     whereby_data.get("meetingId"),
-            "client_name":    client.full_name,
+            "provider": "whereby",
+            "room_url": whereby_data.get("roomUrl"),
+            "host_room_url": whereby_data.get("hostRoomUrl"),
+            "embed_url": whereby_data.get("roomUrl") + "?background=off&chat=off",
+            "meeting_id": whereby_data.get("meetingId"),
+            "client_name": client.full_name,
             "duration_minutes": body.duration_minutes,
         }
 
     # Fallback: return a Daily.co-style URL pattern or a placeholder
     fallback_url = f"https://meet.jit.si/neuroflow-{room_name}"
     return {
-        "provider":       "jitsi_fallback",
-        "room_url":       fallback_url,
-        "host_room_url":  fallback_url,
-        "embed_url":      fallback_url,
-        "meeting_id":     room_name,
-        "client_name":    client.full_name,
+        "provider": "jitsi_fallback",
+        "room_url": fallback_url,
+        "host_room_url": fallback_url,
+        "embed_url": fallback_url,
+        "meeting_id": room_name,
+        "client_name": client.full_name,
         "duration_minutes": body.duration_minutes,
-        "note":           "Whereby API key not configured — using Jitsi fallback",
+        "note": "Whereby API key not configured — using Jitsi fallback",
     }
 
 
@@ -103,9 +106,11 @@ async def create_or_get_room(
 async def get_room(
     client_id: str,
     db: Session = Depends(get_db),
-    user: UserRecord = Depends(require_roles(
-        "clinician", "senior-clinician", "clinical-admin", "super-platform-admin"
-    )),
+    user: UserRecord = Depends(
+        require_roles(
+            "clinician", "senior-clinician", "clinical-admin", "super-platform-admin"
+        )
+    ),
 ) -> dict:
     """Get the video room for a client (creates if needed)."""
     client = get_client_for_user(db, user, client_id)
@@ -115,16 +120,16 @@ async def get_room(
 
     if whereby_data:
         return {
-            "provider":    "whereby",
-            "room_url":    whereby_data.get("roomUrl"),
-            "embed_url":   whereby_data.get("roomUrl") + "?background=off&chat=off",
+            "provider": "whereby",
+            "room_url": whereby_data.get("roomUrl"),
+            "embed_url": whereby_data.get("roomUrl") + "?background=off&chat=off",
             "client_name": client.full_name,
         }
 
     fallback_url = f"https://meet.jit.si/neuroflow-{room_name}"
     return {
-        "provider":    "jitsi_fallback",
-        "room_url":    fallback_url,
-        "embed_url":   fallback_url,
+        "provider": "jitsi_fallback",
+        "room_url": fallback_url,
+        "embed_url": fallback_url,
         "client_name": client.full_name,
     }

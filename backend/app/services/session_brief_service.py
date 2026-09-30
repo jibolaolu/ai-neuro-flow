@@ -2,6 +2,7 @@
 AI-driven session brief service.
 Generates real pre-session briefings from client intake data, scores, and forms.
 """
+
 from __future__ import annotations
 
 import json
@@ -65,9 +66,13 @@ class SessionBriefService:
             if scores:
                 context_parts.append(f"Scores received: {json.dumps(scores)[:800]}")
             if form_responses:
-                context_parts.append(f"Key form responses: {json.dumps(form_responses)[:600]}")
+                context_parts.append(
+                    f"Key form responses: {json.dumps(form_responses)[:600]}"
+                )
             if case_notes:
-                context_parts.append(f"Recent clinical notes: {'; '.join(case_notes[-3:])}")
+                context_parts.append(
+                    f"Recent clinical notes: {'; '.join(case_notes[-3:])}"
+                )
             if missing_items:
                 context_parts.append(f"Missing items: {', '.join(missing_items)}")
 
@@ -75,8 +80,7 @@ class SessionBriefService:
                 "You are a clinical coordinator preparing a pre-session brief for a UK ADHD/Autism assessment clinician. "
                 "Write a concise pre-session brief (3-5 sentences) highlighting: key presenting concerns, "
                 "what evidence has been received, what is still missing, and the top 2 areas to probe in session. "
-                "Be clinical, practical, and specific.\n\n"
-                + "\n".join(context_parts)
+                "Be clinical, practical, and specific.\n\n" + "\n".join(context_parts)
             )
             summary = llm_gateway.call(prompt, max_tokens=350)
         except Exception as exc:

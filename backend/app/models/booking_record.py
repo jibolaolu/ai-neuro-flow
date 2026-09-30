@@ -12,7 +12,9 @@ from app.db.base import Base
 class BookingDBRecord(Base):
     __tablename__ = "booking_records"
 
-    id = Column(String, primary_key=True, default=lambda: f"booking-{uuid.uuid4().hex[:8]}")
+    id = Column(
+        String, primary_key=True, default=lambda: f"booking-{uuid.uuid4().hex[:8]}"
+    )
     case_id = Column(String, nullable=False)
     client_id = Column(String, nullable=False, index=True)
     client_name = Column(String, nullable=False)
@@ -29,9 +31,15 @@ class BookingDBRecord(Base):
     source = Column(String, nullable=True)
     # JSON-serialised list of BookingWorkflowStep dicts
     workflow_steps_json = Column(Text, nullable=False, default="[]")
-    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc),
-                        onupdate=lambda: datetime.now(timezone.utc))
+    created_at = Column(
+        DateTime, nullable=False, default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at = Column(
+        DateTime,
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
 
     @property
     def workflow_steps(self) -> list[dict]:

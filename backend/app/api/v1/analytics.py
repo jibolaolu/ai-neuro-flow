@@ -35,38 +35,54 @@ def _plan_mrr(plan: str | None) -> int:
 
 @router.get("/subscribers")
 def get_subscribers(
-    db:   Session    = Depends(get_db),
+    db: Session = Depends(get_db),
     user: UserRecord = Depends(require_roles("super-platform-admin")),
 ):
     """All registered organizations with live metrics from DB."""
-    orgs = db.query(OrganizationRecord).order_by(OrganizationRecord.created_at.desc()).all()
+    orgs = (
+        db.query(OrganizationRecord)
+        .order_by(OrganizationRecord.created_at.desc())
+        .all()
+    )
 
     rows = []
     for org in orgs:
         # Count active users in this org
-        active_users = db.query(UserRecord).filter(
-            UserRecord.clinic_id == org.id,
-            UserRecord.is_active == True,  # noqa: E712
-        ).count()
+        active_users = (
+            db.query(UserRecord)
+            .filter(
+                UserRecord.clinic_id == org.id,
+                UserRecord.is_active == True,  # noqa: E712
+            )
+            .count()
+        )
 
         # Count open clients
-        active_clients = db.query(ClientRecord).filter(
-            ClientRecord.clinic_id == org.id,
-        ).filter(
-            ~func.lower(ClientRecord.status).contains("complete"),
-            ~func.lower(ClientRecord.status).contains("cancel"),
-        ).count()
+        active_clients = (
+            db.query(ClientRecord)
+            .filter(
+                ClientRecord.clinic_id == org.id,
+            )
+            .filter(
+                ~func.lower(ClientRecord.status).contains("complete"),
+                ~func.lower(ClientRecord.status).contains("cancel"),
+            )
+            .count()
+        )
 
         # Open support tickets
-        open_tickets = db.query(SupportTicketRecord).filter(
-            SupportTicketRecord.clinic_id == org.id,
-            SupportTicketRecord.status.in_(("open", "in_progress", "awaiting_info")),
-        ).count()
+        open_tickets = (
+            db.query(SupportTicketRecord)
+            .filter(
+                SupportTicketRecord.clinic_id == org.id,
+                SupportTicketRecord.status.in_(
+                    ("open", "in_progress", "awaiting_info")
+                ),
+            )
+            .count()
+        )
 
-        # Reports this month (completed clients updated in last 30 days)
-        month_ago = datetime.now(timezone.utc) - timedelta(days=30)
-
-        plan   = org.subscription_plan or "professional"
+        plan = org.subscription_plan or "professional"
         status = org.subscription_status or "trialing"
         # Normalise status labels (DB uses "trialing", UI expects "trial")
         ui_status = {
@@ -79,34 +95,42 @@ def get_subscribers(
         mrr = _plan_mrr(plan) if status == "active" else 0
 
         # Get admin email from users table
-        admin_user = db.query(UserRecord).filter(
-            UserRecord.clinic_id == org.id,
-            UserRecord.role.in_(("clinic-admin", "clinical-admin", "admin")),
-        ).first()
+        admin_user = (
+            db.query(UserRecord)
+            .filter(
+                UserRecord.clinic_id == org.id,
+                UserRecord.role.in_(("clinic-admin", "clinical-admin", "admin")),
+            )
+            .first()
+        )
         contact_email = admin_user.email if admin_user else ""
 
-        rows.append({
-            "id":                   org.id,
-            "name":                 org.name,
-            "plan":                 plan,
-            "status":               ui_status,
-            "active_seats":         active_users,
-            "active_clients":       active_clients,
-            "mrr_gbp":              mrr,
-            "open_support_tickets": open_tickets,
-            "joined_date":          org.created_at.date().isoformat() if org.created_at else None,
-            "contact_email":        contact_email,
-        })
+        rows.append(
+            {
+                "id": org.id,
+                "name": org.name,
+                "plan": plan,
+                "status": ui_status,
+                "active_seats": active_users,
+                "active_clients": active_clients,
+                "mrr_gbp": mrr,
+                "open_support_tickets": open_tickets,
+                "joined_date": org.created_at.date().isoformat()
+                if org.created_at
+                else None,
+                "contact_email": contact_email,
+            }
+        )
 
     total_mrr = sum(r["mrr_gbp"] for r in rows if r["status"] == "active")
     return {
         "subscribers": rows,
         "totals": {
-            "total":     len(rows),
-            "active":    sum(1 for r in rows if r["status"] == "active"),
-            "trial":     sum(1 for r in rows if r["status"] == "trial"),
-            "past_due":  sum(1 for r in rows if r["status"] == "past_due"),
-            "churned":   sum(1 for r in rows if r["status"] in ("churned", "suspended")),
+            "total": len(rows),
+            "active": sum(1 for r in rows if r["status"] == "active"),
+            "trial": sum(1 for r in rows if r["status"] == "trial"),
+            "past_due": sum(1 for r in rows if r["status"] == "past_due"),
+            "churned": sum(1 for r in rows if r["status"] in ("churned", "suspended")),
             "total_mrr": total_mrr,
         },
     }
@@ -115,7 +139,7 @@ def get_subscribers(
 @router.get("/revenue")
 def get_revenue(
     months: int = 6,
-    db:   Session    = Depends(get_db),
+    db: Session = Depends(get_db),
     user: UserRecord = Depends(require_roles("super-platform-admin")),
 ):
     """MRR trend based on active organizations per month (approximation from join dates)."""
@@ -130,12 +154,19 @@ def get_revenue(
         month_label = month_start.strftime("%Y-%m")
 
         # Count orgs that were active in this month (joined before end of month, not churned before start)
-        month_end = month_start.replace(month=month_start.month % 12 + 1) if month_start.month < 12 \
+        month_end = (
+            month_start.replace(month=month_start.month % 12 + 1)
+            if month_start.month < 12
             else month_start.replace(year=month_start.year + 1, month=1)
+        )
 
-        active_orgs = db.query(OrganizationRecord).filter(
-            OrganizationRecord.created_at <= month_end,
-        ).all()
+        active_orgs = (
+            db.query(OrganizationRecord)
+            .filter(
+                OrganizationRecord.created_at <= month_end,
+            )
+            .all()
+        )
 
         mrr = sum(
             _plan_mrr(o.subscription_plan or "professional")
@@ -145,31 +176,37 @@ def get_revenue(
 
         # New orgs this month
         new_orgs = [o for o in active_orgs if o.created_at >= month_start]
-        new_mrr  = sum(_plan_mrr(getattr(o, "subscription_plan", "professional")) for o in new_orgs)
+        new_mrr = sum(
+            _plan_mrr(getattr(o, "subscription_plan", "professional")) for o in new_orgs
+        )
 
-        buckets.append({
-            "month":        month_label,
-            "mrr_gbp":      mrr,
-            "new_mrr":      new_mrr,
-            "churned_mrr":  0,   # churn tracking requires subscription event log
-            "expansion_mrr": 0,
-        })
+        buckets.append(
+            {
+                "month": month_label,
+                "mrr_gbp": mrr,
+                "new_mrr": new_mrr,
+                "churned_mrr": 0,  # churn tracking requires subscription event log
+                "expansion_mrr": 0,
+            }
+        )
 
     return {"months": buckets}
 
 
 @router.get("/platform-kpis")
 def get_platform_kpis(
-    db:   Session    = Depends(get_db),
+    db: Session = Depends(get_db),
     user: UserRecord = Depends(require_roles("super-platform-admin")),
 ):
     """Top-level KPIs for the super-admin dashboard header cards."""
-    total_users   = db.query(UserRecord).filter(UserRecord.is_active == True).count()  # noqa: E712
+    total_users = db.query(UserRecord).filter(UserRecord.is_active == True).count()  # noqa: E712
     total_clients = db.query(ClientRecord).count()
-    total_orgs    = db.query(OrganizationRecord).count()
-    open_tickets  = db.query(SupportTicketRecord).filter(
-        SupportTicketRecord.status.in_(("open", "in_progress"))
-    ).count()
+    total_orgs = db.query(OrganizationRecord).count()
+    open_tickets = (
+        db.query(SupportTicketRecord)
+        .filter(SupportTicketRecord.status.in_(("open", "in_progress")))
+        .count()
+    )
 
     orgs = db.query(OrganizationRecord).all()
     total_mrr = sum(
@@ -179,19 +216,21 @@ def get_platform_kpis(
     )
 
     return {
-        "total_orgs":      total_orgs,
-        "total_users":     total_users,
-        "total_clients":   total_clients,
-        "total_mrr_gbp":   total_mrr,
-        "open_tickets":    open_tickets,
+        "total_orgs": total_orgs,
+        "total_users": total_users,
+        "total_clients": total_clients,
+        "total_mrr_gbp": total_mrr,
+        "open_tickets": open_tickets,
     }
 
 
 @router.get("/population-insights")
 def get_population_insights(
     clinic_id: str | None = None,
-    db:   Session    = Depends(get_db),
-    user: UserRecord = Depends(require_roles("super-platform-admin", "clinic-admin", "clinical-admin")),
+    db: Session = Depends(get_db),
+    user: UserRecord = Depends(
+        require_roles("super-platform-admin", "clinic-admin", "clinical-admin")
+    ),
 ):
     """
     Population-level insights and benchmarking.
@@ -212,7 +251,12 @@ def get_population_insights(
     clients = cq.all()
     total = len(clients)
     if total == 0:
-        return {"total_clients": 0, "pathways": {}, "status_distribution": {}, "benchmarks": {}}
+        return {
+            "total_clients": 0,
+            "pathways": {},
+            "status_distribution": {},
+            "benchmarks": {},
+        }
 
     # Pathway distribution
     pathway_counts: dict[str, int] = {}
@@ -249,10 +293,10 @@ def get_population_insights(
         if vals:
             avg = sum(vals) / len(vals)
             benchmarks[instrument] = {
-                "n":   len(vals),
+                "n": len(vals),
                 "mean": round(avg, 1),
-                "min":  round(min(vals), 1),
-                "max":  round(max(vals), 1),
+                "min": round(min(vals), 1),
+                "max": round(max(vals), 1),
             }
 
     # Time to completion (clients with complete status)
@@ -269,11 +313,11 @@ def get_population_insights(
             avg_days = round(sum(durations) / len(durations), 1)
 
     return {
-        "scope":               scope_id or "all_clinics",
-        "total_clients":       total,
-        "pathways":            pathway_counts,
+        "scope": scope_id or "all_clinics",
+        "total_clients": total,
+        "pathways": pathway_counts,
         "status_distribution": status_counts,
-        "benchmarks":          benchmarks,
+        "benchmarks": benchmarks,
         "avg_days_to_completion": avg_days,
-        "completion_rate":     round(len(completed) / total * 100, 1) if total else 0,
+        "completion_rate": round(len(completed) / total * 100, 1) if total else 0,
     }

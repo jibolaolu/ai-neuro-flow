@@ -24,28 +24,29 @@ router = APIRouter()
 
 # ── Schemas ────────────────────────────────────────────────────────────────────
 
+
 class LineItem(BaseModel):
-    description:    str
-    quantity:       float = 1.0
-    unit_gbp:       float
+    description: str
+    quantity: float = 1.0
+    unit_gbp: float
 
 
 class InvoiceCreate(BaseModel):
-    client_id:      str | None = None
-    client_name:    str
-    client_email:   str
-    description:    str
-    line_items:     list[LineItem] | None = None
-    amount_gbp:     float | None = None       # ignored if line_items given
-    vat_rate:       float = 0.0               # 0.0 or 0.20
-    due_days:       int = 30
-    notes:          str | None = None
+    client_id: str | None = None
+    client_name: str
+    client_email: str
+    description: str
+    line_items: list[LineItem] | None = None
+    amount_gbp: float | None = None  # ignored if line_items given
+    vat_rate: float = 0.0  # 0.0 or 0.20
+    due_days: int = 30
+    notes: str | None = None
 
 
 class InvoiceUpdate(BaseModel):
-    description:    str | None = None
-    notes:          str | None = None
-    vat_rate:       float | None = None
+    description: str | None = None
+    notes: str | None = None
+    vat_rate: float | None = None
 
 
 class MarkPaidBody(BaseModel):
@@ -53,6 +54,7 @@ class MarkPaidBody(BaseModel):
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
+
 
 def _clinic_id_from_user(user: UserRecord) -> str:
     return user.clinic_id or user.organization_id or "unknown"
@@ -79,6 +81,7 @@ def _create_stripe_payment_link(invoice: InvoiceRecord) -> str | None:
         return None
     try:
         import stripe  # type: ignore[import-untyped]
+
         stripe.api_key = secret_key
         amount_pence = int(round(invoice.total_gbp * 100))
         price = stripe.Price.create(
@@ -102,6 +105,7 @@ def _create_stripe_payment_link(invoice: InvoiceRecord) -> str | None:
 def _send_invoice_email(invoice: InvoiceRecord, db: Session | None = None) -> None:
     try:
         from app.core.branding import get_clinic_branding
+
         branding = get_clinic_branding(db, invoice.clinic_id) if db else None
         clinic_name = branding.display_name if branding else "the clinic"
 
@@ -122,7 +126,11 @@ def _send_invoice_email(invoice: InvoiceRecord, db: Session | None = None) -> No
                 f"Invoice: {invoice.invoice_number}\n"
                 f"Description: {invoice.description}\n"
                 f"Amount: £{invoice.amount_gbp:.2f}"
-                + (f" + VAT (20%) = £{invoice.total_gbp:.2f}" if invoice.vat_rate else "")
+                + (
+                    f" + VAT (20%) = £{invoice.total_gbp:.2f}"
+                    if invoice.vat_rate
+                    else ""
+                )
                 + due_str
                 + payment_section
                 + (f"\n\nNotes: {invoice.notes}" if invoice.notes else "")
@@ -134,6 +142,7 @@ def _send_invoice_email(invoice: InvoiceRecord, db: Session | None = None) -> No
 
 
 # ── Endpoints ──────────────────────────────────────────────────────────────────
+
 
 @router.get("/stats")
 def invoice_stats(
@@ -155,19 +164,19 @@ def invoice_stats(
             updated = True
     if updated:
         db.commit()
-    total_billed    = sum(r.total_gbp for r in rows if r.status != INV_STATUS_VOID)
-    total_paid      = sum(r.total_gbp for r in rows if r.status == INV_STATUS_PAID)
+    total_billed = sum(r.total_gbp for r in rows if r.status != INV_STATUS_VOID)
+    total_paid = sum(r.total_gbp for r in rows if r.status == INV_STATUS_PAID)
     total_outstanding = sum(r.total_gbp for r in rows if r.status == INV_STATUS_SENT)
-    total_overdue   = sum(r.total_gbp for r in rows if r.status == "overdue")
+    total_overdue = sum(r.total_gbp for r in rows if r.status == "overdue")
     return {
-        "total_billed":      round(total_billed, 2),
-        "total_paid":        round(total_paid, 2),
+        "total_billed": round(total_billed, 2),
+        "total_paid": round(total_paid, 2),
         "total_outstanding": round(total_outstanding, 2),
-        "total_overdue":     round(total_overdue, 2),
-        "count_draft":       sum(1 for r in rows if r.status == INV_STATUS_DRAFT),
-        "count_sent":        sum(1 for r in rows if r.status == INV_STATUS_SENT),
-        "count_paid":        sum(1 for r in rows if r.status == INV_STATUS_PAID),
-        "count_overdue":     sum(1 for r in rows if r.status == "overdue"),
+        "total_overdue": round(total_overdue, 2),
+        "count_draft": sum(1 for r in rows if r.status == INV_STATUS_DRAFT),
+        "count_sent": sum(1 for r in rows if r.status == INV_STATUS_SENT),
+        "count_paid": sum(1 for r in rows if r.status == INV_STATUS_PAID),
+        "count_overdue": sum(1 for r in rows if r.status == "overdue"),
     }
 
 
@@ -208,7 +217,9 @@ def create_invoice(
         client_email=body.client_email,
         invoice_number=invoice_number,
         description=body.description,
-        line_items_json=json.dumps([li.model_dump() for li in body.line_items]) if body.line_items else None,
+        line_items_json=json.dumps([li.model_dump() for li in body.line_items])
+        if body.line_items
+        else None,
         amount_gbp=amount,
         vat_rate=body.vat_rate,
         invoice_date=now,
@@ -311,7 +322,9 @@ def void_invoice(
     record = _get_or_404(db, invoice_id)
     _check_clinic(record, user)
     if record.status == INV_STATUS_PAID:
-        raise HTTPException(400, detail="Cannot void a paid invoice. Use a credit note instead.")
+        raise HTTPException(
+            400, detail="Cannot void a paid invoice. Use a credit note instead."
+        )
 
     record.status = INV_STATUS_VOID
     db.commit()
@@ -320,6 +333,7 @@ def void_invoice(
 
 
 # ── Private helpers ────────────────────────────────────────────────────────────
+
 
 def _get_or_404(db: Session, invoice_id: str) -> InvoiceRecord:
     r = db.query(InvoiceRecord).filter(InvoiceRecord.id == invoice_id).first()

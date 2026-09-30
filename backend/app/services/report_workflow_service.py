@@ -2,6 +2,7 @@
 AI-driven report workflow service.
 Generates dynamic handoff notes and task status from real client data.
 """
+
 from __future__ import annotations
 
 import logging
@@ -14,13 +15,30 @@ logger = logging.getLogger(__name__)
 class ReportWorkflowService:
     def build_task(self, report_status: str) -> WorkflowTask:
         status_map = {
-            "not_started":   ("queued",      "Assessment evidence is ready. Report drafting has not yet started."),
-            "drafting":      ("in_progress", "Report is being drafted. NICE compliance check and sign-off pending."),
-            "review":        ("in_progress", "Report is under senior-clinician review and quality assurance."),
-            "signed_off":    ("complete",    "Report signed off and dispatched to client and referrer."),
-            "returned":      ("in_progress", "Report returned for revision. Clinician is addressing reviewer comments."),
+            "not_started": (
+                "queued",
+                "Assessment evidence is ready. Report drafting has not yet started.",
+            ),
+            "drafting": (
+                "in_progress",
+                "Report is being drafted. NICE compliance check and sign-off pending.",
+            ),
+            "review": (
+                "in_progress",
+                "Report is under senior-clinician review and quality assurance.",
+            ),
+            "signed_off": (
+                "complete",
+                "Report signed off and dispatched to client and referrer.",
+            ),
+            "returned": (
+                "in_progress",
+                "Report returned for revision. Clinician is addressing reviewer comments.",
+            ),
         }
-        status, detail = status_map.get(report_status, ("queued", "Awaiting report workflow initiation."))
+        status, detail = status_map.get(
+            report_status, ("queued", "Awaiting report workflow initiation.")
+        )
         return WorkflowTask(
             key="assessment_report_handoff",
             title="Assessment + report handoff",
@@ -57,8 +75,11 @@ class ReportWorkflowService:
         """AI-generated handoff note based on real client data."""
         try:
             from app.ai.llm_gateway import llm_gateway
+
             scores_text = f"\nInstrument scores: {scores}" if scores else ""
-            missing_text = f"\nMissing items: {', '.join(missing_items)}" if missing_items else ""
+            missing_text = (
+                f"\nMissing items: {', '.join(missing_items)}" if missing_items else ""
+            )
             prompt = (
                 f"Write a 2-3 sentence clinical handoff note for a UK ADHD/Autism assessment workflow. "
                 f"Client: {client_name} | Pathway: {pathway} | "
@@ -79,5 +100,7 @@ class ReportWorkflowService:
             assessment_status=assessment_status,
             report_status=report_status,
             handoff_note=note,
-            nice_check_status="ready" if assessment_status not in ("scheduled", "not_started") else "pending",
+            nice_check_status="ready"
+            if assessment_status not in ("scheduled", "not_started")
+            else "pending",
         )

@@ -48,6 +48,7 @@ def _ticket_id() -> str:
 
 # ── List ──────────────────────────────────────────────────────────────────────
 
+
 @router.get("", response_model=SupportTicketList)
 def list_tickets(
     status_filter: str | None = None,
@@ -81,6 +82,7 @@ def list_tickets(
 
 # ── Create ────────────────────────────────────────────────────────────────────
 
+
 @router.post("", response_model=SupportTicketOut, status_code=status.HTTP_201_CREATED)
 def create_ticket(
     payload: SupportTicketCreate,
@@ -94,16 +96,25 @@ def create_ticket(
     if cid:
         try:
             from app.models.organization import OrganizationRecord
-            org = db.query(OrganizationRecord).filter(OrganizationRecord.id == cid).first()
+
+            org = (
+                db.query(OrganizationRecord)
+                .filter(OrganizationRecord.id == cid)
+                .first()
+            )
             if org:
-                clinic_name = getattr(org, "name", None) or getattr(org, "clinic_name", None)
+                clinic_name = getattr(org, "name", None) or getattr(
+                    org, "clinic_name", None
+                )
         except Exception:
             pass
 
     ticket = SupportTicketRecord(
         id=_ticket_id(),
         raised_by_user_id=user.id,
-        raised_by_name=getattr(user, "full_name", None) or getattr(user, "name", None) or user.email,
+        raised_by_name=getattr(user, "full_name", None)
+        or getattr(user, "name", None)
+        or user.email,
         raised_by_email=user.email,
         clinic_id=cid,
         clinic_name=clinic_name,
@@ -120,13 +131,18 @@ def create_ticket(
 
 # ── Single ────────────────────────────────────────────────────────────────────
 
+
 @router.get("/{ticket_id}", response_model=SupportTicketOut)
 def get_ticket(
     ticket_id: str,
     db: Session = Depends(get_db),
     user: UserRecord = Depends(get_current_user),
 ):
-    ticket = db.query(SupportTicketRecord).filter(SupportTicketRecord.id == ticket_id).first()
+    ticket = (
+        db.query(SupportTicketRecord)
+        .filter(SupportTicketRecord.id == ticket_id)
+        .first()
+    )
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
 
@@ -141,6 +157,7 @@ def get_ticket(
 
 # ── Update (platform admin only) ──────────────────────────────────────────────
 
+
 @router.patch("/{ticket_id}", response_model=SupportTicketOut)
 def update_ticket(
     ticket_id: str,
@@ -151,7 +168,11 @@ def update_ticket(
     if not is_platform_admin(user):
         raise HTTPException(status_code=403, detail="Platform admin access required")
 
-    ticket = db.query(SupportTicketRecord).filter(SupportTicketRecord.id == ticket_id).first()
+    ticket = (
+        db.query(SupportTicketRecord)
+        .filter(SupportTicketRecord.id == ticket_id)
+        .first()
+    )
     if not ticket:
         raise HTTPException(status_code=404, detail="Ticket not found")
 

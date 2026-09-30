@@ -1,9 +1,10 @@
-﻿"""
+"""
 Clinical scoring functions for Neuro Flow assessment instruments.
 
 All functions accept raw rating arrays (0-indexed integers) and return
 structured score dicts that are stored as JSON in client_profiles.scores.
 """
+
 from __future__ import annotations
 
 
@@ -41,8 +42,7 @@ def score_asrs(ratings: list[int]) -> dict:
 
     # Screen: count Part A items meeting threshold
     screen_count = sum(
-        1 for i, thresh in enumerate(_ASRS_PART_A_THRESHOLDS)
-        if ratings[i] >= thresh
+        1 for i, thresh in enumerate(_ASRS_PART_A_THRESHOLDS) if ratings[i] >= thresh
     )
     screen_positive = screen_count >= 4
 
@@ -51,7 +51,7 @@ def score_asrs(ratings: list[int]) -> dict:
 
     # Max scores for each subscale
     inn_max = len(_ASRS_INATTENTION_IDX) * 4  # 36
-    hi_max = len(_ASRS_HI_IDX) * 4             # 36
+    hi_max = len(_ASRS_HI_IDX) * 4  # 36
 
     # Presentation type (rough heuristic - clinician confirms in full assessment)
     inn_pct = inattention / inn_max if inn_max else 0
@@ -97,6 +97,7 @@ def score_asrs(ratings: list[int]) -> dict:
 # ── PHQ-9 ─────────────────────────────────────────────────────────────────────
 # 9 items, 0-3 scale. Total max 27.
 
+
 def score_phq9(ratings: list[int]) -> dict:
     if len(ratings) < 9:
         ratings = list(ratings) + [0] * (9 - len(ratings))
@@ -123,6 +124,7 @@ def score_phq9(ratings: list[int]) -> dict:
 # ── GAD-7 ─────────────────────────────────────────────────────────────────────
 # 7 items, 0-3 scale. Total max 21.
 
+
 def score_gad7(ratings: list[int]) -> dict:
     if len(ratings) < 7:
         ratings = list(ratings) + [0] * (7 - len(ratings))
@@ -147,13 +149,13 @@ def score_gad7(ratings: list[int]) -> dict:
 #
 # Domain structure: (label, item_count)
 _WFIRS_DOMAINS = [
-    ("Family",       8),
-    ("Work",        11),
-    ("School",      10),
+    ("Family", 8),
+    ("Work", 11),
+    ("School", 10),
     ("Life Skills", 12),
     ("Self-Concept", 5),
-    ("Social",       9),
-    ("Risk",        14),
+    ("Social", 9),
+    ("Risk", 14),
 ]
 _WFIRS_TOTAL = sum(n for _, n in _WFIRS_DOMAINS)  # 69
 
@@ -173,21 +175,23 @@ def score_wfirs(ratings: list[int]) -> dict:
     total_elevated = 0
 
     for label, n in _WFIRS_DOMAINS:
-        chunk = ratings[cursor: cursor + n]
+        chunk = ratings[cursor : cursor + n]
         cursor += n
         scored = [v for v in chunk if v >= 0]
         elevated = sum(1 for v in scored if v >= 2)  # "Often" or "Very Often"
         d_sum = sum(scored)
         d_count = len(scored)
         d_mean = round(d_sum / d_count, 2) if d_count else 0.0
-        domains.append({
-            "domain": label,
-            "total": d_sum,
-            "items_answered": d_count,
-            "items_total": n,
-            "mean": d_mean,
-            "elevated_count": elevated,
-        })
+        domains.append(
+            {
+                "domain": label,
+                "total": d_sum,
+                "items_answered": d_count,
+                "items_total": n,
+                "mean": d_mean,
+                "elevated_count": elevated,
+            }
+        )
         total_sum += d_sum
         total_count += d_count
         total_elevated += elevated
@@ -223,12 +227,12 @@ def score_wfirs(ratings: list[int]) -> dict:
 #   Prosocial behaviour:       0, 3, 8, 16, 19
 # Reversed items (R): score = 2 - raw_score
 
-_SDQ_EMOTIONAL_IDX   = [2, 7, 12, 15, 23]
-_SDQ_CONDUCT_IDX     = [4, 6, 11, 17, 21]
-_SDQ_HYPERACT_IDX    = [1, 9, 14, 20, 24]
-_SDQ_PEER_IDX        = [5, 10, 13, 18, 22]
-_SDQ_PROSOCIAL_IDX   = [0, 3, 8, 16, 19]
-_SDQ_REVERSED_IDX    = {6, 10, 13, 20, 24}
+_SDQ_EMOTIONAL_IDX = [2, 7, 12, 15, 23]
+_SDQ_CONDUCT_IDX = [4, 6, 11, 17, 21]
+_SDQ_HYPERACT_IDX = [1, 9, 14, 20, 24]
+_SDQ_PEER_IDX = [5, 10, 13, 18, 22]
+_SDQ_PROSOCIAL_IDX = [0, 3, 8, 16, 19]
+_SDQ_REVERSED_IDX = {6, 10, 13, 20, 24}
 
 
 def _sdq_item(ratings: list[int], idx: int) -> int:
@@ -266,29 +270,29 @@ def score_sdq(ratings: list[int], version: str = "parent") -> dict:
     if len(ratings) < 25:
         ratings = list(ratings) + [1] * (25 - len(ratings))  # pad with middle value
 
-    emotional  = _sdq_subscale(ratings, _SDQ_EMOTIONAL_IDX)
-    conduct    = _sdq_subscale(ratings, _SDQ_CONDUCT_IDX)
-    hyperact   = _sdq_subscale(ratings, _SDQ_HYPERACT_IDX)
-    peer       = _sdq_subscale(ratings, _SDQ_PEER_IDX)
-    prosocial  = _sdq_subscale(ratings, _SDQ_PROSOCIAL_IDX)
-    total      = emotional + conduct + hyperact + peer
+    emotional = _sdq_subscale(ratings, _SDQ_EMOTIONAL_IDX)
+    conduct = _sdq_subscale(ratings, _SDQ_CONDUCT_IDX)
+    hyperact = _sdq_subscale(ratings, _SDQ_HYPERACT_IDX)
+    peer = _sdq_subscale(ratings, _SDQ_PEER_IDX)
+    prosocial = _sdq_subscale(ratings, _SDQ_PROSOCIAL_IDX)
+    total = emotional + conduct + hyperact + peer
 
     return {
         "version": version,
-        "emotional_symptoms":        emotional,
-        "conduct_problems":          conduct,
+        "emotional_symptoms": emotional,
+        "conduct_problems": conduct,
         "hyperactivity_inattention": hyperact,
-        "peer_problems":             peer,
-        "prosocial":                 prosocial,
-        "total_difficulties":        total,
-        "total_max":                 40,
+        "peer_problems": peer,
+        "prosocial": prosocial,
+        "total_difficulties": total,
+        "total_max": 40,
         # Band classifications (UK community norms)
-        "emotional_band":   _sdq_band(emotional, 4, 5),
-        "conduct_band":     _sdq_band(conduct,   2, 3),
-        "hyperact_band":    _sdq_band(hyperact,  5, 6),
-        "peer_band":        _sdq_band(peer,      2, 3),
-        "prosocial_band":   _sdq_prosocial_band(prosocial),
-        "total_band":       _sdq_band(total, 13, 16),
+        "emotional_band": _sdq_band(emotional, 4, 5),
+        "conduct_band": _sdq_band(conduct, 2, 3),
+        "hyperact_band": _sdq_band(hyperact, 5, 6),
+        "peer_band": _sdq_band(peer, 2, 3),
+        "prosocial_band": _sdq_prosocial_band(prosocial),
+        "total_band": _sdq_band(total, 13, 16),
     }
 
 
@@ -300,10 +304,10 @@ def score_sdq(ratings: list[int], version: str = "parent") -> dict:
 #   Hyperactivity (8 items):            indices 3,6,8,13,17,21,22,25
 #   Oppositional (6 items):             indices 1,5,10,15,19,23
 
-_CPRS_COGNITIVE_IDX     = [0, 2, 4, 7, 9, 11, 12, 14, 16, 18, 20, 24, 26]
-_CPRS_HYPERACT_IDX      = [3, 6, 8, 13, 17, 21, 22, 25]
-_CPRS_OPPOSITIONAL_IDX  = [1, 5, 10, 15, 19, 23]
-_CPRS_TOTAL_ITEMS       = 27
+_CPRS_COGNITIVE_IDX = [0, 2, 4, 7, 9, 11, 12, 14, 16, 18, 20, 24, 26]
+_CPRS_HYPERACT_IDX = [3, 6, 8, 13, 17, 21, 22, 25]
+_CPRS_OPPOSITIONAL_IDX = [1, 5, 10, 15, 19, 23]
+_CPRS_TOTAL_ITEMS = 27
 
 
 def _conners_severity(total: int, total_max: int) -> str:
@@ -326,22 +330,22 @@ def score_cprs(ratings: list[int]) -> dict:
     if len(ratings) < _CPRS_TOTAL_ITEMS:
         ratings = list(ratings) + [0] * (_CPRS_TOTAL_ITEMS - len(ratings))
 
-    cognitive   = sum(ratings[i] for i in _CPRS_COGNITIVE_IDX)
-    hyperact    = sum(ratings[i] for i in _CPRS_HYPERACT_IDX)
-    opposition  = sum(ratings[i] for i in _CPRS_OPPOSITIONAL_IDX)
-    total       = sum(ratings[:_CPRS_TOTAL_ITEMS])
-    total_max   = _CPRS_TOTAL_ITEMS * 3
+    cognitive = sum(ratings[i] for i in _CPRS_COGNITIVE_IDX)
+    hyperact = sum(ratings[i] for i in _CPRS_HYPERACT_IDX)
+    opposition = sum(ratings[i] for i in _CPRS_OPPOSITIONAL_IDX)
+    total = sum(ratings[:_CPRS_TOTAL_ITEMS])
+    total_max = _CPRS_TOTAL_ITEMS * 3
 
     return {
-        "cognitive_inattention":         cognitive,
-        "cognitive_inattention_max":     len(_CPRS_COGNITIVE_IDX) * 3,
-        "hyperactivity":                 hyperact,
-        "hyperactivity_max":             len(_CPRS_HYPERACT_IDX) * 3,
-        "oppositional":                  opposition,
-        "oppositional_max":              len(_CPRS_OPPOSITIONAL_IDX) * 3,
-        "total":                         total,
-        "total_max":                     total_max,
-        "severity":                      _conners_severity(total, total_max),
+        "cognitive_inattention": cognitive,
+        "cognitive_inattention_max": len(_CPRS_COGNITIVE_IDX) * 3,
+        "hyperactivity": hyperact,
+        "hyperactivity_max": len(_CPRS_HYPERACT_IDX) * 3,
+        "oppositional": opposition,
+        "oppositional_max": len(_CPRS_OPPOSITIONAL_IDX) * 3,
+        "total": total,
+        "total_max": total_max,
+        "severity": _conners_severity(total, total_max),
     }
 
 
@@ -354,10 +358,10 @@ def score_cprs(ratings: list[int]) -> dict:
 #   Oppositional (5 items):             indices 1,5,9,14,19
 #   (remaining item 4 = academic; item 28 = restlessness - included in hyperactivity above)
 
-_CTRS_COGNITIVE_IDX     = [0, 3, 7, 12, 13, 15, 16, 17, 18, 21, 24, 25]
-_CTRS_HYPERACT_IDX      = [2, 6, 8, 10, 11, 20, 22, 23, 26, 27]
-_CTRS_OPPOSITIONAL_IDX  = [1, 5, 9, 14, 19]
-_CTRS_TOTAL_ITEMS       = 28
+_CTRS_COGNITIVE_IDX = [0, 3, 7, 12, 13, 15, 16, 17, 18, 21, 24, 25]
+_CTRS_HYPERACT_IDX = [2, 6, 8, 10, 11, 20, 22, 23, 26, 27]
+_CTRS_OPPOSITIONAL_IDX = [1, 5, 9, 14, 19]
+_CTRS_TOTAL_ITEMS = 28
 
 
 def score_ctrs(ratings: list[int]) -> dict:
@@ -369,26 +373,27 @@ def score_ctrs(ratings: list[int]) -> dict:
     if len(ratings) < _CTRS_TOTAL_ITEMS:
         ratings = list(ratings) + [0] * (_CTRS_TOTAL_ITEMS - len(ratings))
 
-    cognitive   = sum(ratings[i] for i in _CTRS_COGNITIVE_IDX)
-    hyperact    = sum(ratings[i] for i in _CTRS_HYPERACT_IDX)
-    opposition  = sum(ratings[i] for i in _CTRS_OPPOSITIONAL_IDX)
-    total       = sum(ratings[:_CTRS_TOTAL_ITEMS])
-    total_max   = _CTRS_TOTAL_ITEMS * 3
+    cognitive = sum(ratings[i] for i in _CTRS_COGNITIVE_IDX)
+    hyperact = sum(ratings[i] for i in _CTRS_HYPERACT_IDX)
+    opposition = sum(ratings[i] for i in _CTRS_OPPOSITIONAL_IDX)
+    total = sum(ratings[:_CTRS_TOTAL_ITEMS])
+    total_max = _CTRS_TOTAL_ITEMS * 3
 
     return {
-        "cognitive_inattention":         cognitive,
-        "cognitive_inattention_max":     len(_CTRS_COGNITIVE_IDX) * 3,
-        "hyperactivity":                 hyperact,
-        "hyperactivity_max":             len(_CTRS_HYPERACT_IDX) * 3,
-        "oppositional":                  opposition,
-        "oppositional_max":              len(_CTRS_OPPOSITIONAL_IDX) * 3,
-        "total":                         total,
-        "total_max":                     total_max,
-        "severity":                      _conners_severity(total, total_max),
+        "cognitive_inattention": cognitive,
+        "cognitive_inattention_max": len(_CTRS_COGNITIVE_IDX) * 3,
+        "hyperactivity": hyperact,
+        "hyperactivity_max": len(_CTRS_HYPERACT_IDX) * 3,
+        "oppositional": opposition,
+        "oppositional_max": len(_CTRS_OPPOSITIONAL_IDX) * 3,
+        "total": total,
+        "total_max": total_max,
+        "severity": _conners_severity(total, total_max),
     }
 
 
 # ── Master scorer ─────────────────────────────────────────────────────────────
+
 
 def calculate_adult_scores(responses: dict) -> dict:
     """
@@ -418,7 +423,7 @@ def calculate_child_scores(responses: dict) -> dict:
     Given the responses dict from a child_parent form submission,
     calculate SDQ (parent version) and CPRS scores.
     """
-    sdq_ratings  = responses.get("sdq_parent_ratings", [])
+    sdq_ratings = responses.get("sdq_parent_ratings", [])
     cprs_ratings = responses.get("cprs_ratings", [])
 
     result: dict = {}
@@ -434,7 +439,7 @@ def calculate_adolescent_scores(responses: dict) -> dict:
     Given the responses dict from an adolescent_self form submission,
     calculate SDQ (self-report version) and CPRS (parent) scores.
     """
-    sdq_ratings  = responses.get("sdq_self_ratings", [])
+    sdq_ratings = responses.get("sdq_self_ratings", [])
     cprs_ratings = responses.get("cprs_ratings", [])
 
     result: dict = {}

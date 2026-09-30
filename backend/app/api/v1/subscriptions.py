@@ -6,13 +6,12 @@ import hashlib
 import hmac
 import json
 import logging
-from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_db, require_roles
+from app.api.deps import get_db, require_roles
 from app.core.config import settings
 from app.core.production import is_production_env
 from app.models.organization import (
@@ -158,7 +157,9 @@ def billing_portal(
     return {"portal_url": session.get("url")}
 
 
-def _verify_stripe_signature(payload: bytes, sig_header: str | None, secret: str) -> bool:
+def _verify_stripe_signature(
+    payload: bytes, sig_header: str | None, secret: str
+) -> bool:
     if not secret or not sig_header:
         return False
     try:
@@ -166,7 +167,9 @@ def _verify_stripe_signature(payload: bytes, sig_header: str | None, secret: str
         timestamp = parts.get("t", "")
         v1 = parts.get("v1", "")
         signed = f"{timestamp}.{payload.decode()}"
-        expected = hmac.new(secret.encode(), signed.encode(), hashlib.sha256).hexdigest()
+        expected = hmac.new(
+            secret.encode(), signed.encode(), hashlib.sha256
+        ).hexdigest()
         return hmac.compare_digest(expected, v1)
     except Exception:
         return False
@@ -201,7 +204,11 @@ async def stripe_subscription_webhook(
         sub_id = data.get("subscription")
         customer_id = data.get("customer")
         if org_id:
-            org = db.query(OrganizationRecord).filter(OrganizationRecord.id == org_id).first()
+            org = (
+                db.query(OrganizationRecord)
+                .filter(OrganizationRecord.id == org_id)
+                .first()
+            )
             if org:
                 org.subscription_status = SUB_ACTIVE
                 org.subscription_plan = plan or org.subscription_plan
@@ -223,7 +230,11 @@ async def stripe_subscription_webhook(
         }
         st = status_map.get(sub.get("status", ""), SUB_PAST_DUE)
         if org_id:
-            org = db.query(OrganizationRecord).filter(OrganizationRecord.id == org_id).first()
+            org = (
+                db.query(OrganizationRecord)
+                .filter(OrganizationRecord.id == org_id)
+                .first()
+            )
             if org:
                 org.subscription_status = st
                 org.stripe_subscription_id = sub.get("id") or org.stripe_subscription_id
@@ -233,7 +244,11 @@ async def stripe_subscription_webhook(
         sub = data
         org_id = (sub.get("metadata") or {}).get("organization_id")
         if org_id:
-            org = db.query(OrganizationRecord).filter(OrganizationRecord.id == org_id).first()
+            org = (
+                db.query(OrganizationRecord)
+                .filter(OrganizationRecord.id == org_id)
+                .first()
+            )
             if org:
                 org.subscription_status = SUB_CANCELED
                 db.commit()

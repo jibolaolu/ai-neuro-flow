@@ -32,12 +32,13 @@ logger = logging.getLogger(__name__)
 
 # ── Individual workers ────────────────────────────────────────────────────────
 
+
 def _worker_form_analyser(payload: dict) -> dict:
     """Analyse a submitted form's responses for clinical patterns."""
-    form_data  = payload.get("form_data", {})
-    pathway    = payload.get("pathway", "adult")
-    client_id  = payload.get("client_id", "")
-    clinic_id  = payload.get("clinic_id", "")
+    form_data = payload.get("form_data", {})
+    pathway = payload.get("pathway", "adult")
+    client_id = payload.get("client_id", "")
+    clinic_id = payload.get("clinic_id", "")
 
     # Build a text representation for indexing
     form_text = json.dumps(form_data, indent=2)[:3000]
@@ -59,13 +60,13 @@ def _worker_form_analyser(payload: dict) -> dict:
         max_tokens=600,
     )
     result["client_id"] = client_id
-    result["indexed"]   = True
+    result["indexed"] = True
     return result
 
 
 def _worker_note_processor(payload: dict) -> dict:
     """Process and index a clinician note."""
-    note_id   = payload.get("note_id", "")
+    note_id = payload.get("note_id", "")
     note_text = payload.get("note_text", "")
     client_id = payload.get("client_id", "")
     clinic_id = payload.get("clinic_id", "")
@@ -92,11 +93,11 @@ def _worker_note_processor(payload: dict) -> dict:
 
 def _worker_report_draft(payload: dict) -> dict:
     """Generate a report section draft using RAG context."""
-    section      = payload.get("section", "Background")
-    scores       = payload.get("scores", {})
-    case_notes   = payload.get("case_notes", "")
-    client_id    = payload.get("client_id", "")
-    clinic_id    = payload.get("clinic_id", "")
+    section = payload.get("section", "Background")
+    scores = payload.get("scores", {})
+    case_notes = payload.get("case_notes", "")
+    client_id = payload.get("client_id", "")
+    clinic_id = payload.get("clinic_id", "")
 
     # Retrieve similar sections from existing reports
     similar = rag_engine.retrieve(
@@ -117,13 +118,14 @@ def _worker_report_draft(payload: dict) -> dict:
 
 def _worker_doc_extract(payload: dict) -> dict:
     """OCR and index a client document."""
-    doc_id    = payload.get("doc_id", "")
+    doc_id = payload.get("doc_id", "")
     file_path = payload.get("file_path", "")
     client_id = payload.get("client_id", "")
     clinic_id = payload.get("clinic_id", "")
 
     try:
         from app.services.ocr_service import ocr_service
+
         text = ocr_service.extract_text(file_path)
     except Exception as exc:
         logger.warning("OCR failed for %s: %s", file_path, exc)
@@ -139,18 +141,18 @@ def _worker_doc_extract(payload: dict) -> dict:
         )
 
     return {
-        "doc_id":    doc_id,
-        "text_len":  len(text),
-        "indexed":   bool(text.strip()),
-        "ocr_text":  text[:500] if text else "",
+        "doc_id": doc_id,
+        "text_len": len(text),
+        "indexed": bool(text.strip()),
+        "ocr_text": text[:500] if text else "",
     }
 
 
 def _worker_risk_stratification(payload: dict) -> dict:
     """AI risk stratification across all instruments."""
-    scores     = payload.get("scores", {})
+    scores = payload.get("scores", {})
     case_notes = payload.get("case_notes", "")
-    client_id  = payload.get("client_id", "")
+    client_id = payload.get("client_id", "")
 
     context = f"Instrument scores:\n{json.dumps(scores, indent=2)}\n\nClinician notes:\n{case_notes or 'None'}"
     result = llm_gateway.stratify_risk(context)
@@ -161,11 +163,11 @@ def _worker_risk_stratification(payload: dict) -> dict:
 # ── Dispatcher ────────────────────────────────────────────────────────────────
 
 _WORKERS = {
-    WORKER_FORM_ANALYSER:  _worker_form_analyser,
+    WORKER_FORM_ANALYSER: _worker_form_analyser,
     WORKER_NOTE_PROCESSOR: _worker_note_processor,
-    WORKER_REPORT_DRAFT:   _worker_report_draft,
-    WORKER_DOC_EXTRACT:    _worker_doc_extract,
-    WORKER_RISK_STRAT:     _worker_risk_stratification,
+    WORKER_REPORT_DRAFT: _worker_report_draft,
+    WORKER_DOC_EXTRACT: _worker_doc_extract,
+    WORKER_RISK_STRAT: _worker_risk_stratification,
 }
 
 
@@ -211,26 +213,26 @@ def process_pending_jobs() -> None:
         )
 
         for job in pending:
-            job.status     = JOB_STATUS_RUNNING
+            job.status = JOB_STATUS_RUNNING
             job.started_at = datetime.now(timezone.utc)
             db.commit()
 
             try:
                 payload = json.loads(job.payload or "{}")
-                worker  = _WORKERS.get(job.worker_type)
+                worker = _WORKERS.get(job.worker_type)
                 if worker is None:
                     raise ValueError(f"Unknown worker type: {job.worker_type}")
 
                 result = worker(payload)
 
-                job.status       = JOB_STATUS_DONE
-                job.result       = json.dumps(result)
+                job.status = JOB_STATUS_DONE
+                job.result = json.dumps(result)
                 job.completed_at = datetime.now(timezone.utc)
                 logger.info("Job complete: %s [%s]", job.id, job.worker_type)
 
             except Exception as exc:
-                job.status       = JOB_STATUS_FAILED
-                job.error        = str(exc)
+                job.status = JOB_STATUS_FAILED
+                job.error = str(exc)
                 job.completed_at = datetime.now(timezone.utc)
                 logger.error("Job failed: %s [%s] — %s", job.id, job.worker_type, exc)
 

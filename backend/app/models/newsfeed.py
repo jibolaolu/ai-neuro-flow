@@ -1,4 +1,5 @@
 """Staff newsfeed model."""
+
 import json
 from datetime import datetime, timezone
 
@@ -20,8 +21,11 @@ class NewsfeedPost(Base):
     pinned = Column(Boolean, default=False)
     image_urls = Column(Text, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc),
-                        onupdate=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
 
 
 class NewsfeedPostOut(BaseModel):

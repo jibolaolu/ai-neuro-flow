@@ -1,21 +1,30 @@
 """Direct messaging between admin and clinical staff."""
+
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_db, require_roles
+from app.api.deps import get_current_user, get_db
 from app.models.message import DirectMessage, MessageList, MessageOut, MessageSend
 from app.models.user import UserRecord
 
 router = APIRouter()
 
-ALLOWED_ROLES = {"clinical-admin", "super-platform-admin", "senior-clinician", "clinician"}
+ALLOWED_ROLES = {
+    "clinical-admin",
+    "super-platform-admin",
+    "senior-clinician",
+    "clinician",
+}
 
 
 def _assert_messaging_role(user: UserRecord) -> None:
     if user.role not in ALLOWED_ROLES:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Messaging not available for your role")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Messaging not available for your role",
+        )
 
 
 @router.get("/inbox", response_model=MessageList)
@@ -31,7 +40,11 @@ def inbox(
         .all()
     )
     unread = sum(1 for m in msgs if not m.is_read)
-    return MessageList(items=[MessageOut.model_validate(m) for m in msgs], total=len(msgs), unread=unread)
+    return MessageList(
+        items=[MessageOut.model_validate(m) for m in msgs],
+        total=len(msgs),
+        unread=unread,
+    )
 
 
 @router.get("/sent", response_model=MessageList)
@@ -46,7 +59,9 @@ def sent(
         .order_by(DirectMessage.created_at.desc())
         .all()
     )
-    return MessageList(items=[MessageOut.model_validate(m) for m in msgs], total=len(msgs), unread=0)
+    return MessageList(
+        items=[MessageOut.model_validate(m) for m in msgs], total=len(msgs), unread=0
+    )
 
 
 @router.get("/unread-count", response_model=dict)
@@ -75,14 +90,13 @@ def get_thread(
     root_id = root.parent_id or root.id
     msgs = (
         db.query(DirectMessage)
-        .filter(
-            (DirectMessage.id == root_id) |
-            (DirectMessage.parent_id == root_id)
-        )
+        .filter((DirectMessage.id == root_id) | (DirectMessage.parent_id == root_id))
         .order_by(DirectMessage.created_at.asc())
         .all()
     )
-    return MessageList(items=[MessageOut.model_validate(m) for m in msgs], total=len(msgs), unread=0)
+    return MessageList(
+        items=[MessageOut.model_validate(m) for m in msgs], total=len(msgs), unread=0
+    )
 
 
 @router.post("/send", response_model=MessageOut, status_code=201)
@@ -97,6 +111,7 @@ def send_message(
         raise HTTPException(status_code=404, detail="Recipient not found")
 
     import json
+
     msg = DirectMessage(
         id=f"MSG-{uuid.uuid4().hex[:8].upper()}",
         sender_id=user.id,
@@ -108,7 +123,9 @@ def send_message(
         body=body.body,
         parent_id=body.parent_id,
         is_read=False,
-        attachment_urls=json.dumps(body.attachment_urls) if body.attachment_urls else None,
+        attachment_urls=json.dumps(body.attachment_urls)
+        if body.attachment_urls
+        else None,
     )
     db.add(msg)
     db.commit()
@@ -122,10 +139,14 @@ def mark_read(
     db: Session = Depends(get_db),
     user: UserRecord = Depends(get_current_user),
 ) -> dict:
-    msg = db.query(DirectMessage).filter(
-        DirectMessage.id == message_id,
-        DirectMessage.recipient_id == user.id,
-    ).first()
+    msg = (
+        db.query(DirectMessage)
+        .filter(
+            DirectMessage.id == message_id,
+            DirectMessage.recipient_id == user.id,
+        )
+        .first()
+    )
     if not msg:
         raise HTTPException(status_code=404, detail="Message not found")
     msg.is_read = True
@@ -146,5 +167,6 @@ def list_messageable_users(
     )
     return [
         {"id": u.id, "full_name": u.full_name, "role": u.role}
-        for u in users if u.id != user.id
+        for u in users
+        if u.id != user.id
     ]

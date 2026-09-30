@@ -17,11 +17,16 @@ logger = logging.getLogger(__name__)
 def _get_ef():
     """Return the ChromaDB default embedding function (sentence-transformers)."""
     try:
-        from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
+        from chromadb.utils.embedding_functions import (
+            SentenceTransformerEmbeddingFunction,
+        )
         from app.core.config import settings
+
         return SentenceTransformerEmbeddingFunction(model_name=settings.embedding_model)
     except ImportError:
-        logger.warning("chromadb / sentence-transformers not installed — embeddings disabled")
+        logger.warning(
+            "chromadb / sentence-transformers not installed — embeddings disabled"
+        )
         return None
 
 
@@ -33,7 +38,7 @@ class EmbeddingService:
             return {"dimensions": 0, "vector": [], "model": "unavailable"}
 
         try:
-            vectors = ef([text])   # returns list of list[float]
+            vectors = ef([text])  # returns list of list[float]
             vec = vectors[0]
             return {
                 "dimensions": len(vec),

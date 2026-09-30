@@ -11,6 +11,7 @@ type Referral = {
   patient_email: string | null;
   gp_name: string | null;
   gp_practice: string | null;
+  gp_email: string | null;
   icb_name: string | null;
   pathway: string;
   priority: string;

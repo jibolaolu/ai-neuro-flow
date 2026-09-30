@@ -6,18 +6,16 @@ Produces a professional, locked PDF matching NHS clinical report style.
 from __future__ import annotations
 
 import io
-import textwrap
 from datetime import datetime
 from typing import Any
 
 from reportlab.lib import colors
-from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+from reportlab.lib.enums import TA_CENTER, TA_RIGHT
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import (
     HRFlowable,
-    PageBreak,
     Paragraph,
     SimpleDocTemplate,
     Spacer,
@@ -125,7 +123,9 @@ def _styles() -> dict[str, ParagraphStyle]:
     }
 
 
-def _header_footer(canvas: Any, doc: Any, report_title: str, client_name: str, ref_no: str) -> None:
+def _header_footer(
+    canvas: Any, doc: Any, report_title: str, client_name: str, ref_no: str
+) -> None:
     """Draw page header and footer on every page."""
     canvas.saveState()
     w, h = A4
@@ -150,7 +150,9 @@ def _header_footer(canvas: Any, doc: Any, report_title: str, client_name: str, r
 
     canvas.setFont("Helvetica", 8)
     canvas.setFillColor(MUTED)
-    canvas.drawString(margin, 8 * mm, f"{report_title}  ·  {client_name}  ·  Ref: {ref_no}")
+    canvas.drawString(
+        margin, 8 * mm, f"{report_title}  ·  {client_name}  ·  Ref: {ref_no}"
+    )
     canvas.drawRightString(w - margin, 8 * mm, f"Page {canvas.getPageNumber()}")
 
     canvas.restoreState()
@@ -160,18 +162,24 @@ def _meta_table(rows: list[tuple[str, str]], styles_map: dict) -> Table:
     """Render a two-column key/value info table."""
     data = []
     for label, value in rows:
-        data.append([
-            Paragraph(label.upper(), styles_map["label"]),
-            Paragraph(value or "—", styles_map["value"]),
-        ])
+        data.append(
+            [
+                Paragraph(label.upper(), styles_map["label"]),
+                Paragraph(value or "—", styles_map["value"]),
+            ]
+        )
     t = Table(data, colWidths=[45 * mm, None])
-    t.setStyle(TableStyle([
-        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-        ("LEFTPADDING", (0, 0), (-1, -1), 0),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 0),
-        ("TOPPADDING", (0, 0), (-1, -1), 2),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
-    ]))
+    t.setStyle(
+        TableStyle(
+            [
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                ("TOPPADDING", (0, 0), (-1, -1), 2),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+            ]
+        )
+    )
     return t
 
 
@@ -222,8 +230,12 @@ def generate_report_pdf(
     # ── Cover block ──────────────────────────────────────────────────────────
     story.append(Spacer(1, 4 * mm))
     story.append(Paragraph(report_type, st["title"]))
-    story.append(Paragraph(f"Assessment Report  ·  Issued {issued_date}", st["subtitle"]))
-    story.append(HRFlowable(width="100%", thickness=2, color=BRAND_PURPLE, spaceAfter=10))
+    story.append(
+        Paragraph(f"Assessment Report  ·  Issued {issued_date}", st["subtitle"])
+    )
+    story.append(
+        HRFlowable(width="100%", thickness=2, color=BRAND_PURPLE, spaceAfter=10)
+    )
 
     # ── Patient Information ───────────────────────────────────────────────────
     story.append(Paragraph("1. Patient Information", st["section_heading"]))
@@ -293,7 +305,9 @@ def generate_report_pdf(
 
         # Section heading style depends on depth (contains ".")
         parts = label.split(".")
-        if len(parts) >= 3 or (len(parts) == 2 and parts[1] and not parts[1].strip().isdigit()):
+        if len(parts) >= 3 or (
+            len(parts) == 2 and parts[1] and not parts[1].strip().isdigit()
+        ):
             story.append(Paragraph(label, st["subsection_heading"]))
         else:
             story.append(Paragraph(label, st["section_heading"]))
@@ -305,7 +319,11 @@ def generate_report_pdf(
                 story.append(Paragraph(para_text, st["body"]))
 
     story.append(Spacer(1, 6 * mm))
-    story.append(HRFlowable(width="100%", thickness=1.5, color=BRAND_PURPLE, spaceBefore=4, spaceAfter=8))
+    story.append(
+        HRFlowable(
+            width="100%", thickness=1.5, color=BRAND_PURPLE, spaceBefore=4, spaceAfter=8
+        )
+    )
 
     # ── Signature block ───────────────────────────────────────────────────────
     story.append(Paragraph("Clinician Signature", st["subsection_heading"]))
@@ -317,30 +335,38 @@ def generate_report_pdf(
     ]
     story.append(_meta_table(sig_rows, st))
     story.append(Spacer(1, 8 * mm))
-    story.append(Paragraph(
-        "________________________________",
-        ParagraphStyle("sig_line", parent=st["body"], textColor=MUTED, spaceBefore=2)
-    ))
+    story.append(
+        Paragraph(
+            "________________________________",
+            ParagraphStyle(
+                "sig_line", parent=st["body"], textColor=MUTED, spaceBefore=2
+            ),
+        )
+    )
     story.append(Paragraph("Authorised signature", st["label"]))
 
     story.append(Spacer(1, 10 * mm))
-    story.append(Paragraph(
-        "This report is confidential and intended solely for the use of the named patient and their authorised healthcare providers. "
-        "Unauthorised disclosure is prohibited. Generated by Neuro Flow Clinical Platform.",
-        ParagraphStyle(
-            "disclaimer",
-            parent=st["body"],
-            fontSize=8,
-            textColor=MUTED,
-            leading=12,
-        ),
-    ))
+    story.append(
+        Paragraph(
+            "This report is confidential and intended solely for the use of the named patient and their authorised healthcare providers. "
+            "Unauthorised disclosure is prohibited. Generated by Neuro Flow Clinical Platform.",
+            ParagraphStyle(
+                "disclaimer",
+                parent=st["body"],
+                fontSize=8,
+                textColor=MUTED,
+                leading=12,
+            ),
+        )
+    )
 
     # Build with header/footer callback
     doc.build(
         story,
         onFirstPage=lambda c, d: _header_footer(c, d, report_type, client_name, ref_no),
-        onLaterPages=lambda c, d: _header_footer(c, d, report_type, client_name, ref_no),
+        onLaterPages=lambda c, d: _header_footer(
+            c, d, report_type, client_name, ref_no
+        ),
     )
 
     return buffer.getvalue()

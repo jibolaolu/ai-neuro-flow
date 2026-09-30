@@ -1,4 +1,5 @@
 """Second-opinion workflow."""
+
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -18,18 +19,31 @@ from app.models.user import UserRecord
 router = APIRouter()
 _log = logging.getLogger(__name__)
 
-_CLINICIAN_ROLES = ("clinician", "senior-clinician", "clinical-admin", "super-platform-admin")
+_CLINICIAN_ROLES = (
+    "clinician",
+    "senior-clinician",
+    "clinical-admin",
+    "super-platform-admin",
+)
 _ADMIN_ROLES = ("clinical-admin", "super-platform-admin")
 
 
 def _get_report(report_id: str, db: Session) -> ClinicalReportRecord:
-    r = db.query(ClinicalReportRecord).filter(ClinicalReportRecord.id == report_id).first()
+    r = (
+        db.query(ClinicalReportRecord)
+        .filter(ClinicalReportRecord.id == report_id)
+        .first()
+    )
     if not r:
         raise HTTPException(status_code=404, detail="Report not found")
     return r
 
 
-@router.post("/clinical-reports/{report_id}/second-opinion", response_model=SecondOpinionOut, status_code=201)
+@router.post(
+    "/clinical-reports/{report_id}/second-opinion",
+    response_model=SecondOpinionOut,
+    status_code=201,
+)
 def request_second_opinion(
     report_id: str,
     body: SecondOpinionCreate,
@@ -48,15 +62,25 @@ def request_second_opinion(
         .first()
     )
     if existing:
-        raise HTTPException(status_code=409, detail="A second-opinion request is already open for this report")
+        raise HTTPException(
+            status_code=409,
+            detail="A second-opinion request is already open for this report",
+        )
 
     second_name: str | None = None
     if body.second_clinician_id:
-        peer = db.query(UserRecord).filter(UserRecord.id == body.second_clinician_id).first()
+        peer = (
+            db.query(UserRecord)
+            .filter(UserRecord.id == body.second_clinician_id)
+            .first()
+        )
         if not peer:
             raise HTTPException(status_code=404, detail="Second clinician not found")
         if peer.role not in ("clinician", "senior-clinician"):
-            raise HTTPException(status_code=400, detail="Second clinician must be a clinician or senior clinician")
+            raise HTTPException(
+                status_code=400,
+                detail="Second clinician must be a clinician or senior clinician",
+            )
         second_name = peer.full_name
 
     sor = SecondOpinionRequest(
@@ -75,14 +99,21 @@ def request_second_opinion(
     return SecondOpinionOut.model_validate(sor)
 
 
-@router.get("/clinical-reports/{report_id}/second-opinion", response_model=list[SecondOpinionOut])
+@router.get(
+    "/clinical-reports/{report_id}/second-opinion",
+    response_model=list[SecondOpinionOut],
+)
 def list_second_opinions(
     report_id: str,
     db: Session = Depends(get_db),
     user: UserRecord = Depends(get_current_user),
 ) -> list[SecondOpinionOut]:
     require_roles(user, _CLINICIAN_ROLES)
-    rows = db.query(SecondOpinionRequest).filter(SecondOpinionRequest.report_id == report_id).all()
+    rows = (
+        db.query(SecondOpinionRequest)
+        .filter(SecondOpinionRequest.report_id == report_id)
+        .all()
+    )
     return [SecondOpinionOut.model_validate(r) for r in rows]
 
 
@@ -94,10 +125,14 @@ def assign_second_clinician(
     user: UserRecord = Depends(get_current_user),
 ) -> SecondOpinionOut:
     require_roles(user, _ADMIN_ROLES)
-    sor = db.query(SecondOpinionRequest).filter(SecondOpinionRequest.id == sor_id).first()
+    sor = (
+        db.query(SecondOpinionRequest).filter(SecondOpinionRequest.id == sor_id).first()
+    )
     if not sor:
         raise HTTPException(status_code=404, detail="Second opinion request not found")
-    peer = db.query(UserRecord).filter(UserRecord.id == body.second_clinician_id).first()
+    peer = (
+        db.query(UserRecord).filter(UserRecord.id == body.second_clinician_id).first()
+    )
     if not peer:
         raise HTTPException(status_code=404, detail="Clinician not found")
     sor.second_clinician_id = peer.id
@@ -115,11 +150,15 @@ def respond_to_second_opinion(
     user: UserRecord = Depends(get_current_user),
 ) -> SecondOpinionOut:
     require_roles(user, _CLINICIAN_ROLES)
-    sor = db.query(SecondOpinionRequest).filter(SecondOpinionRequest.id == sor_id).first()
+    sor = (
+        db.query(SecondOpinionRequest).filter(SecondOpinionRequest.id == sor_id).first()
+    )
     if not sor:
         raise HTTPException(status_code=404, detail="Second opinion request not found")
     if body.status not in ("accepted", "completed", "declined"):
-        raise HTTPException(status_code=400, detail="status must be accepted, completed, or declined")
+        raise HTTPException(
+            status_code=400, detail="status must be accepted, completed, or declined"
+        )
     sor.status = body.status
     if body.second_opinion_note:
         sor.second_opinion_note = body.second_opinion_note
@@ -134,5 +173,9 @@ def list_all_second_opinions(
     user: UserRecord = Depends(get_current_user),
 ) -> list[SecondOpinionOut]:
     require_roles(user, _ADMIN_ROLES)
-    rows = db.query(SecondOpinionRequest).order_by(SecondOpinionRequest.created_at.desc()).all()
+    rows = (
+        db.query(SecondOpinionRequest)
+        .order_by(SecondOpinionRequest.created_at.desc())
+        .all()
+    )
     return [SecondOpinionOut.model_validate(r) for r in rows]

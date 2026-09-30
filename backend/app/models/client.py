@@ -1,4 +1,4 @@
-﻿from datetime import datetime, timezone
+from datetime import datetime, timezone
 
 from pydantic import BaseModel
 from sqlalchemy import Column, DateTime, String
@@ -9,23 +9,35 @@ from app.db.base import Base
 class ClientRecord(Base):
     __tablename__ = "clients"
 
-    id = Column(String, primary_key=True)            # CLI-XXXXXXXX
-    clinic_id = Column(String, nullable=True, index=True)  # organization id — tenant isolation
+    id = Column(String, primary_key=True)  # CLI-XXXXXXXX
+    clinic_id = Column(
+        String, nullable=True, index=True
+    )  # organization id — tenant isolation
     full_name = Column(String, nullable=False)
     email = Column(String, nullable=False, index=True)
     phone = Column(String, nullable=True)
-    pathway = Column(String, nullable=True)           # Adult ADHD, Adult Autism, etc.
-    age_group = Column(String, nullable=True)         # Adult / Adolescent / Child
-    child_name = Column(String, nullable=True)         # Child's full name (child bookings only)
-    child_dob = Column(String, nullable=True)          # ISO date YYYY-MM-DD (child bookings only)
-    status = Column(String, default="New")            # New → Intake → Booked → Assessment → Report → Complete
+    pathway = Column(String, nullable=True)  # Adult ADHD, Adult Autism, etc.
+    age_group = Column(String, nullable=True)  # Adult / Adolescent / Child
+    child_name = Column(
+        String, nullable=True
+    )  # Child's full name (child bookings only)
+    child_dob = Column(
+        String, nullable=True
+    )  # ISO date YYYY-MM-DD (child bookings only)
+    status = Column(
+        String, default="New"
+    )  # New → Intake → Booked → Assessment → Report → Complete
     stage = Column(String, default="Intake")
-    source = Column(String, default="manual")          # manual | referral | rtc | import
-    stripe_session_id = Column(String, nullable=True, unique=True)  # legacy field — not used by NeuroFlow standalone
-    payment_amount = Column(String, nullable=True)    # legacy field
+    source = Column(String, default="manual")  # manual | referral | rtc | import
+    stripe_session_id = Column(
+        String, nullable=True, unique=True
+    )  # legacy field — not used by NeuroFlow standalone
+    payment_amount = Column(String, nullable=True)  # legacy field
     payment_currency = Column(String, nullable=True)  # legacy field
-    assessment_id = Column(String, nullable=True)     # ASS-XXXXXXXX
-    paid_service_name = Column(String, nullable=True)  # From checkout line items / metadata
+    assessment_id = Column(String, nullable=True)  # ASS-XXXXXXXX
+    paid_service_name = Column(
+        String, nullable=True
+    )  # From checkout line items / metadata
     # Clinician caseload: who is responsible for the assessment (UUID from users.id)
     assigned_clinician_user_id = Column(String, nullable=True, index=True)
     # Session and reporting SLAs (ISO times in DB, surfaced as date-range filters in UI)

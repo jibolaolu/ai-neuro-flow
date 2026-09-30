@@ -4,10 +4,9 @@ import uuid
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_db, require_roles
+from app.api.deps import get_current_user, get_db
 from app.models.notification import NotificationOut, NotificationRecord
 from app.models.user import UserRecord
 
@@ -57,8 +56,13 @@ def fan_out_to_role(
     records = []
     for u in users:
         n = create_notification(
-            db, user_id=u.id, type=type, title=title,
-            body=body, client_id=client_id, link=link,
+            db,
+            user_id=u.id,
+            type=type,
+            title=title,
+            body=body,
+            client_id=client_id,
+            link=link,
         )
         records.append(n)
     return records
@@ -89,10 +93,14 @@ def mark_read(
     db: Session = Depends(get_db),
     current_user: UserRecord = Depends(get_current_user),
 ) -> dict:
-    n = db.query(NotificationRecord).filter(
-        NotificationRecord.id == notification_id,
-        NotificationRecord.user_id == current_user.id,
-    ).first()
+    n = (
+        db.query(NotificationRecord)
+        .filter(
+            NotificationRecord.id == notification_id,
+            NotificationRecord.user_id == current_user.id,
+        )
+        .first()
+    )
     if not n:
         raise HTTPException(status_code=404, detail="Notification not found")
     n.read = True
@@ -118,8 +126,12 @@ def unread_count(
     db: Session = Depends(get_db),
     current_user: UserRecord = Depends(get_current_user),
 ) -> dict:
-    count = db.query(NotificationRecord).filter(
-        NotificationRecord.user_id == current_user.id,
-        NotificationRecord.read == False,  # noqa: E712
-    ).count()
+    count = (
+        db.query(NotificationRecord)
+        .filter(
+            NotificationRecord.user_id == current_user.id,
+            NotificationRecord.read == False,  # noqa: E712
+        )
+        .count()
+    )
     return {"unread": count}

@@ -7,18 +7,35 @@ interface VoiceNoteButtonProps {
   disabled?: boolean;
 }
 
+interface SpeechRecognitionInstance {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  resultIndex: number;
+  start(): void;
+  stop(): void;
+  onresult: ((event: SpeechRecognitionResultEvent) => void) | null;
+  onerror: ((event: { error: string }) => void) | null;
+  onend: (() => void) | null;
+}
+
+interface SpeechRecognitionResultEvent {
+  results: ArrayLike<ArrayLike<{ transcript: string; confidence: number }>>;
+  resultIndex: number;
+}
+
 declare global {
   interface Window {
-    SpeechRecognition: typeof SpeechRecognition;
-    webkitSpeechRecognition: typeof SpeechRecognition;
+    SpeechRecognition?: new () => SpeechRecognitionInstance;
+    webkitSpeechRecognition?: new () => SpeechRecognitionInstance;
   }
 }
 
 export function VoiceNoteButton({ onTranscript, disabled }: VoiceNoteButtonProps) {
   const [supported, setSupported] = useState(false);
-  const [listening, setListening]   = useState(false);
-  const [error, setError]           = useState<string | null>(null);
-  const recogRef = useRef<SpeechRecognition | null>(null);
+  const [listening, setListening] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const recogRef = useRef<SpeechRecognitionInstance | null>(null);
 
   useEffect(() => {
     const SR = window.SpeechRecognition ?? window.webkitSpeechRecognition;
@@ -41,7 +58,7 @@ export function VoiceNoteButton({ onTranscript, disabled }: VoiceNoteButtonProps
     recognition.continuous = true;
     recognition.interimResults = false;
 
-    recognition.onresult = (event) => {
+    recognition.onresult = (event: SpeechRecognitionResultEvent) => {
       const transcript = Array.from(event.results)
         .slice(event.resultIndex)
         .map((r) => r[0].transcript)
@@ -50,7 +67,7 @@ export function VoiceNoteButton({ onTranscript, disabled }: VoiceNoteButtonProps
       if (transcript) onTranscript(transcript);
     };
 
-    recognition.onerror = (event) => {
+    recognition.onerror = (event: { error: string }) => {
       const msg = event.error === "no-speech" ? "No speech detected." : `Voice error: ${event.error}`;
       setError(msg);
       stop();

@@ -1,4 +1,4 @@
-﻿"""
+"""
 Pre-payment checkout endpoint.
 
 WordPress calls POST /api/v1/checkout/pre-payment just before redirecting
@@ -10,12 +10,12 @@ When Stripe fires checkout.session.completed the webhook reads
 session.client_reference_id, fetches this record, and uses the stored
 child_dob to determine the exact age group.
 """
+
 import re
 import uuid
-from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
@@ -38,23 +38,24 @@ def _require_legacy_checkout() -> None:
 
 # ── Request / response schema ──────────────────────────────────────────────────
 
+
 class PrePaymentRequest(BaseModel):
     # Parent / client details (from Step 2 "Your Details" form)
     first_name: str
-    last_name:  str
-    email:      str
-    phone:      str = ""
-    dob:        str = ""       # DD/MM/YYYY as entered on form
-    address:    str = ""       # comma-joined address string
+    last_name: str
+    email: str
+    phone: str = ""
+    dob: str = ""  # DD/MM/YYYY as entered on form
+    address: str = ""  # comma-joined address string
 
     # Which Stripe service was chosen
     service_key: str = ""
 
     # Child fields - only present when booking for a child
-    for_child:        bool = False
-    child_first_name: str  = ""
-    child_last_name:  str  = ""
-    child_dob:        str  = ""   # ISO YYYY-MM-DD  (converted by the JS before posting)
+    for_child: bool = False
+    child_first_name: str = ""
+    child_last_name: str = ""
+    child_dob: str = ""  # ISO YYYY-MM-DD  (converted by the JS before posting)
 
 
 class PrePaymentResponse(BaseModel):
@@ -62,6 +63,7 @@ class PrePaymentResponse(BaseModel):
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
+
 
 def _dmy_to_iso(dmy: str) -> str:
     """Convert DD/MM/YYYY → YYYY-MM-DD.  Returns empty string if format unrecognised."""
@@ -74,8 +76,11 @@ def _dmy_to_iso(dmy: str) -> str:
 
 # ── Route ──────────────────────────────────────────────────────────────────────
 
+
 @router.post("/pre-payment", response_model=PrePaymentResponse)
-def pre_payment(body: PrePaymentRequest, db: Session = Depends(get_db)) -> PrePaymentResponse:
+def pre_payment(
+    body: PrePaymentRequest, db: Session = Depends(get_db)
+) -> PrePaymentResponse:
     """
     Store client details before Stripe redirect.
     Returns a pending_id to be passed as Stripe client_reference_id.
@@ -89,18 +94,18 @@ def pre_payment(body: PrePaymentRequest, db: Session = Depends(get_db)) -> PrePa
         child_dob_iso = _dmy_to_iso(body.child_dob)
 
     record = PendingCheckout(
-        id               = pending_id,
-        first_name       = body.first_name.strip(),
-        last_name        = body.last_name.strip(),
-        email            = body.email.strip().lower(),
-        phone            = body.phone.strip(),
-        dob              = body.dob.strip(),
-        address          = body.address.strip(),
-        service_key      = body.service_key.strip(),
-        for_child        = body.for_child,
-        child_first_name = body.child_first_name.strip(),
-        child_last_name  = body.child_last_name.strip(),
-        child_dob        = child_dob_iso,
+        id=pending_id,
+        first_name=body.first_name.strip(),
+        last_name=body.last_name.strip(),
+        email=body.email.strip().lower(),
+        phone=body.phone.strip(),
+        dob=body.dob.strip(),
+        address=body.address.strip(),
+        service_key=body.service_key.strip(),
+        for_child=body.for_child,
+        child_first_name=body.child_first_name.strip(),
+        child_last_name=body.child_last_name.strip(),
+        child_dob=child_dob_iso,
     )
     db.add(record)
     db.commit()

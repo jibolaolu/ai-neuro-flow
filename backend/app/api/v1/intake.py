@@ -19,6 +19,7 @@ MANAGEMENT (staff-auth required)
   GET    /api/v1/intake/webhooks/{id}/test — send a test event to the pipeline
 ─────────────────────────────────────────────────────────────────────────────
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -30,16 +31,18 @@ import uuid
 from datetime import date, datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_db, require_roles, get_api_key_clinic
-from app.models.api_key import ApiKeyRecord
+from app.api.deps import get_db, require_roles, get_api_key_clinic
 from app.models.clinic_webhook_config import ClinicWebhookConfig
-from app.models.organization import OrganizationRecord
 from app.models.user import UserRecord
-from app.services.intake_pipeline import IntakePayload, IntakeResult, run_intake_pipeline
+from app.services.intake_pipeline import (
+    IntakePayload,
+    IntakeResult,
+    run_intake_pipeline,
+)
 from app.services.tenant import effective_clinic_id
 
 router = APIRouter()
@@ -51,15 +54,15 @@ router = APIRouter()
 
 _PATHWAY_RULES: list[tuple[str, str, str]] = [
     # (keyword, pathway_label, age_group)
-    ("child adhd autism",   "Child ADHD + Autism",    "Child"),
-    ("adult adhd autism",   "Adult ADHD + Autism",    "Adult"),
-    ("child adhd",          "Child ADHD",              "Child"),
-    ("child autism",        "Child Autism",            "Child"),
-    ("adult autism",        "Adult Autism",            "Adult"),
-    ("adult adhd",          "Adult ADHD",              "Adult"),
-    ("adhd autism",         "Adult ADHD + Autism",    "Adult"),
-    ("autism",              "Adult Autism",            "Adult"),
-    ("adhd",                "Adult ADHD",              "Adult"),
+    ("child adhd autism", "Child ADHD + Autism", "Child"),
+    ("adult adhd autism", "Adult ADHD + Autism", "Adult"),
+    ("child adhd", "Child ADHD", "Child"),
+    ("child autism", "Child Autism", "Child"),
+    ("adult autism", "Adult Autism", "Adult"),
+    ("adult adhd", "Adult ADHD", "Adult"),
+    ("adhd autism", "Adult ADHD + Autism", "Adult"),
+    ("autism", "Adult Autism", "Adult"),
+    ("adhd", "Adult ADHD", "Adult"),
 ]
 _PATHWAY_RULES.sort(key=lambda t: len(t[0]), reverse=True)
 
@@ -98,15 +101,16 @@ def _age_group_from_age(age: int | None) -> str:
 # Payload normalisers — map each format to IntakePayload
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def _normalise_woocommerce(body: dict, clinic_id: str) -> IntakePayload:
     billing = body.get("billing", {})
-    first   = billing.get("first_name", "")
-    last    = billing.get("last_name", "")
-    name    = f"{first} {last}".strip() or billing.get("company", "Unknown")
-    email   = billing.get("email", "")
-    phone   = billing.get("phone", "")
+    first = billing.get("first_name", "")
+    last = billing.get("last_name", "")
+    name = f"{first} {last}".strip() or billing.get("company", "Unknown")
+    email = billing.get("email", "")
+    phone = billing.get("phone", "")
 
-    items   = body.get("line_items", [])
+    items = body.get("line_items", [])
     product_text = " ".join(i.get("name", "") for i in items)
     pathway, age_group = _detect_pathway(product_text or body.get("status", ""))
 
@@ -119,8 +123,12 @@ def _normalise_woocommerce(body: dict, clinic_id: str) -> IntakePayload:
     service_name = (items[0].get("name") if items else None) or pathway
 
     meta = body.get("meta_data", [])
-    child_dob  = next((m.get("value") for m in meta if m.get("key") == "child_dob"),  None)
-    child_name = next((m.get("value") for m in meta if m.get("key") == "child_name"), None)
+    child_dob = next(
+        (m.get("value") for m in meta if m.get("key") == "child_dob"), None
+    )
+    child_name = next(
+        (m.get("value") for m in meta if m.get("key") == "child_name"), None
+    )
 
     if child_dob:
         age = _age_from_dob(child_dob)
@@ -144,15 +152,12 @@ def _normalise_woocommerce(body: dict, clinic_id: str) -> IntakePayload:
 
 
 def _normalise_stripe(body: dict, clinic_id: str) -> IntakePayload:
-    obj  = body.get("data", {}).get("object", body)
+    obj = body.get("data", {}).get("object", body)
     meta = obj.get("metadata", {})
-    cd   = obj.get("customer_details", {})
+    cd = obj.get("customer_details", {})
 
-    name  = (
-        meta.get("client_name")
-        or meta.get("full_name")
-        or cd.get("name")
-        or "Unknown"
+    name = (
+        meta.get("client_name") or meta.get("full_name") or cd.get("name") or "Unknown"
     )
     email = cd.get("email") or meta.get("email") or ""
     phone = cd.get("phone") or meta.get("phone") or ""
@@ -162,14 +167,14 @@ def _normalise_stripe(body: dict, clinic_id: str) -> IntakePayload:
     if meta.get("age_group") in ("Adult", "Adolescent", "Child"):
         age_group = meta["age_group"]
 
-    child_dob  = meta.get("child_dob")
+    child_dob = meta.get("child_dob")
     child_name = meta.get("child_name") or meta.get("child_first_name")
     if child_dob:
         age = _age_from_dob(child_dob)
         age_group = _age_group_from_age(age)
 
     try:
-        amount = float(obj.get("amount_total", 0)) / 100   # Stripe sends pence
+        amount = float(obj.get("amount_total", 0)) / 100  # Stripe sends pence
     except (ValueError, TypeError):
         amount = 0.0
     currency = (obj.get("currency") or "gbp").upper()
@@ -198,14 +203,20 @@ def _normalise_stripe(body: dict, clinic_id: str) -> IntakePayload:
 def _normalise_cliniko(body: dict, clinic_id: str) -> IntakePayload:
     """Cliniko appointment.created / patient.created webhook."""
     patient = body.get("patient", body)
-    first   = patient.get("first_name", "")
-    last    = patient.get("last_name", "")
-    name    = f"{first} {last}".strip() or "Unknown"
-    email   = patient.get("email", "")
-    phone   = patient.get("patient_phone_numbers", [{}])[0].get("number", "") if patient.get("patient_phone_numbers") else ""
+    first = patient.get("first_name", "")
+    last = patient.get("last_name", "")
+    name = f"{first} {last}".strip() or "Unknown"
+    email = patient.get("email", "")
+    phone = (
+        patient.get("patient_phone_numbers", [{}])[0].get("number", "")
+        if patient.get("patient_phone_numbers")
+        else ""
+    )
 
     appointment = body.get("appointment", {})
-    notes = appointment.get("notes") or appointment.get("appointment_type", {}).get("name", "")
+    notes = appointment.get("notes") or appointment.get("appointment_type", {}).get(
+        "name", ""
+    )
     pathway, age_group = _detect_pathway(notes or appointment.get("name", ""))
 
     return IntakePayload(
@@ -223,7 +234,9 @@ def _normalise_cliniko(body: dict, clinic_id: str) -> IntakePayload:
 
 def _normalise_acuity(body: dict, clinic_id: str) -> IntakePayload:
     """Acuity Scheduling appointment.scheduled webhook."""
-    name  = f"{body.get('firstName', '')} {body.get('lastName', '')}".strip() or "Unknown"
+    name = (
+        f"{body.get('firstName', '')} {body.get('lastName', '')}".strip() or "Unknown"
+    )
     email = body.get("email", "")
     phone = body.get("phone", "")
     appt_type = body.get("type", "")
@@ -235,8 +248,11 @@ def _normalise_acuity(body: dict, clinic_id: str) -> IntakePayload:
     except (ValueError, TypeError):
         amount = 0.0
 
-    forms_data = {f.get("name", ""): f.get("value", "")
-                  for f in body.get("forms", [{}])[0].get("values", []) if isinstance(f, dict)}
+    forms_data = {
+        f.get("name", ""): f.get("value", "")
+        for f in body.get("forms", [{}])[0].get("values", [])
+        if isinstance(f, dict)
+    }
 
     return IntakePayload(
         clinic_id=clinic_id,
@@ -264,7 +280,7 @@ def _normalise_generic(body: dict, clinic_id: str) -> IntakePayload:
       amount | amount_paid | price, currency, paid_service_name | service_name | product_name,
       child_name, child_dob, gp_email, gp_name, teacher_email, teacher_name
     """
-    name  = body.get("full_name") or body.get("name") or "Unknown"
+    name = body.get("full_name") or body.get("name") or "Unknown"
     email = body.get("email", "")
     phone = body.get("phone") or body.get("telephone") or ""
 
@@ -284,7 +300,9 @@ def _normalise_generic(body: dict, clinic_id: str) -> IntakePayload:
         age_group = _age_group_from_age(_age_from_dob(child_dob))
 
     try:
-        amount = float(body.get("amount") or body.get("amount_paid") or body.get("price") or 0)
+        amount = float(
+            body.get("amount") or body.get("amount_paid") or body.get("price") or 0
+        )
     except (ValueError, TypeError):
         amount = 0.0
 
@@ -311,16 +329,17 @@ def _normalise_generic(body: dict, clinic_id: str) -> IntakePayload:
 
 _NORMALISERS = {
     "woocommerce": _normalise_woocommerce,
-    "stripe":      _normalise_stripe,
-    "cliniko":     _normalise_cliniko,
-    "acuity":      _normalise_acuity,
-    "generic":     _normalise_generic,
+    "stripe": _normalise_stripe,
+    "cliniko": _normalise_cliniko,
+    "acuity": _normalise_acuity,
+    "generic": _normalise_generic,
 }
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Signature verification
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def _verify_hmac(body: bytes, signature: str | None, secret: str) -> bool:
     if not signature or not secret:
@@ -349,52 +368,55 @@ def _verify_stripe_signature(body: bytes, sig_header: str | None, secret: str) -
 # Response schemas
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 class WebhookConfigOut(BaseModel):
-    id:              str
-    label:           str
-    payload_format:  str
-    active:          bool
+    id: str
+    label: str
+    payload_format: str
+    active: bool
     events_received: int
-    last_event_at:   Optional[datetime]
-    created_at:      datetime
-    webhook_url:     str   # computed — not stored in DB
+    last_event_at: Optional[datetime]
+    created_at: datetime
+    webhook_url: str  # computed — not stored in DB
 
 
 class WebhookConfigCreate(BaseModel):
-    label:          str = Field(..., min_length=1, max_length=120)
-    payload_format: str = Field("generic",
-                                pattern="^(woocommerce|stripe|cliniko|acuity|generic)$")
+    label: str = Field(..., min_length=1, max_length=120)
+    payload_format: str = Field(
+        "generic", pattern="^(woocommerce|stripe|cliniko|acuity|generic)$"
+    )
 
 
 class WebhookConfigCreated(WebhookConfigOut):
-    signing_secret: str   # shown ONCE at creation
+    signing_secret: str  # shown ONCE at creation
 
 
 class IntakeClientBody(BaseModel):
     """Body for the API key REST intake endpoint."""
-    full_name:         str   = Field(..., min_length=2, max_length=200)
-    email:             EmailStr
-    pathway:           str   = Field(..., min_length=2, max_length=120)
-    phone:             str   = ""
-    amount_paid:       float = 0.0
-    currency:          str   = "GBP"
-    paid_service_name: str   = ""
-    child_name:        Optional[str] = None
-    child_dob:         Optional[str] = None
-    gp_email:          Optional[str] = None
-    gp_name:           Optional[str] = None
-    teacher_email:     Optional[str] = None
-    teacher_name:      Optional[str] = None
-    external_ref:      Optional[str] = None
+
+    full_name: str = Field(..., min_length=2, max_length=200)
+    email: EmailStr
+    pathway: str = Field(..., min_length=2, max_length=120)
+    phone: str = ""
+    amount_paid: float = 0.0
+    currency: str = "GBP"
+    paid_service_name: str = ""
+    child_name: Optional[str] = None
+    child_dob: Optional[str] = None
+    gp_email: Optional[str] = None
+    gp_name: Optional[str] = None
+    teacher_email: Optional[str] = None
+    teacher_name: Optional[str] = None
+    external_ref: Optional[str] = None
 
 
 class IntakeResponse(BaseModel):
-    client_id:    str
+    client_id: str
     assessment_id: str
-    pathway:      str
-    forms_sent:   list[str]
-    invoice_id:   str
-    duplicate:    bool
+    pathway: str
+    forms_sent: list[str]
+    invoice_id: str
+    duplicate: bool
 
 
 def _config_to_out(cfg: ClinicWebhookConfig, base_url: str) -> WebhookConfigOut:
@@ -412,12 +434,14 @@ def _config_to_out(cfg: ClinicWebhookConfig, base_url: str) -> WebhookConfigOut:
 
 def _base_url(request: Request) -> str:
     from app.core.config import settings
+
     return settings.platform_base_url or str(request.base_url).rstrip("/")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # PATH 1 — Inbound webhook receiver
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 @router.post("/webhook/{clinic_id}", status_code=200)
 async def receive_webhook(
@@ -456,6 +480,7 @@ async def receive_webhook(
     if not verified:
         # Log and return 200 — never 401 (avoids enumeration)
         import logging
+
         logging.getLogger(__name__).warning(
             "Webhook signature mismatch clinic=%s config=%s", clinic_id, cfg.id
         )
@@ -472,6 +497,7 @@ async def receive_webhook(
         intake_payload = normaliser(data, clinic_id)
     except Exception as exc:
         import logging
+
         logging.getLogger(__name__).exception("Webhook normalisation error: %s", exc)
         return {"received": False, "error": "normalisation_failed"}
 
@@ -488,18 +514,19 @@ async def receive_webhook(
     db.commit()
 
     return {
-        "received":    True,
-        "client_id":   result.client.id,
+        "received": True,
+        "client_id": result.client.id,
         "assessment_id": result.client.assessment_id,
-        "invoice_id":  result.invoice.id,
-        "forms_sent":  result.forms_sent,
-        "duplicate":   len(result.forms_sent) == 0,
+        "invoice_id": result.invoice.id,
+        "forms_sent": result.forms_sent,
+        "duplicate": len(result.forms_sent) == 0,
     }
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # PATH 2 — API key REST intake
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 @router.post("/client", response_model=IntakeResponse, status_code=201)
 def intake_via_api_key(
@@ -551,13 +578,17 @@ def intake_via_api_key(
 # MANAGEMENT — webhook config CRUD (staff auth required)
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 @router.get("/webhooks", response_model=list[WebhookConfigOut])
 def list_webhook_configs(
     request: Request,
     db: Session = Depends(get_db),
-    user: UserRecord = Depends(require_roles(
-        "clinical-admin", "super-platform-admin",
-    )),
+    user: UserRecord = Depends(
+        require_roles(
+            "clinical-admin",
+            "super-platform-admin",
+        )
+    ),
 ) -> list[WebhookConfigOut]:
     clinic_id = effective_clinic_id(user)
     cfgs = (
@@ -575,9 +606,12 @@ def create_webhook_config(
     body: WebhookConfigCreate,
     request: Request,
     db: Session = Depends(get_db),
-    user: UserRecord = Depends(require_roles(
-        "clinical-admin", "super-platform-admin",
-    )),
+    user: UserRecord = Depends(
+        require_roles(
+            "clinical-admin",
+            "super-platform-admin",
+        )
+    ),
 ) -> WebhookConfigCreated:
     """
     Register a new per-clinic webhook.  The signing_secret is shown ONCE
@@ -585,7 +619,7 @@ def create_webhook_config(
     platform (WooCommerce / Stripe / Zapier / etc.).
     """
     clinic_id = effective_clinic_id(user)
-    raw_secret = secrets.token_hex(32)   # 64-char hex signing secret
+    raw_secret = secrets.token_hex(32)  # 64-char hex signing secret
 
     cfg = ClinicWebhookConfig(
         clinic_id=clinic_id,
@@ -608,9 +642,12 @@ def create_webhook_config(
 def delete_webhook_config(
     config_id: str,
     db: Session = Depends(get_db),
-    user: UserRecord = Depends(require_roles(
-        "clinical-admin", "super-platform-admin",
-    )),
+    user: UserRecord = Depends(
+        require_roles(
+            "clinical-admin",
+            "super-platform-admin",
+        )
+    ),
 ) -> None:
     clinic_id = effective_clinic_id(user)
     cfg = (
@@ -631,9 +668,12 @@ def delete_webhook_config(
 def test_webhook_config(
     config_id: str,
     db: Session = Depends(get_db),
-    user: UserRecord = Depends(require_roles(
-        "clinical-admin", "super-platform-admin",
-    )),
+    user: UserRecord = Depends(
+        require_roles(
+            "clinical-admin",
+            "super-platform-admin",
+        )
+    ),
 ) -> dict:
     """
     Fire a synthetic test event through the intake pipeline for this webhook
@@ -669,8 +709,8 @@ def test_webhook_config(
     result = run_intake_pipeline(db, test_payload)
 
     return {
-        "test":        True,
-        "client_id":   result.client.id,
-        "forms_sent":  result.forms_sent,
-        "invoice_id":  result.invoice.id,
+        "test": True,
+        "client_id": result.client.id,
+        "forms_sent": result.forms_sent,
+        "invoice_id": result.invoice.id,
     }

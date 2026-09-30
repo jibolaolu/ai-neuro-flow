@@ -40,7 +40,11 @@ def _slot_datetime_iso(date_iso: str, start_time: str) -> datetime:
 
 @router.get("/booking/{token}", response_model=dict)
 def get_booking_page_context(token: str, db: Session = Depends(get_db)) -> dict:
-    client = db.query(ClientRecord).filter(ClientRecord.booking_access_token == token).first()
+    client = (
+        db.query(ClientRecord)
+        .filter(ClientRecord.booking_access_token == token)
+        .first()
+    )
     if not client:
         raise HTTPException(status_code=404, detail="Invalid or expired booking link")
 
@@ -65,12 +69,17 @@ def get_booking_page_context(token: str, db: Session = Depends(get_db)) -> dict:
             detail="A clinician has not been assigned to your case yet. We will email you when you can book.",
         )
 
-    clinician = db.query(UserRecord).filter(UserRecord.id == client.assigned_clinician_user_id).first()
+    clinician = (
+        db.query(UserRecord)
+        .filter(UserRecord.id == client.assigned_clinician_user_id)
+        .first()
+    )
     today = date.today().isoformat()
     slots = (
         db.query(ClinicianAvailabilitySlotRecord)
         .filter(
-            ClinicianAvailabilitySlotRecord.user_id == client.assigned_clinician_user_id,
+            ClinicianAvailabilitySlotRecord.user_id
+            == client.assigned_clinician_user_id,
             ClinicianAvailabilitySlotRecord.rota_status == "confirmed",
             ClinicianAvailabilitySlotRecord.date_iso >= today,
         )
@@ -104,13 +113,21 @@ class SelectSlotBody(BaseModel):
 
 
 @router.post("/booking/{token}/select", response_model=dict)
-def select_booking_slot(token: str, body: SelectSlotBody, db: Session = Depends(get_db)) -> dict:
-    client = db.query(ClientRecord).filter(ClientRecord.booking_access_token == token).first()
+def select_booking_slot(
+    token: str, body: SelectSlotBody, db: Session = Depends(get_db)
+) -> dict:
+    client = (
+        db.query(ClientRecord)
+        .filter(ClientRecord.booking_access_token == token)
+        .first()
+    )
     if not client:
         raise HTTPException(status_code=404, detail="Invalid or expired booking link")
 
     if client.confirmed_session_at:
-        raise HTTPException(status_code=400, detail="You have already booked an assessment time.")
+        raise HTTPException(
+            status_code=400, detail="You have already booked an assessment time."
+        )
 
     if not client.assigned_clinician_user_id:
         raise HTTPException(status_code=400, detail="No clinician assigned")
@@ -119,7 +136,8 @@ def select_booking_slot(token: str, body: SelectSlotBody, db: Session = Depends(
         db.query(ClinicianAvailabilitySlotRecord)
         .filter(
             ClinicianAvailabilitySlotRecord.id == body.slot_id,
-            ClinicianAvailabilitySlotRecord.user_id == client.assigned_clinician_user_id,
+            ClinicianAvailabilitySlotRecord.user_id
+            == client.assigned_clinician_user_id,
             ClinicianAvailabilitySlotRecord.rota_status == "confirmed",
         )
         .first()
@@ -127,7 +145,11 @@ def select_booking_slot(token: str, body: SelectSlotBody, db: Session = Depends(
     if not slot:
         raise HTTPException(status_code=404, detail="That time is no longer available")
 
-    clinician = db.query(UserRecord).filter(UserRecord.id == client.assigned_clinician_user_id).first()
+    clinician = (
+        db.query(UserRecord)
+        .filter(UserRecord.id == client.assigned_clinician_user_id)
+        .first()
+    )
     if not clinician:
         raise HTTPException(status_code=400, detail="Clinician record missing")
 

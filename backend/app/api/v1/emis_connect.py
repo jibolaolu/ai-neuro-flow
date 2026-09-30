@@ -12,6 +12,7 @@ accreditation, DSPT, and a formal EMIS API partnership. This scaffolding
 provides the integration surface and can be activated once credentials are
 obtained. Set EMIS_CLIENT_ID / EMIS_CLIENT_SECRET env vars.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -20,16 +21,14 @@ import json
 import logging
 import os
 import uuid
-from datetime import datetime
-from typing import Any, Optional
+from typing import Optional
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, Header
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db, get_current_user
-from app.services.tenant import effective_clinic_id
+from app.api.deps import get_db
 from app.models.client import ClientRecord
 
 logger = logging.getLogger(__name__)
@@ -40,6 +39,7 @@ EMIS_WEBHOOK_SECRET = os.getenv("EMIS_WEBHOOK_SECRET", "")
 
 
 # ── ODS lookup ────────────────────────────────────────────────────────────────
+
 
 @router.get("/ods/{ods_code}")
 async def lookup_ods(ods_code: str):
@@ -52,7 +52,9 @@ async def lookup_ods(ods_code: str):
         async with httpx.AsyncClient(timeout=8) as client:
             r = await client.get(url, headers={"Accept": "application/json"})
         if r.status_code == 404:
-            raise HTTPException(status_code=404, detail=f"ODS code {ods_code} not found")
+            raise HTTPException(
+                status_code=404, detail=f"ODS code {ods_code} not found"
+            )
         r.raise_for_status()
         data = r.json()
         org = data.get("Organisation", {})
@@ -62,7 +64,11 @@ async def lookup_ods(ods_code: str):
             "status": org.get("Status"),
             "type": org.get("OrgRecordClass"),
             "address": org.get("GeoLoc", {}).get("Location", {}),
-            "roles": [r.get("id") for r in org.get("Roles", {}).get("Role", []) if isinstance(r, dict)],
+            "roles": [
+                r.get("id")
+                for r in org.get("Roles", {}).get("Role", [])
+                if isinstance(r, dict)
+            ],
         }
     except httpx.HTTPError as exc:
         raise HTTPException(status_code=502, detail=f"ODS lookup failed: {exc}")
@@ -76,16 +82,27 @@ async def search_ods(query: str, role: Optional[str] = None, limit: int = 20):
         params["PrimaryRoleId"] = role
     try:
         async with httpx.AsyncClient(timeout=8) as client:
-            r = await client.get(f"{ODS_BASE}/organisations", params=params,
-                                 headers={"Accept": "application/json"})
+            r = await client.get(
+                f"{ODS_BASE}/organisations",
+                params=params,
+                headers={"Accept": "application/json"},
+            )
         r.raise_for_status()
         orgs = r.json().get("Organisations", [])
-        return [{"ods_code": o.get("OrgId"), "name": o.get("Name"), "type": o.get("OrgRecordClass")} for o in orgs]
+        return [
+            {
+                "ods_code": o.get("OrgId"),
+                "name": o.get("Name"),
+                "type": o.get("OrgRecordClass"),
+            }
+            for o in orgs
+        ]
     except httpx.HTTPError as exc:
         raise HTTPException(status_code=502, detail=f"ODS search failed: {exc}")
 
 
 # ── EMIS webhook receiver ─────────────────────────────────────────────────────
+
 
 class EmisPatientPayload(BaseModel):
     emis_guid: str
@@ -105,7 +122,9 @@ class EmisPatientPayload(BaseModel):
 def _verify_emis_signature(body: bytes, sig: str) -> bool:
     """HMAC-SHA256 signature verification for EMIS webhook payloads."""
     if not EMIS_WEBHOOK_SECRET:
-        logger.warning("EMIS_WEBHOOK_SECRET not set — skipping signature check (dev mode)")
+        logger.warning(
+            "EMIS_WEBHOOK_SECRET not set — skipping signature check (dev mode)"
+        )
         return True
     expected = hmac.new(EMIS_WEBHOOK_SECRET.encode(), body, hashlib.sha256).hexdigest()
     return hmac.compare_digest(expected, sig.removeprefix("sha256="))
@@ -131,9 +150,15 @@ async def emis_webhook(
         raise HTTPException(status_code=422, detail=f"Invalid payload: {exc}")
 
     # Map EMIS payload → ClientRecord (idempotent by emis_guid in email field)
-    existing = db.query(ClientRecord).filter(
-        ClientRecord.email == payload.email,
-    ).first() if payload.email else None
+    existing = (
+        db.query(ClientRecord)
+        .filter(
+            ClientRecord.email == payload.email,
+        )
+        .first()
+        if payload.email
+        else None
+    )
 
     if not existing:
         client = ClientRecord(
@@ -154,11 +179,17 @@ async def emis_webhook(
         action = "existing"
         client_id = existing.id
 
-    logger.info("EMIS webhook: %s client %d (EMIS GUID: %s)", action, client_id, payload.emis_guid)
+    logger.info(
+        "EMIS webhook: %s client %d (EMIS GUID: %s)",
+        action,
+        client_id,
+        payload.emis_guid,
+    )
     return {"status": "accepted", "action": action, "client_id": client_id}
 
 
 # ── GP Connect capability stub ────────────────────────────────────────────────
+
 
 @router.get("/gp-connect/capability")
 def gp_connect_capability():
@@ -171,9 +202,21 @@ def gp_connect_capability():
         "version": "1.0",
         "gp_connect_version": "1.6.0",
         "capabilities": [
-            {"name": "Access Record HTML", "status": "planned", "target_date": "2026-Q4"},
-            {"name": "Access Record Structured", "status": "planned", "target_date": "2026-Q4"},
-            {"name": "Appointment Management", "status": "planned", "target_date": "2027-Q1"},
+            {
+                "name": "Access Record HTML",
+                "status": "planned",
+                "target_date": "2026-Q4",
+            },
+            {
+                "name": "Access Record Structured",
+                "status": "planned",
+                "target_date": "2026-Q4",
+            },
+            {
+                "name": "Appointment Management",
+                "status": "planned",
+                "target_date": "2027-Q1",
+            },
             {"name": "Send Document", "status": "planned", "target_date": "2026-Q4"},
         ],
         "spine_integration": {
@@ -192,6 +235,7 @@ def gp_connect_capability():
 
 # ── Integration status ────────────────────────────────────────────────────────
 
+
 @router.get("/status")
 def integration_status():
     """Returns current NHS/EMIS integration readiness."""
@@ -209,7 +253,9 @@ def integration_status():
             "Complete NHS DSPT submission",
             "Engage NHS Digital for Spine integration",
             "Achieve DCB0129 clinical safety accreditation",
-        ] if not emis_configured else [
+        ]
+        if not emis_configured
+        else [
             "Complete NHS DSPT submission",
             "Engage NHS Digital for Spine integration",
         ],

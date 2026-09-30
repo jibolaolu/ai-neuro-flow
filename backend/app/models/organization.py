@@ -23,8 +23,8 @@ class OrganizationRecord(Base):
     __tablename__ = "organizations"
 
     id = Column(String, primary_key=True)  # ORG-XXXXXXXX
-    name = Column(String, nullable=False)           # internal identifier
-    display_name = Column(String, nullable=True)    # shown on reports, forms, emails
+    name = Column(String, nullable=False)  # internal identifier
+    display_name = Column(String, nullable=True)  # shown on reports, forms, emails
     slug = Column(String, unique=True, nullable=False, index=True)
     is_active = Column(Boolean, default=True)
 
@@ -51,7 +51,9 @@ class OrganizationRecord(Base):
 
 class OrganizationSignup(BaseModel):
     organization_name: str = Field(..., min_length=2, max_length=200)
-    slug: str = Field(..., min_length=2, max_length=64, pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$")
+    slug: str = Field(
+        ..., min_length=2, max_length=64, pattern=r"^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+    )
     admin_full_name: str = Field(..., min_length=2, max_length=200)
     admin_email: EmailStr
     admin_password: str = Field(..., min_length=8, max_length=128)

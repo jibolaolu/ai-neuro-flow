@@ -1,10 +1,11 @@
-﻿"""
+"""
 AI Clinical Report generation using Anthropic Claude.
 
 Generates a structured pre-assessment overview for clinician review.
 Stored as JSON in client_profiles.ai_clinical_report.
 Never shown directly to the client - admin and senior clinician only.
 """
+
 from __future__ import annotations
 
 import json
@@ -21,14 +22,16 @@ _SYSTEM_PROMPT = (
 )
 
 
-def _build_prompt(client_name: str, age: int | None, scores: dict, pathway: str = "adult") -> str:
-    asrs  = scores.get("asrs", {})
-    phq9  = scores.get("phq9", {})
-    gad7  = scores.get("gad7", {})
+def _build_prompt(
+    client_name: str, age: int | None, scores: dict, pathway: str = "adult"
+) -> str:
+    asrs = scores.get("asrs", {})
+    phq9 = scores.get("phq9", {})
+    gad7 = scores.get("gad7", {})
     wfirs = scores.get("wfirs", {})
-    sdq   = scores.get("sdq", {})
-    cprs  = scores.get("cprs", {})
-    ctrs  = scores.get("ctrs", {})
+    sdq = scores.get("sdq", {})
+    cprs = scores.get("cprs", {})
+    ctrs = scores.get("ctrs", {})
 
     lines: list[str] = [
         f"Patient: {client_name}",
@@ -57,18 +60,24 @@ def _build_prompt(client_name: str, age: int | None, scores: dict, pathway: str 
         ]
 
     if gad7:
-        lines.append(f"GAD-7 (Anxiety): {gad7.get('total')}/21 - {gad7.get('severity')}")
+        lines.append(
+            f"GAD-7 (Anxiety): {gad7.get('total')}/21 - {gad7.get('severity')}"
+        )
 
     if wfirs:
         lines.append(
             f"WFIRS-S Overall mean: {wfirs.get('overall_mean')}/3.0 - {wfirs.get('impairment_level')} functional impairment"
         )
-        for d in (wfirs.get("domains") or []):
-            lines.append(f"  WFIRS {d['domain']}: mean {d['mean']}, elevated items {d['elevated_count']}/{d['items_total']}")
+        for d in wfirs.get("domains") or []:
+            lines.append(
+                f"  WFIRS {d['domain']}: mean {d['mean']}, elevated items {d['elevated_count']}/{d['items_total']}"
+            )
 
     # ── Child / adolescent instruments ───────────────────────────────────────
     if sdq:
-        version_label = "SDQ Self-Report" if sdq.get("version") == "self" else "SDQ Parent-Report"
+        version_label = (
+            "SDQ Self-Report" if sdq.get("version") == "self" else "SDQ Parent-Report"
+        )
         lines += [
             f"{version_label} Total Difficulties: {sdq.get('total_difficulties')}/40 - {sdq.get('total_band')}",
             f"  Emotional symptoms:        {sdq.get('emotional_symptoms')}/10 ({sdq.get('emotional_band')})",
@@ -150,8 +159,12 @@ def generate_ai_report(
         import anthropic  # type: ignore
         from app.core.config import settings
 
-        api_key = settings.anthropic_api_key or None  # None → SDK reads ANTHROPIC_API_KEY env var
-        claude = anthropic.Anthropic(api_key=api_key) if api_key else anthropic.Anthropic()
+        api_key = (
+            settings.anthropic_api_key or None
+        )  # None → SDK reads ANTHROPIC_API_KEY env var
+        claude = (
+            anthropic.Anthropic(api_key=api_key) if api_key else anthropic.Anthropic()
+        )
 
         prompt = _build_prompt(client_name, age, scores, pathway=pathway)
         model = settings.anthropic_model

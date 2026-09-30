@@ -8,7 +8,12 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, require_roles
 from app.models.client import ClientRecord
-from app.models.nps_survey import NpsSurveyRecord, SurveyOut, SurveySubmitBody, generate_survey_token
+from app.models.nps_survey import (
+    NpsSurveyRecord,
+    SurveyOut,
+    SurveySubmitBody,
+    generate_survey_token,
+)
 from app.models.user import UserRecord
 
 router = APIRouter()
@@ -18,7 +23,9 @@ router = APIRouter()
 def get_survey_context(token: str, db: Session = Depends(get_db)) -> dict:
     survey = db.query(NpsSurveyRecord).filter(NpsSurveyRecord.token == token).first()
     if not survey:
-        raise HTTPException(status_code=404, detail="Survey link not found or has expired")
+        raise HTTPException(
+            status_code=404, detail="Survey link not found or has expired"
+        )
     if survey.submitted_at:
         return {"already_submitted": True, "client_id": survey.client_id}
     client = db.query(ClientRecord).filter(ClientRecord.id == survey.client_id).first()
@@ -69,9 +76,13 @@ def create_survey_for_client(
     client = db.query(ClientRecord).filter(ClientRecord.id == client_id).first()
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
-    existing = db.query(NpsSurveyRecord).filter(NpsSurveyRecord.client_id == client_id).first()
+    existing = (
+        db.query(NpsSurveyRecord).filter(NpsSurveyRecord.client_id == client_id).first()
+    )
     if existing:
-        raise HTTPException(status_code=409, detail="Survey already exists for this client")
+        raise HTTPException(
+            status_code=409, detail="Survey already exists for this client"
+        )
 
     survey = NpsSurveyRecord(
         id=f"NPS-{uuid.uuid4().hex[:8].upper()}",
@@ -90,10 +101,18 @@ def get_survey_results(
     db: Session = Depends(get_db),
     _: UserRecord = Depends(require_roles("clinical-admin", "super-platform-admin")),
 ) -> dict:
-    surveys = db.query(NpsSurveyRecord).filter(NpsSurveyRecord.submitted_at.isnot(None)).all()
+    surveys = (
+        db.query(NpsSurveyRecord).filter(NpsSurveyRecord.submitted_at.isnot(None)).all()
+    )
     if not surveys:
-        return {"total": 0, "avg_nps": None, "avg_satisfaction": None,
-                "avg_communication": None, "avg_report_quality": None, "items": []}
+        return {
+            "total": 0,
+            "avg_nps": None,
+            "avg_satisfaction": None,
+            "avg_communication": None,
+            "avg_report_quality": None,
+            "items": [],
+        }
 
     def avg(vals: list) -> float | None:
         clean = [v for v in vals if v is not None]

@@ -16,7 +16,9 @@ logger = logging.getLogger(__name__)
 class AIService:
     # ── Report summary (was the stub) ─────────────────────────────────────────
 
-    def generate_report_summary(self, notes: str, *, clinic_id: str | None = None) -> str:
+    def generate_report_summary(
+        self, notes: str, *, clinic_id: str | None = None
+    ) -> str:
         """
         Generate a concise clinical summary from raw notes.
         Uses RAG context if available; falls back to direct LLM call.
@@ -60,6 +62,7 @@ class AIService:
         Returns structured insights.
         """
         import json
+
         prompt = (
             f"Analyse this {pathway} ADHD/Autism intake form submission. "
             "Return JSON with keys: completeness_score (0-100), key_concerns (list), "
@@ -116,6 +119,7 @@ class AIService:
         Predict likely assessment outcomes and recovery trajectory.
         """
         import json
+
         prompt = (
             "Based on this client's assessment data, predict likely outcomes. "
             "Return JSON with keys: predicted_diagnosis (string), confidence (low/medium/high), "

@@ -45,32 +45,40 @@ _REPORT_SECTIONS_CHECKLIST = [
 
 # ── Request / response schemas ────────────────────────────────────────────────
 
+
 class ReportSectionRequest(BaseModel):
-    client_id:    str
+    client_id: str
     section_name: str
-    case_notes:   str = ""
+    case_notes: str = ""
+
 
 class SOAPRequest(BaseModel):
     client_id: str
-    context:   str
+    context: str
+
 
 class QARequest(BaseModel):
-    client_id:   str
+    client_id: str
     report_text: str
+
 
 class SynthesisRequest(BaseModel):
     client_id: str
 
+
 class RiskRequest(BaseModel):
-    client_id:  str
+    client_id: str
     case_notes: str = ""
 
+
 class DocAutoPopulateRequest(BaseModel):
-    client_id:      str
+    client_id: str
     report_section: str
+
 
 class SafeguardingCheckRequest(BaseModel):
     text: str
+
 
 class DiagnosticSupportRequest(BaseModel):
     client_id: str
@@ -80,11 +88,11 @@ class DiagnosticSupportRequest(BaseModel):
 
 # Tier-1 safeguarding keywords split by concern category
 _SAFEGUARDING_PATTERNS = {
-    "self-harm":    r"\b(self[-\s]?harm|cut(?:ting)?\s+(?:myself|self)|suicid|overdos|kill(?:ing)?\s+(?:myself|self)|want(?:ed|s)?\s+to\s+die|end(?:ing)?\s+(?:my|their)\s+life)\b",
-    "abuse":        r"\b(abus(?:e|ed|ing|ive)|neglect(?:ed)?|assault(?:ed)?|sexual(?:ly)?\s+abus|domestic\s+violence|DV\b|exploitation|grooming)\b",
+    "self-harm": r"\b(self[-\s]?harm|cut(?:ting)?\s+(?:myself|self)|suicid|overdos|kill(?:ing)?\s+(?:myself|self)|want(?:ed|s)?\s+to\s+die|end(?:ing)?\s+(?:my|their)\s+life)\b",
+    "abuse": r"\b(abus(?:e|ed|ing|ive)|neglect(?:ed)?|assault(?:ed)?|sexual(?:ly)?\s+abus|domestic\s+violence|DV\b|exploitation|grooming)\b",
     "harm-to-others": r"\b(harm(?:ing)?\s+(?:others|someone|them)|violen(?:t|ce)(?:\s+toward|\s+to)?|threaten(?:ed|ing)|weapon|knife|attack(?:ing)?)\b",
-    "substance":    r"\b(drug\s+use|substance\s+mis(?:use|using)|alcohol\s+problem|cannabis|cocaine|heroin|addiction)\b",
-    "welfare":      r"\b(no\s+food|homeless|unsafe\s+(?:home|environment)|carers?\s+(?:missing|absent)|alone\s+(?:all\s+day|overnight))\b",
+    "substance": r"\b(drug\s+use|substance\s+mis(?:use|using)|alcohol\s+problem|cannabis|cocaine|heroin|addiction)\b",
+    "welfare": r"\b(no\s+food|homeless|unsafe\s+(?:home|environment)|carers?\s+(?:missing|absent)|alone\s+(?:all\s+day|overnight))\b",
 }
 
 
@@ -98,17 +106,20 @@ def safeguarding_check(
     Returns a list of flags with category and matched excerpt.
     """
     import re
+
     flags = []
     text_lower = req.text
     for category, pattern in _SAFEGUARDING_PATTERNS.items():
         for m in re.finditer(pattern, text_lower, re.IGNORECASE):
             start = max(0, m.start() - 40)
-            end   = min(len(req.text), m.end() + 40)
-            flags.append({
-                "category": category,
-                "match":    m.group(),
-                "excerpt":  "…" + req.text[start:end].strip() + "…",
-            })
+            end = min(len(req.text), m.end() + 40)
+            flags.append(
+                {
+                    "category": category,
+                    "match": m.group(),
+                    "excerpt": "…" + req.text[start:end].strip() + "…",
+                }
+            )
     severity = "none"
     if flags:
         cats = {f["category"] for f in flags}
@@ -132,9 +143,11 @@ def diagnostic_support(
     diagnostic direction with confidence level and recommended next steps.
     """
     client = get_client_for_user(db, user, req.client_id)
-    profile = db.query(ClientProfileRecord).filter(
-        ClientProfileRecord.client_id == req.client_id
-    ).first()
+    profile = (
+        db.query(ClientProfileRecord)
+        .filter(ClientProfileRecord.client_id == req.client_id)
+        .first()
+    )
     scores = json.loads(profile.scores or "{}") if profile else {}
 
     if not scores:
@@ -160,7 +173,8 @@ def diagnostic_support(
     try:
         raw = llm_gateway.simple_completion(prompt=prompt, max_tokens=500)
         import re
-        json_match = re.search(r'\{.*\}', raw, re.DOTALL)
+
+        json_match = re.search(r"\{.*\}", raw, re.DOTALL)
         if json_match:
             result = json.loads(json_match.group())
             return result
@@ -171,8 +185,13 @@ def diagnostic_support(
         "suggestion": None,
         "confidence": "low",
         "reasoning": "AI analysis unavailable. Please review scores manually.",
-        "next_steps": ["Review score reports", "Consult clinical guidelines", "Discuss in supervision"],
+        "next_steps": [
+            "Review score reports",
+            "Consult clinical guidelines",
+            "Discuss in supervision",
+        ],
     }
+
 
 @router.post("/report-section")
 def suggest_report_section(
@@ -183,13 +202,16 @@ def suggest_report_section(
     """AI drafts a report section based on scores, notes, and similar cases."""
     client = get_client_for_user(db, user, req.client_id)
     clinic_id = effective_clinic_id(user)
-    profile = db.query(ClientProfileRecord).filter(
-        ClientProfileRecord.client_id == req.client_id
-    ).first()
+    profile = (
+        db.query(ClientProfileRecord)
+        .filter(ClientProfileRecord.client_id == req.client_id)
+        .first()
+    )
     scores = json.loads(profile.scores or "{}") if profile else {}
 
     try:
         from app.ai.rag_engine import rag_engine
+
         similar = rag_engine.retrieve(
             f"{req.section_name} {client.pathway or 'ADHD'}",
             collection="clinical_documents",
@@ -251,9 +273,11 @@ def cross_informant_synthesis(
 ):
     """AI analyses discrepancies between parent, teacher, and self-report scores."""
     client = get_client_for_user(db, user, req.client_id)
-    profile = db.query(ClientProfileRecord).filter(
-        ClientProfileRecord.client_id == req.client_id
-    ).first()
+    profile = (
+        db.query(ClientProfileRecord)
+        .filter(ClientProfileRecord.client_id == req.client_id)
+        .first()
+    )
     if not profile or not profile.scores:
         raise HTTPException(404, "No scores available for this client")
 
@@ -280,9 +304,11 @@ def risk_stratification(
 ):
     """AI risk stratification across all instruments + case notes."""
     client = get_client_for_user(db, user, req.client_id)
-    profile = db.query(ClientProfileRecord).filter(
-        ClientProfileRecord.client_id == req.client_id
-    ).first()
+    profile = (
+        db.query(ClientProfileRecord)
+        .filter(ClientProfileRecord.client_id == req.client_id)
+        .first()
+    )
     scores = json.loads(profile.scores or "{}") if profile else {}
 
     context = (
@@ -342,14 +368,18 @@ def search_documents(
 
 # ── Smart Scheduling ──────────────────────────────────────────────────────────
 
+
 class SmartAssignRequest(BaseModel):
     client_id: str
+
 
 @router.post("/smart-assign")
 def smart_assign_clinician(
     req: SmartAssignRequest,
     db: Session = Depends(get_db),
-    user: UserRecord = Depends(require_roles("clinic-admin", "clinical-admin", "senior-clinician")),
+    user: UserRecord = Depends(
+        require_roles("clinic-admin", "clinical-admin", "senior-clinician")
+    ),
 ):
     """AI-ranked clinician assignment based on specialization, caseload, and availability."""
     client = get_client_for_user(db, user, req.client_id)
@@ -372,28 +402,41 @@ def smart_assign_clinician(
     # Enrich with caseload counts
     clinician_data = []
     for c in clinicians_q:
-        active_cases = db.query(ClientRecord).filter(
-            ClientRecord.clinic_id == clinic_id,
-            ClientRecord.assigned_clinician_user_id == c.id,
-        ).filter(
-            ~sa_func.lower(ClientRecord.status).contains("complete"),
-            ~sa_func.lower(ClientRecord.status).contains("cancel"),
-        ).count()
+        active_cases = (
+            db.query(ClientRecord)
+            .filter(
+                ClientRecord.clinic_id == clinic_id,
+                ClientRecord.assigned_clinician_user_id == c.id,
+            )
+            .filter(
+                ~sa_func.lower(ClientRecord.status).contains("complete"),
+                ~sa_func.lower(ClientRecord.status).contains("cancel"),
+            )
+            .count()
+        )
 
-        available_slots = db.query(ClinicianAvailabilitySlotRecord).filter(
-            ClinicianAvailabilitySlotRecord.user_id == c.id,
-            ClinicianAvailabilitySlotRecord.rota_status == "confirmed",
-            ClinicianAvailabilitySlotRecord.booked_client_id.is_(None),
-        ).count()
+        available_slots = (
+            db.query(ClinicianAvailabilitySlotRecord)
+            .filter(
+                ClinicianAvailabilitySlotRecord.user_id == c.id,
+                ClinicianAvailabilitySlotRecord.rota_status == "confirmed",
+                ClinicianAvailabilitySlotRecord.booked_client_id.is_(None),
+            )
+            .count()
+        )
 
-        clinician_data.append({
-            "clinician_id":    c.id,
-            "name":            getattr(c, "full_name", None) or c.email,
-            "role":            c.role,
-            "active_caseload": active_cases,
-            "open_slots":      available_slots,
-            "specializations": getattr(c, "specializations", None) or client.pathway or "General",
-        })
+        clinician_data.append(
+            {
+                "clinician_id": c.id,
+                "name": getattr(c, "full_name", None) or c.email,
+                "role": c.role,
+                "active_caseload": active_cases,
+                "open_slots": available_slots,
+                "specializations": getattr(c, "specializations", None)
+                or client.pathway
+                or "General",
+            }
+        )
 
     if not clinician_data:
         raise HTTPException(404, "No active clinicians found in this clinic")
@@ -412,6 +455,7 @@ def smart_assign_clinician(
 
 # ── Adaptive Form Reminders (manual trigger) ──────────────────────────────────
 
+
 @router.get("/form-reminder-analysis")
 def form_reminder_analysis(
     client_id: str = Query(...),
@@ -423,12 +467,17 @@ def form_reminder_analysis(
     or if the client is likely to complete without one.
     """
     from datetime import datetime, timezone
+
     get_client_for_user(db, user, client_id)
 
-    pending_tokens = db.query(FormToken).filter(
-        FormToken.client_id == client_id,
-        FormToken.status == STATUS_PENDING,
-    ).all()
+    pending_tokens = (
+        db.query(FormToken)
+        .filter(
+            FormToken.client_id == client_id,
+            FormToken.status == STATUS_PENDING,
+        )
+        .all()
+    )
 
     if not pending_tokens:
         return {"message": "No pending forms for this client", "analyses": []}
@@ -439,6 +488,7 @@ def form_reminder_analysis(
         sent_at = tok.sent_at
         if sent_at and sent_at.tzinfo is None:
             from datetime import timezone as tz
+
             sent_at = sent_at.replace(tzinfo=tz.utc)
         days_since = (now - sent_at).days if sent_at else 0
         reminder_count = 1 if tok.reminder_sent_at else 0
@@ -450,13 +500,15 @@ def form_reminder_analysis(
                 pathway=tok.form_type or "Assessment",
                 completion_rate=0.72,  # default clinic average
             )
-            analyses.append({
-                "token_id":              tok.id,
-                "form_type":             tok.form_type,
-                "days_since_sent":       days_since,
-                "reminders_already_sent": reminder_count,
-                **pred,
-            })
+            analyses.append(
+                {
+                    "token_id": tok.id,
+                    "form_type": tok.form_type,
+                    "days_since_sent": days_since,
+                    "reminders_already_sent": reminder_count,
+                    **pred,
+                }
+            )
         except Exception as exc:
             logger.warning("Form prediction failed for token %s: %s", tok.id, exc)
             analyses.append({"token_id": tok.id, "error": str(exc)})
@@ -466,9 +518,11 @@ def form_reminder_analysis(
 
 # ── Client-Facing AI Chat ─────────────────────────────────────────────────────
 
+
 class ClientChatRequest(BaseModel):
-    token:   str   # form token for unauthenticated client access
+    token: str  # form token for unauthenticated client access
     message: str
+
 
 @router.post("/client-chat")
 def client_chat(
@@ -488,15 +542,21 @@ def client_chat(
 
     client = db.query(ClientRecord).filter(ClientRecord.id == tok.client_id).first()
     context = (
-        f"Client pathway: {client.pathway or 'Not specified'}\n"
-        f"Client status: {client.status or 'In assessment'}\n"
-        f"Form type: {tok.form_type or 'Assessment form'}\n"
-        f"Form status: {tok.status}\n"
-    ) if client else f"Form type: {tok.form_type or 'Assessment form'}"
+        (
+            f"Client pathway: {client.pathway or 'Not specified'}\n"
+            f"Client status: {client.status or 'In assessment'}\n"
+            f"Form type: {tok.form_type or 'Assessment form'}\n"
+            f"Form status: {tok.status}\n"
+        )
+        if client
+        else f"Form type: {tok.form_type or 'Assessment form'}"
+    )
 
     try:
         reply = llm_gateway.client_chat(req.message, context)
         return {"reply": reply}
     except Exception as exc:
         logger.error("client_chat failed: %s", exc)
-        raise HTTPException(500, "Unable to process your question right now. Please try again.")
+        raise HTTPException(
+            500, "Unable to process your question right now. Please try again."
+        )

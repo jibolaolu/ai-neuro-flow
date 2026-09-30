@@ -53,10 +53,17 @@ def ensure_default_organization(engine: Engine) -> None:
 
         if engine.dialect.name == "sqlite":
             ct = conn.execute(
-                text("SELECT name FROM sqlite_master WHERE type='table' AND name='clients'"),
+                text(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name='clients'"
+                ),
             ).fetchone()
             if ct:
-                cols = {row[1] for row in conn.execute(text("PRAGMA table_info(clients)")).fetchall()}
+                cols = {
+                    row[1]
+                    for row in conn.execute(
+                        text("PRAGMA table_info(clients)")
+                    ).fetchall()
+                }
                 if "clinic_id" in cols:
                     conn.execute(
                         text(
@@ -66,10 +73,17 @@ def ensure_default_organization(engine: Engine) -> None:
                     )
                     conn.commit()
             cr = conn.execute(
-                text("SELECT name FROM sqlite_master WHERE type='table' AND name='clinical_reports'"),
+                text(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name='clinical_reports'"
+                ),
             ).fetchone()
             if cr:
-                cols = {row[1] for row in conn.execute(text("PRAGMA table_info(clinical_reports)")).fetchall()}
+                cols = {
+                    row[1]
+                    for row in conn.execute(
+                        text("PRAGMA table_info(clinical_reports)")
+                    ).fetchall()
+                }
                 if "clinic_id" in cols:
                     conn.execute(
                         text(

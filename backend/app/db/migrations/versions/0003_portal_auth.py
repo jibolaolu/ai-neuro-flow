@@ -7,6 +7,7 @@ Create Date: 2026-09-15 00:00:00.000000
 Enables the client-facing portal (/client-portal/*) to authenticate via
 time-limited magic links (48 h) that issue 7-day session tokens.
 """
+
 from typing import Sequence, Union
 
 import sqlalchemy as sa
@@ -27,11 +28,11 @@ def _column_exists(table: str, column: str) -> bool:
 
 def upgrade() -> None:
     portal_cols = [
-        ("account_expires_at",              sa.DateTime),
-        ("portal_magic_token",              sa.String),
-        ("portal_magic_token_expires_at",   sa.DateTime),
-        ("portal_session_token",            sa.String),
-        ("portal_session_expires_at",       sa.DateTime),
+        ("account_expires_at", sa.DateTime),
+        ("portal_magic_token", sa.String),
+        ("portal_magic_token_expires_at", sa.DateTime),
+        ("portal_session_token", sa.String),
+        ("portal_session_expires_at", sa.DateTime),
     ]
 
     for col_name, col_type in portal_cols:

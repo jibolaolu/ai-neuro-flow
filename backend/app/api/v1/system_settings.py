@@ -1,4 +1,5 @@
 """Platform system settings — key/value configuration store."""
+
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException

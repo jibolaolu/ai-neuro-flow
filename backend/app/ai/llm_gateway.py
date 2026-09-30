@@ -21,6 +21,7 @@ _RETRY_DELAY = 1.5  # seconds, doubled on each retry
 class LLMGateway:
     def get_model_metadata(self) -> dict[str, str]:
         from app.core.config import settings
+
         return {
             "provider": "anthropic",
             "model": settings.anthropic_model,
@@ -48,14 +49,18 @@ class LLMGateway:
 
         _model = model or settings.anthropic_model
         api_key = settings.anthropic_api_key or None
-        client = anthropic.Anthropic(api_key=api_key) if api_key else anthropic.Anthropic()
+        client = (
+            anthropic.Anthropic(api_key=api_key) if api_key else anthropic.Anthropic()
+        )
 
         sys_prompt = system or (
             "You are a specialist clinical assistant for a UK-based "
             "ADHD and Autism assessment service."
         )
         if json_mode:
-            sys_prompt += " Always respond with valid JSON only — no markdown, no extra text."
+            sys_prompt += (
+                " Always respond with valid JSON only — no markdown, no extra text."
+            )
 
         messages: list[dict[str, Any]] = [{"role": "user", "content": prompt}]
 
@@ -80,9 +85,11 @@ class LLMGateway:
                 last_exc = exc
                 logger.warning("LLM call attempt %d failed: %s", attempt + 1, exc)
                 if attempt < _MAX_RETRIES - 1:
-                    time.sleep(_RETRY_DELAY * (2 ** attempt))
+                    time.sleep(_RETRY_DELAY * (2**attempt))
 
-        raise RuntimeError(f"LLM call failed after {_MAX_RETRIES} attempts: {last_exc}") from last_exc
+        raise RuntimeError(
+            f"LLM call failed after {_MAX_RETRIES} attempts: {last_exc}"
+        ) from last_exc
 
     def call_json(
         self,
@@ -93,7 +100,9 @@ class LLMGateway:
         model: str | None = None,
     ) -> dict:
         """Call Claude and parse the response as JSON. Returns dict."""
-        raw = self.call(prompt, system=system, max_tokens=max_tokens, model=model, json_mode=True)
+        raw = self.call(
+            prompt, system=system, max_tokens=max_tokens, model=model, json_mode=True
+        )
         raw = raw.strip()
         # Strip markdown fences if the model adds them anyway
         if raw.startswith("```"):

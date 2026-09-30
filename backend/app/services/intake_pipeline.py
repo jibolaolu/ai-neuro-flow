@@ -13,12 +13,13 @@ Chain:
   5. Dispatch GP form if GP email provided
   6. Dispatch teacher form if teacher email provided (child/adolescent only)
 """
+
 from __future__ import annotations
 
 import json
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Optional
 
 from sqlalchemy.orm import Session
@@ -44,41 +45,46 @@ from app.services import email as email_svc
 
 # ── Input schema ──────────────────────────────────────────────────────────────
 
+
 @dataclass
 class IntakePayload:
     """Normalised client data, regardless of which intake path produced it."""
-    clinic_id:         str
-    full_name:         str
-    email:             str
-    pathway:           str            # e.g. "Adult ADHD", "Child Autism"
-    age_group:         str            # "Adult" | "Adolescent" | "Child"
-    phone:             str  = ""
-    amount_paid:       float = 0.0
-    currency:          str  = "GBP"
-    paid_service_name: str  = ""
-    child_name:        Optional[str] = None
-    child_dob:         Optional[str] = None   # ISO YYYY-MM-DD
-    gp_name:           Optional[str] = None
-    gp_email:          Optional[str] = None
-    teacher_name:      Optional[str] = None
-    teacher_email:     Optional[str] = None
-    source:            str  = "webhook"       # "webhook" | "api" | "manual"
-    external_ref:      Optional[str] = None   # order ID / session ID from sender
+
+    clinic_id: str
+    full_name: str
+    email: str
+    pathway: str  # e.g. "Adult ADHD", "Child Autism"
+    age_group: str  # "Adult" | "Adolescent" | "Child"
+    phone: str = ""
+    amount_paid: float = 0.0
+    currency: str = "GBP"
+    paid_service_name: str = ""
+    child_name: Optional[str] = None
+    child_dob: Optional[str] = None  # ISO YYYY-MM-DD
+    gp_name: Optional[str] = None
+    gp_email: Optional[str] = None
+    teacher_name: Optional[str] = None
+    teacher_email: Optional[str] = None
+    source: str = "webhook"  # "webhook" | "api" | "manual"
+    external_ref: Optional[str] = None  # order ID / session ID from sender
 
 
 # ── Result ────────────────────────────────────────────────────────────────────
 
+
 @dataclass
 class IntakeResult:
-    client:     ClientRecord
-    invoice:    InvoiceRecord
-    forms_sent: list[str] = field(default_factory=list)   # form_type strings dispatched
+    client: ClientRecord
+    invoice: InvoiceRecord
+    forms_sent: list[str] = field(default_factory=list)  # form_type strings dispatched
 
 
 # ── Helper: pathway → form set ────────────────────────────────────────────────
 
-def _forms_for_pathway(age_group: str, gp_email: str | None,
-                       teacher_email: str | None) -> list[tuple[str, str | None]]:
+
+def _forms_for_pathway(
+    age_group: str, gp_email: str | None, teacher_email: str | None
+) -> list[tuple[str, str | None]]:
     """
     Return a list of (form_type, recipient_email_or_None) for a given age group.
     recipient_email=None means 'send to client'.
@@ -115,6 +121,7 @@ def _next_invoice_number(db: Session, clinic_id: str) -> str:
 
 def _platform_url() -> str:
     from app.core.config import settings
+
     return getattr(settings, "platform_base_url", "http://localhost:3004")
 
 
@@ -164,6 +171,7 @@ def _dispatch_form_record(
         )
     else:
         from app.models.form_token import FORM_TYPE_LABELS
+
         email_svc.send_third_party_form(
             to_email=recipient_email,
             client_id=client.id,
@@ -177,6 +185,7 @@ def _dispatch_form_record(
 
 
 # ── Main pipeline ─────────────────────────────────────────────────────────────
+
 
 def run_intake_pipeline(db: Session, payload: IntakePayload) -> IntakeResult:
     """
@@ -198,9 +207,11 @@ def run_intake_pipeline(db: Session, payload: IntakePayload) -> IntakeResult:
     )
     if existing:
         # Return the existing client without re-sending anything
-        dummy_inv = db.query(InvoiceRecord).filter(
-            InvoiceRecord.client_id == existing.id
-        ).first()
+        dummy_inv = (
+            db.query(InvoiceRecord)
+            .filter(InvoiceRecord.client_id == existing.id)
+            .first()
+        )
         return IntakeResult(
             client=existing,
             invoice=dummy_inv or _make_stub_invoice(existing),
@@ -208,7 +219,7 @@ def run_intake_pipeline(db: Session, payload: IntakePayload) -> IntakeResult:
         )
 
     # ── 2. Create client ──────────────────────────────────────────────────────
-    client_id    = f"CLI-{uuid.uuid4().hex[:8].upper()}"
+    client_id = f"CLI-{uuid.uuid4().hex[:8].upper()}"
     assessment_id = f"ASS-{uuid.uuid4().hex[:8].upper()}"
 
     client = ClientRecord(
@@ -243,12 +254,18 @@ def run_intake_pipeline(db: Session, payload: IntakePayload) -> IntakeResult:
         client_name=client.full_name,
         client_email=client.email,
         invoice_number=inv_number,
-        description=payload.paid_service_name or payload.pathway or "Assessment service",
-        line_items_json=json.dumps([{
-            "description": payload.paid_service_name or payload.pathway,
-            "quantity": 1,
-            "unit_gbp": amount,
-        }]),
+        description=payload.paid_service_name
+        or payload.pathway
+        or "Assessment service",
+        line_items_json=json.dumps(
+            [
+                {
+                    "description": payload.paid_service_name or payload.pathway,
+                    "quantity": 1,
+                    "unit_gbp": amount,
+                }
+            ]
+        ),
         amount_gbp=amount,
         vat_rate=0.0,
         status=INV_STATUS_PAID,
@@ -292,7 +309,8 @@ def run_intake_pipeline(db: Session, payload: IntakePayload) -> IntakeResult:
         else:
             # Client self-report / parent form
             recipient_name = (
-                payload.child_name if payload.child_name and payload.age_group == "Child"
+                payload.child_name
+                if payload.child_name and payload.age_group == "Child"
                 else client.full_name
             )
             _dispatch_form_record(

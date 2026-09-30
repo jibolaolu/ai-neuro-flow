@@ -1,4 +1,4 @@
-﻿"""PDF export for contractor invoice requests (ReportLab)."""
+"""PDF export for contractor invoice requests (ReportLab)."""
 
 from io import BytesIO
 from xml.sax.saxutils import escape
@@ -43,7 +43,12 @@ def build_invoice_request_pdf(
         story.append(
             Paragraph(
                 f"<b>{watermark}</b>",
-                ParagraphStyle(name="W", parent=styles["Normal"], textColor=colors.HexColor("#b45309"), fontSize=11),
+                ParagraphStyle(
+                    name="W",
+                    parent=styles["Normal"],
+                    textColor=colors.HexColor("#b45309"),
+                    fontSize=11,
+                ),
             )
         )
         story.append(Spacer(1, 8))
@@ -95,7 +100,9 @@ def build_invoice_request_pdf(
 
     if inv.notes:
         story.append(Paragraph("<b>Your notes</b>", styles["Normal"]))
-        story.append(Paragraph(escape(inv.notes).replace("\n", "<br/>"), styles["Normal"]))
+        story.append(
+            Paragraph(escape(inv.notes).replace("\n", "<br/>"), styles["Normal"])
+        )
         story.append(Spacer(1, 8))
 
     story.append(

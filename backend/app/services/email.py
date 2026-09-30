@@ -1,4 +1,4 @@
-﻿"""
+"""
 SendGrid email service.
 Set SENDGRID_API_KEY in .env to enable real sending.
 When the key is absent the email is logged to console only - safe for local dev.
@@ -12,9 +12,9 @@ import re
 import uuid
 from datetime import date, datetime, timezone
 
-logger = logging.getLogger(__name__)
-
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 COMPANY_NAME = settings.platform_display_name
 COMPANY_EMAIL = settings.support_email
@@ -196,6 +196,7 @@ def _send(
 
 # ── Invoice HTML ────────────────────────────────────────────────────────────
 
+
 def _invoice_html(
     client_name: str,
     assessment_type: str,
@@ -228,6 +229,7 @@ def _invoice_html(
 
 
 # ── Email templates ─────────────────────────────────────────────────────────
+
 
 def send_welcome_and_forms(
     to_email: str,
@@ -571,7 +573,10 @@ def notify_clinicians_rota_week_confirmed(
 
     slots: list[ClinicianAvailabilitySlotRecord] = (
         db.query(ClinicianAvailabilitySlotRecord)
-        .filter(ClinicianAvailabilitySlotRecord.week_id == week_id, ClinicianAvailabilitySlotRecord.rota_status == "confirmed")
+        .filter(
+            ClinicianAvailabilitySlotRecord.week_id == week_id,
+            ClinicianAvailabilitySlotRecord.rota_status == "confirmed",
+        )
         .all()
     )
     if not slots:
@@ -586,12 +591,16 @@ def notify_clinicians_rota_week_confirmed(
     emails_sent = 0
     for uid, user_slots in by_user.items():
         u = db.query(UserRecord).filter(UserRecord.id == uid).first()
-        if u and u.email and send_clinician_rota_week_confirmed(
-            to_email=u.email,
-            full_name=u.full_name,
-            week_id=week_id,
-            slot_count=len(user_slots),
-            admin_name=admin_name,
+        if (
+            u
+            and u.email
+            and send_clinician_rota_week_confirmed(
+                to_email=u.email,
+                full_name=u.full_name,
+                week_id=week_id,
+                slot_count=len(user_slots),
+                admin_name=admin_name,
+            )
         ):
             emails_sent += 1
 
@@ -603,6 +612,7 @@ def notify_clinicians_rota_week_confirmed(
 
 
 # ── Report issued: client notification ────────────────────────────────────────
+
 
 def send_report_issued(
     *,
@@ -719,10 +729,17 @@ def send_report_issued(
             return False
 
     # Fallback: plain email without attachment
-    return _send(to_email, subject, html_body, client_id=client_id, template_key="report_issued_client")
+    return _send(
+        to_email,
+        subject,
+        html_body,
+        client_id=client_id,
+        template_key="report_issued_client",
+    )
 
 
 # ── Report issued: clinician notification ─────────────────────────────────────
+
 
 def send_report_issued_clinician_notification(
     *,

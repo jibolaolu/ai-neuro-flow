@@ -29,7 +29,9 @@ def _get_client():
         from app.core.config import settings, _BACKEND_DIR
 
         raw = (settings.chroma_persist_dir or "").strip()
-        persist_path = Path(raw).resolve() if raw else (_BACKEND_DIR / "chroma_db").resolve()
+        persist_path = (
+            Path(raw).resolve() if raw else (_BACKEND_DIR / "chroma_db").resolve()
+        )
         persist_path.mkdir(parents=True, exist_ok=True)
 
         client = chromadb.PersistentClient(path=str(persist_path))
@@ -46,8 +48,11 @@ def _collection(name: str):
     if client is None:
         return None
     try:
-        from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
+        from chromadb.utils.embedding_functions import (
+            SentenceTransformerEmbeddingFunction,
+        )
         from app.core.config import settings
+
         ef = SentenceTransformerEmbeddingFunction(model_name=settings.embedding_model)
         return client.get_or_create_collection(name=name, embedding_function=ef)
     except Exception as exc:
@@ -114,19 +119,25 @@ class RAGEngine:
                 include=["documents", "metadatas", "distances"],
             )
             matches = []
-            docs      = results.get("documents", [[]])[0]
-            metas     = results.get("metadatas", [[]])[0]
+            docs = results.get("documents", [[]])[0]
+            metas = results.get("metadatas", [[]])[0]
             distances = results.get("distances", [[]])[0]
-            ids       = results.get("ids", [[]])[0]
+            ids = results.get("ids", [[]])[0]
 
-            for i, (doc, meta, dist, doc_id) in enumerate(zip(docs, metas, distances, ids)):
-                matches.append({
-                    "id": doc_id,
-                    "text": doc,
-                    "metadata": meta,
-                    "score": round(1.0 - dist, 4),  # convert L2 distance → similarity-ish
-                    "rank": i + 1,
-                })
+            for i, (doc, meta, dist, doc_id) in enumerate(
+                zip(docs, metas, distances, ids)
+            ):
+                matches.append(
+                    {
+                        "id": doc_id,
+                        "text": doc,
+                        "metadata": meta,
+                        "score": round(
+                            1.0 - dist, 4
+                        ),  # convert L2 distance → similarity-ish
+                        "rank": i + 1,
+                    }
+                )
             return {"query": query, "collection": collection, "matches": matches}
 
         except Exception as exc:
@@ -154,7 +165,7 @@ class RAGEngine:
                 all_matches.append(m)
 
         all_matches.sort(key=lambda x: x.get("score", 0), reverse=True)
-        return {"query": query, "matches": all_matches[:n_results * 2]}
+        return {"query": query, "matches": all_matches[: n_results * 2]}
 
 
 # Module-level singleton for convenience

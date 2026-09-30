@@ -1,4 +1,4 @@
-﻿"""
+"""
 Forms API - public endpoints (no auth required, secured by token).
 Handles form dispatch, retrieval, and submission.
 """
@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_db, require_roles
+from app.api.deps import get_db, require_roles
 from app.services.tenant import get_client_for_user
 from app.models.client import ClientRecord
 from app.models.user import UserRecord
@@ -31,7 +31,6 @@ from app.models.form_token import (
     STATUS_PENDING,
     STATUS_SUBMITTED,
     STATUS_REMINDED,
-    FormInfo,
     FormToken,
     FormTokenOut,
     generate_token,
@@ -50,8 +49,10 @@ router = APIRouter()
 
 # ── Helper ─────────────────────────────────────────────────────────────────
 
+
 def _get_platform_url() -> str:
     from app.core.config import settings
+
     return getattr(settings, "platform_base_url", "http://localhost:3004")
 
 
@@ -146,9 +147,15 @@ class FormSubmitRequest(BaseModel):
     gp_practice: str | None = None
 
 
-def _extract_profile_fields(record: FormToken, payload: FormSubmitRequest) -> dict[str, str]:
+def _extract_profile_fields(
+    record: FormToken, payload: FormSubmitRequest
+) -> dict[str, str]:
     responses = payload.responses if isinstance(payload.responses, dict) else {}
-    personal = responses.get("personal", {}) if isinstance(responses.get("personal"), dict) else {}
+    personal = (
+        responses.get("personal", {})
+        if isinstance(responses.get("personal"), dict)
+        else {}
+    )
     child_details = (
         responses.get("child_details", {})
         if isinstance(responses.get("child_details"), dict)
@@ -168,16 +175,22 @@ def _extract_profile_fields(record: FormToken, payload: FormSubmitRequest) -> di
         if isinstance(responses.get("parent_details"), dict)
         else {}
     )
-    basic = responses.get("basic", {}) if isinstance(responses.get("basic"), dict) else {}
+    basic = (
+        responses.get("basic", {}) if isinstance(responses.get("basic"), dict) else {}
+    )
 
     # Merge child_details + young_person so lookups work for both form types
     child_or_yp = {**young_person, **child_details}
 
     date_of_birth = _pick_first(
-        personal.get("dob"), child_or_yp.get("dob"), basic.get("dob"),
+        personal.get("dob"),
+        child_or_yp.get("dob"),
+        basic.get("dob"),
     )
     address = _pick_first(
-        personal.get("address"), child_or_yp.get("home_address"), basic.get("address"),
+        personal.get("address"),
+        child_or_yp.get("home_address"),
+        basic.get("address"),
     )
     phone = _pick_first(
         personal.get("phone"),
@@ -188,24 +201,32 @@ def _extract_profile_fields(record: FormToken, payload: FormSubmitRequest) -> di
     )
     gp_name = _pick_first(
         payload.gp_name,
-        personal.get("gp_name"), child_or_yp.get("gp_name"), basic.get("gp_name"),
+        personal.get("gp_name"),
+        child_or_yp.get("gp_name"),
+        basic.get("gp_name"),
     )
     gp_practice = _pick_first(
         payload.gp_practice,
-        personal.get("gp_practice"), child_or_yp.get("gp_practice"), basic.get("gp_practice"),
+        personal.get("gp_practice"),
+        child_or_yp.get("gp_practice"),
+        basic.get("gp_practice"),
     )
     gp_email = _pick_first(
         payload.gp_email,
-        personal.get("gp_email"), child_or_yp.get("gp_email"), basic.get("gp_email"),
+        personal.get("gp_email"),
+        child_or_yp.get("gp_email"),
+        basic.get("gp_email"),
     )
     teacher_name = _pick_first(payload.teacher_name, child_or_yp.get("teacher_name"))
     teacher_email = _pick_first(payload.teacher_email, child_or_yp.get("teacher_email"))
     school_name = _pick_first(child_or_yp.get("school"))
     parent_guardian_name = _pick_first(
-        child_or_yp.get("parent_name"), parent_q.get("parent_name"),
+        child_or_yp.get("parent_name"),
+        parent_q.get("parent_name"),
     )
     parent_guardian_phone = _pick_first(
-        child_or_yp.get("parent_phone"), parent_q.get("parent_phone"),
+        child_or_yp.get("parent_phone"),
+        parent_q.get("parent_phone"),
     )
     occupation = _pick_first(basic.get("occupation"))
     medical_concerns = _pick_first(
@@ -308,13 +329,19 @@ def sync_client_profile_from_submitted_forms(
             FormToken.status == STATUS_SUBMITTED,
             FormToken.responses.isnot(None),
         )
-        .order_by(FormToken.submitted_at.asc(), FormToken.sent_at.asc(), FormToken.id.asc())
+        .order_by(
+            FormToken.submitted_at.asc(), FormToken.sent_at.asc(), FormToken.id.asc()
+        )
         .all()
     )
     if not tokens:
         return
 
-    profile = db.query(ClientProfileRecord).filter(ClientProfileRecord.client_id == client.id).first()
+    profile = (
+        db.query(ClientProfileRecord)
+        .filter(ClientProfileRecord.client_id == client.id)
+        .first()
+    )
     if not profile:
         profile = ClientProfileRecord(client_id=client.id)
         db.add(profile)
@@ -348,6 +375,7 @@ def sync_client_profile_from_submitted_forms(
 
 
 # ── Public endpoints ────────────────────────────────────────────────────────
+
 
 class FormInfoResponse(BaseModel):
     token: str
@@ -393,14 +421,22 @@ def get_form_info(token: str, db: Session = Depends(get_db)) -> FormInfoResponse
     """Called by the frontend form page to determine which form to render."""
     record = db.query(FormToken).filter(FormToken.token == token).first()
     if not record:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Form link not found or expired")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Form link not found or expired",
+        )
 
     client = db.query(ClientRecord).filter(ClientRecord.id == record.client_id).first()
     client_email = client.email if client else None
 
     # For third-party forms (teacher/GP), show the child/young person's name,
     # not the parent's (billing) name.
-    THIRD_PARTY_FORMS = {FORM_CHILD_TEACHER, FORM_CHILD_GP, FORM_ADOLESCENT_TEACHER, FORM_ADOLESCENT_GP}
+    THIRD_PARTY_FORMS = {
+        FORM_CHILD_TEACHER,
+        FORM_CHILD_GP,
+        FORM_ADOLESCENT_TEACHER,
+        FORM_ADOLESCENT_GP,
+    }
     if client and record.form_type in THIRD_PARTY_FORMS:
         client_name = client.child_name or client.full_name
     else:
@@ -455,6 +491,7 @@ def get_form_info(token: str, db: Session = Depends(get_db)) -> FormInfoResponse
         # (pre-payment data that may not have been captured in profile yet)
         try:
             from app.models.pending_checkout import PendingCheckout
+
             pending = (
                 db.query(PendingCheckout)
                 .filter(PendingCheckout.email == client.email)
@@ -479,6 +516,7 @@ def get_form_info(token: str, db: Session = Depends(get_db)) -> FormInfoResponse
             pass
 
     from app.core.branding import get_clinic_branding
+
     clinic_id = client.clinic_id if client else None
     branding = get_clinic_branding(db, clinic_id)
 
@@ -500,11 +538,15 @@ def get_form_info(token: str, db: Session = Depends(get_db)) -> FormInfoResponse
 
 
 @router.post("/submit/{token}")
-def submit_form(token: str, payload: FormSubmitRequest, db: Session = Depends(get_db)) -> dict:
+def submit_form(
+    token: str, payload: FormSubmitRequest, db: Session = Depends(get_db)
+) -> dict:
     """Submit form responses. Triggers third-party form dispatch if emails provided."""
     record = db.query(FormToken).filter(FormToken.token == token).first()
     if not record:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Form link not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Form link not found"
+        )
     if record.status == STATUS_SUBMITTED:
         return {"received": True, "message": "Already submitted"}
 
@@ -530,7 +572,9 @@ def submit_form(token: str, payload: FormSubmitRequest, db: Session = Depends(ge
     extracted = _extract_profile_fields(record, payload_merged)
 
     if record.form_type == FORM_BASIC_INTAKE:
-        basic_block = merged_responses.get("basic") if isinstance(merged_responses, dict) else {}
+        basic_block = (
+            merged_responses.get("basic") if isinstance(merged_responses, dict) else {}
+        )
         if isinstance(basic_block, dict):
             new_name = _clean_str(basic_block.get("full_name"))
             if new_name:
@@ -543,7 +587,9 @@ def submit_form(token: str, payload: FormSubmitRequest, db: Session = Depends(ge
             db.query(FormToken)
             .filter(
                 FormToken.client_id == client.id,
-                FormToken.form_type.in_([FORM_ADULT_SELF, FORM_CHILD_PARENT, FORM_ADOLESCENT_SELF]),
+                FormToken.form_type.in_(
+                    [FORM_ADULT_SELF, FORM_CHILD_PARENT, FORM_ADOLESCENT_SELF]
+                ),
                 FormToken.status == STATUS_PENDING,
             )
             .order_by(FormToken.sent_at.asc())
@@ -568,16 +614,22 @@ def submit_form(token: str, payload: FormSubmitRequest, db: Session = Depends(ge
 
     # Dispatch third-party forms if emails were provided in this submission
     age_group = (client.age_group or "").lower()
-    is_child = age_group == "child" or (client.pathway and "child" in client.pathway.lower())
+    is_child = age_group == "child" or (
+        client.pathway and "child" in client.pathway.lower()
+    )
     is_adolescent = age_group == "adolescent"
     is_under_18 = is_child or is_adolescent
 
     # For third-party forms, use the child's name (not the billing/parent name).
-    third_party_name = client.child_name or client.full_name if is_under_18 else client.full_name
+    third_party_name = (
+        client.child_name or client.full_name if is_under_18 else client.full_name
+    )
 
     teacher_name = _pick_first(payload.teacher_name, extracted.get("teacher_name"))
     if payload.teacher_email and is_under_18:
-        teacher_form_type = FORM_ADOLESCENT_TEACHER if is_adolescent else FORM_CHILD_TEACHER
+        teacher_form_type = (
+            FORM_ADOLESCENT_TEACHER if is_adolescent else FORM_CHILD_TEACHER
+        )
         _dispatch_form(
             db=db,
             client_id=client.id,
@@ -609,7 +661,10 @@ def submit_form(token: str, payload: FormSubmitRequest, db: Session = Depends(ge
     # Check if all expected forms are now submitted
     _check_all_forms_complete(db, client)
 
-    return {"received": True, "message": "Thank you - your form has been submitted successfully."}
+    return {
+        "received": True,
+        "message": "Thank you - your form has been submitted successfully.",
+    }
 
 
 def _run_scoring_and_ai_report(
@@ -633,9 +688,11 @@ def _run_scoring_and_ai_report(
         if not scores:
             return
 
-        profile = db.query(ClientProfileRecord).filter(
-            ClientProfileRecord.client_id == client.id
-        ).first()
+        profile = (
+            db.query(ClientProfileRecord)
+            .filter(ClientProfileRecord.client_id == client.id)
+            .first()
+        )
         if not profile:
             profile = ClientProfileRecord(client_id=client.id)
             db.add(profile)
@@ -649,6 +706,7 @@ def _run_scoring_and_ai_report(
         if dob_str:
             try:
                 from datetime import date
+
                 dob = date.fromisoformat(dob_str[:10])
                 today = date.today()
                 age = (today - dob).days // 365
@@ -667,6 +725,7 @@ def _run_scoring_and_ai_report(
 
     except Exception as exc:  # noqa: BLE001
         import logging
+
         logging.getLogger(__name__).error("Scoring/AI report failed: %s", exc)
 
 
@@ -684,9 +743,11 @@ def _run_teacher_scoring(
         if not new_scores:
             return
 
-        profile = db.query(ClientProfileRecord).filter(
-            ClientProfileRecord.client_id == client.id
-        ).first()
+        profile = (
+            db.query(ClientProfileRecord)
+            .filter(ClientProfileRecord.client_id == client.id)
+            .first()
+        )
         if not profile:
             profile = ClientProfileRecord(client_id=client.id)
             db.add(profile)
@@ -704,6 +765,7 @@ def _run_teacher_scoring(
 
     except Exception as exc:  # noqa: BLE001
         import logging
+
         logging.getLogger(__name__).error("Teacher scoring failed: %s", exc)
 
 
@@ -724,7 +786,11 @@ def _check_all_forms_complete(db: Session, client: ClientRecord) -> None:
     if not core_tokens:
         return
 
-    pending = [t for t in core_tokens if t.status == STATUS_PENDING or t.status == STATUS_REMINDED]
+    pending = [
+        t
+        for t in core_tokens
+        if t.status == STATUS_PENDING or t.status == STATUS_REMINDED
+    ]
     if pending:
         return
 
@@ -737,6 +803,7 @@ def _check_all_forms_complete(db: Session, client: ClientRecord) -> None:
     db.refresh(client)
 
     from app.core.config import settings
+
     admin_email = getattr(settings, "admin_notification_email", "support@neuroflow.app")
     platform_url = _get_platform_url()
     email_svc.send_forms_complete_notification(
@@ -758,12 +825,15 @@ def _check_all_forms_complete(db: Session, client: ClientRecord) -> None:
 
 # ── Admin / clinician endpoints ──────────────────────────────────────────────
 
+
 @router.get("/{form_id}/responses")
 def get_form_responses(
     form_id: str,
     db: Session = Depends(get_db),
     current_user: UserRecord = Depends(
-        require_roles("clinician", "senior-clinician", "clinical-admin", "super-platform-admin")
+        require_roles(
+            "clinician", "senior-clinician", "clinical-admin", "super-platform-admin"
+        )
     ),
 ) -> dict:
     """
@@ -782,7 +852,9 @@ def get_form_responses(
     # Clinicians can only see forms for their assigned clients
     if current_user.role in ("clinician", "senior-clinician"):
         if client.assigned_clinician_user_id != current_user.id:
-            raise HTTPException(status_code=403, detail="Not authorised - client not assigned to you")
+            raise HTTPException(
+                status_code=403, detail="Not authorised - client not assigned to you"
+            )
 
     responses: dict | None = None
     if record.responses and record.status == STATUS_SUBMITTED:
@@ -792,9 +864,15 @@ def get_form_responses(
                 # Strip out numeric rating arrays - those are handled by the scores system.
                 # Clinicians see qualitative / free-text data; scoring/AI stays admin-only.
                 RATING_KEYS = {
-                    "asrs_ratings", "phq9_ratings", "gad7_ratings", "wfirs_ratings",
-                    "sdq_parent_ratings", "sdq_self_ratings", "cprs_ratings",
-                    "ctrs_ratings", "conners_ratings",
+                    "asrs_ratings",
+                    "phq9_ratings",
+                    "gad7_ratings",
+                    "wfirs_ratings",
+                    "sdq_parent_ratings",
+                    "sdq_self_ratings",
+                    "cprs_ratings",
+                    "ctrs_ratings",
+                    "conners_ratings",
                 }
                 responses = {k: v for k, v in raw.items() if k not in RATING_KEYS}
                 # Summarise presence of rating arrays without exposing raw scores
@@ -803,7 +881,13 @@ def get_form_responses(
                     if key in raw:
                         arr = raw[key]
                         count = len(arr) if isinstance(arr, list) else "?"
-                        answered = sum(1 for x in arr if isinstance(x, (int, float)) and x >= 0) if isinstance(arr, list) else "?"
+                        answered = (
+                            sum(
+                                1 for x in arr if isinstance(x, (int, float)) and x >= 0
+                            )
+                            if isinstance(arr, list)
+                            else "?"
+                        )
                         rating_summary[key] = f"{answered}/{count} items completed"
                 if rating_summary:
                     responses["_rating_summary"] = rating_summary
@@ -818,7 +902,9 @@ def get_form_responses(
         "recipient_email": record.recipient_email,
         "recipient_name": record.recipient_name,
         "sent_at": record.sent_at.isoformat() if record.sent_at else None,
-        "submitted_at": record.submitted_at.isoformat() if record.submitted_at else None,
+        "submitted_at": record.submitted_at.isoformat()
+        if record.submitted_at
+        else None,
         "responses": responses,
     }
 
@@ -862,7 +948,9 @@ def get_form_full_responses(
         "recipient_email": record.recipient_email,
         "recipient_name": record.recipient_name,
         "sent_at": record.sent_at.isoformat() if record.sent_at else None,
-        "submitted_at": record.submitted_at.isoformat() if record.submitted_at else None,
+        "submitted_at": record.submitted_at.isoformat()
+        if record.submitted_at
+        else None,
         "responses": responses,
     }
 
@@ -878,11 +966,15 @@ def get_form_progress(token: str, db: Session = Depends(get_db)) -> dict:
     """Returns the client's overall assessment journey progress for the forms portal."""
     record = db.query(FormToken).filter(FormToken.token == token).first()
     if not record:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Token not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Token not found"
+        )
 
     client = db.query(ClientRecord).filter(ClientRecord.id == record.client_id).first()
     if not client:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Client not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Client not found"
+        )
 
     # All tokens for this client — ordered by sent_at
     all_tokens = (
@@ -903,13 +995,15 @@ def get_form_progress(token: str, db: Session = Depends(get_db)) -> dict:
         else:
             status_val = "pending"
 
-        steps.append({
-            "key": t.id,
-            "label": FORM_TYPE_LABELS.get(t.form_type, t.form_type),
-            "status": status_val,
-            "completed_at": t.submitted_at.isoformat() if t.submitted_at else None,
-            "detail": f"Sent to {t.recipient_email}" if t.recipient_email else None,
-        })
+        steps.append(
+            {
+                "key": t.id,
+                "label": FORM_TYPE_LABELS.get(t.form_type, t.form_type),
+                "status": status_val,
+                "completed_at": t.submitted_at.isoformat() if t.submitted_at else None,
+                "detail": f"Sent to {t.recipient_email}" if t.recipient_email else None,
+            }
+        )
 
     # Add appointment step
     session_status = "pending"
@@ -918,17 +1012,24 @@ def get_form_progress(token: str, db: Session = Depends(get_db)) -> dict:
         session_status = "complete" if not any_active_seen else "pending"
         session_detail = f"Booked: {client.confirmed_session_at[:10]}"
 
-    steps.append({
-        "key": "appointment",
-        "label": "Assessment appointment",
-        "status": session_status,
-        "completed_at": client.confirmed_session_at,
-        "detail": session_detail,
-    })
+    steps.append(
+        {
+            "key": "appointment",
+            "label": "Assessment appointment",
+            "status": session_status,
+            "completed_at": client.confirmed_session_at,
+            "detail": session_detail,
+        }
+    )
 
     # Add report step
     from app.models.clinical_report import ClinicalReportRecord  # lazy import
-    reports = db.query(ClinicalReportRecord).filter(ClinicalReportRecord.client_id == record.client_id).all()
+
+    reports = (
+        db.query(ClinicalReportRecord)
+        .filter(ClinicalReportRecord.client_id == record.client_id)
+        .all()
+    )
     report_status = "pending"
     report_detail = None
     if reports:
@@ -940,13 +1041,15 @@ def get_form_progress(token: str, db: Session = Depends(get_db)) -> dict:
             report_status = "active"
             report_detail = f"Status: {reports[0].status}"
 
-    steps.append({
-        "key": "report",
-        "label": "Assessment report",
-        "status": report_status,
-        "completed_at": None,
-        "detail": report_detail,
-    })
+    steps.append(
+        {
+            "key": "report",
+            "label": "Assessment report",
+            "status": report_status,
+            "completed_at": None,
+            "detail": report_detail,
+        }
+    )
 
     complete_count = sum(1 for s in steps if s["status"] == "complete")
     overall_percent = round((complete_count / len(steps)) * 100) if steps else 0
@@ -974,7 +1077,9 @@ def list_client_forms(
 ) -> ClientFormsResponse:
     get_client_for_user(db, user, client_id)
     tokens = db.query(FormToken).filter(FormToken.client_id == client_id).all()
-    all_submitted = all(t.status == STATUS_SUBMITTED for t in tokens) if tokens else False
+    all_submitted = (
+        all(t.status == STATUS_SUBMITTED for t in tokens) if tokens else False
+    )
 
     return ClientFormsResponse(
         client_id=client_id,

@@ -25,9 +25,11 @@ class ClientConsentRecord(Base):
 
     id = Column(String, primary_key=True)
     client_id = Column(String, nullable=False, unique=True, index=True)
-    consents_json = Column(Text, nullable=True)   # JSON: { "gdpr_data_processing": true, ... }
+    consents_json = Column(
+        Text, nullable=True
+    )  # JSON: { "gdpr_data_processing": true, ... }
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_by = Column(String, nullable=True)    # user_id who last set
+    updated_by = Column(String, nullable=True)  # user_id who last set
 
 
 class ConsentIn(BaseModel):

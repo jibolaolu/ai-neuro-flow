@@ -20,6 +20,7 @@ class OCRService:
         try:
             import pytesseract
             from app.core.config import settings
+
             if settings.tesseract_cmd:
                 pytesseract.pytesseract.tesseract_cmd = settings.tesseract_cmd
             pytesseract.get_tesseract_version()
@@ -51,6 +52,7 @@ class OCRService:
         try:
             from PIL import Image
             import pytesseract
+
             img = Image.open(file_path)
             text = pytesseract.image_to_string(img, lang="eng")
             logger.info("OCR image: %s chars from %s", len(text), file_path)
@@ -68,7 +70,6 @@ class OCRService:
 
         # 1. Try native PDF text extraction first (no OCR needed for digital PDFs)
         try:
-            import io
             try:
                 from pypdf import PdfReader  # pypdf >= 3.x
             except ImportError:
@@ -80,7 +81,9 @@ class OCRService:
                 if t.strip():
                     extracted.append(t.strip())
             if extracted:
-                logger.info("PDF native text: %d pages from %s", len(extracted), file_path)
+                logger.info(
+                    "PDF native text: %d pages from %s", len(extracted), file_path
+                )
                 return "\n\n".join(extracted)
         except ImportError:
             pass  # no pdf library; fall through to OCR
@@ -94,6 +97,7 @@ class OCRService:
 
             try:
                 import pdf2image  # type: ignore
+
                 pages = pdf2image.convert_from_path(file_path, dpi=200)
                 for page_img in pages:
                     t = pytesseract.image_to_string(page_img, lang="eng")
@@ -116,7 +120,7 @@ class OCRService:
         Returns {text, sections, tables, page_count}.
         """
         text = self.extract_text(file_path)
-        lines = [l for l in text.splitlines() if l.strip()]
+        lines = [ln for ln in text.splitlines() if ln.strip()]
 
         # Heuristic: lines that are all caps or end with ':' are likely headings
         sections: list[str] = []
@@ -126,10 +130,10 @@ class OCRService:
                 sections.append(stripped)
 
         return {
-            "text":       text,
+            "text": text,
             "char_count": len(text),
             "line_count": len(lines),
-            "sections":   sections[:20],  # cap at 20 headings
+            "sections": sections[:20],  # cap at 20 headings
         }
 
 

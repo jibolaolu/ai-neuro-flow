@@ -7,12 +7,11 @@ Transparent file-storage abstraction.
 S3 key convention: clients/{client_id}/{uuid}{suffix}
 This matches the local path structure so stored_rel_path is valid in both modes.
 """
+
 from __future__ import annotations
 
-import io
 import uuid
-from pathlib import Path, PurePosixPath
-from typing import AsyncIterator
+from pathlib import Path
 
 from fastapi import HTTPException, status
 
@@ -20,11 +19,13 @@ from fastapi import HTTPException, status
 def _s3_client():
     import boto3  # lazy import so local dev without boto3 still works
     from app.core.config import settings
+
     return boto3.client("s3", region_name=settings.aws_region)
 
 
 def use_s3() -> bool:
     from app.core.config import settings
+
     return bool(settings.s3_bucket_name)
 
 
@@ -44,6 +45,7 @@ async def store_upload(
 
     if use_s3():
         from app.core.config import settings
+
         s3 = _s3_client()
         s3.put_object(
             Bucket=settings.s3_bucket_name,
@@ -54,6 +56,7 @@ async def store_upload(
         )
     else:
         from app.core.config import document_upload_root
+
         root = document_upload_root()
         client_dir = root / client_id
         client_dir.mkdir(parents=True, exist_ok=True)
@@ -63,9 +66,12 @@ async def store_upload(
     return rel_path
 
 
-def presigned_url(rel_path: str, original_filename: str, mime_type: str, expiry: int) -> str:
+def presigned_url(
+    rel_path: str, original_filename: str, mime_type: str, expiry: int
+) -> str:
     """Generate a presigned GET URL for an S3-stored document."""
     from app.core.config import settings
+
     s3 = _s3_client()
     return s3.generate_presigned_url(
         "get_object",
@@ -82,14 +88,19 @@ def presigned_url(rel_path: str, original_filename: str, mime_type: str, expiry:
 def local_file_path(rel_path: str) -> Path:
     """Resolve and validate a local filesystem path. Raises 404 if outside root or missing."""
     from app.core.config import document_upload_root
+
     root = document_upload_root().resolve()
     full = (root / rel_path).resolve()
     try:
         full.relative_to(root)
     except ValueError:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found") from None
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
+        ) from None
     if not full.is_file():
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File missing on server")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="File missing on server"
+        )
     return full
 
 
@@ -111,6 +122,7 @@ def store_report_pdf(report_id: str, pdf_bytes: bytes) -> str:
     """
     if use_s3():
         from app.core.config import settings
+
         key = f"{_REPORT_S3_PREFIX}{report_id}.pdf"
         _s3_client().put_object(
             Bucket=settings.s3_bucket_name,
@@ -122,6 +134,7 @@ def store_report_pdf(report_id: str, pdf_bytes: bytes) -> str:
         return key
     else:
         from app.core.config import document_upload_root
+
         upload_root = document_upload_root() / "reports"
         upload_root.mkdir(parents=True, exist_ok=True)
         pdf_path = upload_root / f"{report_id}.pdf"
@@ -136,6 +149,7 @@ def read_report_pdf(pdf_path_or_key: str) -> bytes:
     """
     if use_s3() and _is_s3_key(pdf_path_or_key):
         from app.core.config import settings
+
         try:
             obj = _s3_client().get_object(
                 Bucket=settings.s3_bucket_name,
@@ -143,11 +157,15 @@ def read_report_pdf(pdf_path_or_key: str) -> bytes:
             )
             return obj["Body"].read()
         except Exception:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report PDF not available") from None
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Report PDF not available"
+            ) from None
     else:
         p = Path(pdf_path_or_key)
         if not p.is_file():
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report PDF not available")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Report PDF not available"
+            )
         return p.read_bytes()
 
 
@@ -157,6 +175,7 @@ def report_pdf_exists(pdf_path_or_key: str) -> bool:
         return False
     if use_s3() and _is_s3_key(pdf_path_or_key):
         from app.core.config import settings
+
         try:
             _s3_client().head_object(
                 Bucket=settings.s3_bucket_name,

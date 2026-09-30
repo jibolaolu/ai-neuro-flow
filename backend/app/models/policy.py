@@ -1,4 +1,5 @@
 """Policy library model."""
+
 from datetime import datetime, timezone
 
 from pydantic import BaseModel, ConfigDict
@@ -12,8 +13,17 @@ VISIBILITY_ALL_STAFF = "all_staff"
 
 ROLES_BY_VISIBILITY: dict[str, set[str]] = {
     VISIBILITY_ADMIN_ONLY: {"clinical-admin", "super-platform-admin"},
-    VISIBILITY_SENIOR_UP: {"senior-clinician", "clinical-admin", "super-platform-admin"},
-    VISIBILITY_ALL_STAFF: {"clinician", "senior-clinician", "clinical-admin", "super-platform-admin"},
+    VISIBILITY_SENIOR_UP: {
+        "senior-clinician",
+        "clinical-admin",
+        "super-platform-admin",
+    },
+    VISIBILITY_ALL_STAFF: {
+        "clinician",
+        "senior-clinician",
+        "clinical-admin",
+        "super-platform-admin",
+    },
 }
 
 
@@ -35,8 +45,11 @@ class PolicyRecord(Base):
     created_by_user_id = Column(String, nullable=True)
     created_by_name = Column(String, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc),
-                        onupdate=lambda: datetime.now(timezone.utc))
+    updated_at = Column(
+        DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
 
 
 class PolicyOut(BaseModel):

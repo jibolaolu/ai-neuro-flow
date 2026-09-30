@@ -27,8 +27,8 @@ DEMO_ORG_B_ID = "ORG-DEMO-BETA"
 
 # Per-plan clinic IDs — must match setup-auth0.js SEED_CLINICS.clinicId values
 CLINIC_STARTER_ID = "CLINIC-STARTER"
-CLINIC_PRO_ID     = "CLINIC-PRO"
-CLINIC_ENT_ID     = "CLINIC-ENT"
+CLINIC_PRO_ID = "CLINIC-PRO"
+CLINIC_ENT_ID = "CLINIC-ENT"
 
 # Stable ids so re-seed is idempotent for clients
 DEMO_CLIENTS = [
@@ -197,7 +197,9 @@ TEST_USERS = [
 ]
 
 
-def _ensure_org(db, org_id: str, name: str, slug: str, status: str = SUB_TRIALING) -> None:
+def _ensure_org(
+    db, org_id: str, name: str, slug: str, status: str = SUB_TRIALING
+) -> None:
     if db.query(OrganizationRecord).filter(OrganizationRecord.id == org_id).first():
         return
     trial_end = datetime.now(timezone.utc) + timedelta(days=settings.signup_trial_days)
@@ -218,19 +220,39 @@ def seed() -> None:
     ensure_default_organization(engine)
     db = SessionLocal()
 
-    _ensure_org(db, DEMO_ORG_ID,       "Neuro Flow Demo Clinic",      "demo-clinic")
-    _ensure_org(db, DEMO_ORG_B_ID,     "Beta Assessment Clinic",      "beta-clinic")
+    _ensure_org(db, DEMO_ORG_ID, "Neuro Flow Demo Clinic", "demo-clinic")
+    _ensure_org(db, DEMO_ORG_B_ID, "Beta Assessment Clinic", "beta-clinic")
     # Per-plan test clinics — IDs must match setup-auth0.js SEED_CLINICS
-    _ensure_org(db, CLINIC_STARTER_ID, "Starter Test Clinic",         "starter-test",      status=SUB_TRIALING)
-    _ensure_org(db, CLINIC_PRO_ID,     "Professional Test Clinic",    "professional-test", status=SUB_ACTIVE)
-    _ensure_org(db, CLINIC_ENT_ID,     "Enterprise Test Clinic",      "enterprise-test",   status=SUB_ACTIVE)
+    _ensure_org(
+        db,
+        CLINIC_STARTER_ID,
+        "Starter Test Clinic",
+        "starter-test",
+        status=SUB_TRIALING,
+    )
+    _ensure_org(
+        db,
+        CLINIC_PRO_ID,
+        "Professional Test Clinic",
+        "professional-test",
+        status=SUB_ACTIVE,
+    )
+    _ensure_org(
+        db,
+        CLINIC_ENT_ID,
+        "Enterprise Test Clinic",
+        "enterprise-test",
+        status=SUB_ACTIVE,
+    )
     db.commit()
 
     users_seeded = []
     users_skipped = []
 
     for data in TEST_USERS:
-        existing = db.query(UserRecord).filter(UserRecord.email == data["email"]).first()
+        existing = (
+            db.query(UserRecord).filter(UserRecord.email == data["email"]).first()
+        )
         if existing:
             users_skipped.append(data["email"])
             continue
@@ -250,7 +272,8 @@ def seed() -> None:
     db.commit()
 
     email_to_id = {
-        u.email: u.id for u in db.query(UserRecord).filter(UserRecord.email.isnot(None)).all()
+        u.email: u.id
+        for u in db.query(UserRecord).filter(UserRecord.email.isnot(None)).all()
     }
 
     clients_seeded = []
@@ -300,17 +323,21 @@ def seed() -> None:
     print(f"  {CLINIC_ENT_ID:<20}  Enterprise Test Clinic        (active)")
 
     print("\nCore / named users  (password varies — see below):")
-    core_users = [u for u in TEST_USERS if not u["email"].split("@")[0].replace(".", "").replace("-", "").isalpha() or
-                  u["email"] in ("platform@neuroflow.test", "superadmin@neuroflow.test",
-                                 "clinicaladmin@neuroflow.test", "seniorclinician@neuroflow.test",
-                                 "clinician@neuroflow.test", "admin@betaclinic.neuroflow.test")]
     for u in TEST_USERS:
-        if u["email"] not in [pu["email"] for pu in TEST_USERS if pu["email"].split(".")[0] in ("starter", "professional", "enterprise")]:
+        if u["email"] not in [
+            pu["email"]
+            for pu in TEST_USERS
+            if pu["email"].split(".")[0] in ("starter", "professional", "enterprise")
+        ]:
             mark = "new" if u["email"] in seeded_emails else "exists"
             print(f"  [{u['role']:22s}]  {u['email']:40s}  {u['password']}  ({mark})")
 
-    print(f"\nPer-plan accounts  (password: NeuroFlowTest01!):")
-    plan_emails = [u["email"] for u in TEST_USERS if u["email"].split(".")[0] in ("starter", "professional", "enterprise")]
+    print("\nPer-plan accounts  (password: NeuroFlowTest01!):")
+    plan_emails = [
+        u["email"]
+        for u in TEST_USERS
+        if u["email"].split(".")[0] in ("starter", "professional", "enterprise")
+    ]
     for u in TEST_USERS:
         if u["email"] in plan_emails:
             mark = "new" if u["email"] in seeded_emails else "exists"

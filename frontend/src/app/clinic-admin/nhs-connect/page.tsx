@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { browserApiUrl } from "../../../lib/get-api-base";
 import { haptic } from "../../../lib/haptics";
 
-type OdsResult = { ods_code: string; name: string; status: string; address?: Record<string, string>; roles?: string[] };
+type OdsResult = { ods_code: string; name: string; status: string; type?: string; address?: Record<string, string>; roles?: string[] };
 type IntegrationStatus = { ods_lookup: string; emis_webhook: string; emis_oauth: string; gp_connect: string; nhs_spine: string; readiness_score: number; next_steps: string[] };
 
 const STATUS_ICON: Record<string, string> = { live: "🟢", configured: "🟢", planned: "🟡", unconfigured: "🟠", pending: "🟠" };

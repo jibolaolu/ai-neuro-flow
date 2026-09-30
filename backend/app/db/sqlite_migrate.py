@@ -15,12 +15,16 @@ def ensure_sqlite_columns(engine: Engine) -> None:
     with engine.connect() as conn:
         try:
             ct = conn.execute(
-                text("SELECT name FROM sqlite_master WHERE type='table' AND name='clients'"),
+                text(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name='clients'"
+                ),
             ).fetchone()
             if ct:
                 cols = _sqlite_columns(conn, "clients")
                 if "paid_service_name" not in cols:
-                    conn.execute(text("ALTER TABLE clients ADD COLUMN paid_service_name VARCHAR"))
+                    conn.execute(
+                        text("ALTER TABLE clients ADD COLUMN paid_service_name VARCHAR")
+                    )
                     conn.commit()
                 cols = _sqlite_columns(conn, "clients")
                 for col, sql_typ in [
@@ -30,13 +34,17 @@ def ensure_sqlite_columns(engine: Engine) -> None:
                     ("booking_access_token", "VARCHAR"),
                 ]:
                     if col not in cols:
-                        conn.execute(text(f"ALTER TABLE clients ADD COLUMN {col} {sql_typ}"))
+                        conn.execute(
+                            text(f"ALTER TABLE clients ADD COLUMN {col} {sql_typ}")
+                        )
                         conn.commit()
         except Exception:
             conn.rollback()
         try:
             ut = conn.execute(
-                text("SELECT name FROM sqlite_master WHERE type='table' AND name='users'"),
+                text(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name='users'"
+                ),
             ).fetchone()
             if ut:
                 cols = _sqlite_columns(conn, "users")
@@ -46,18 +54,24 @@ def ensure_sqlite_columns(engine: Engine) -> None:
                     ("date_of_birth", "VARCHAR"),
                 ]:
                     if col not in cols:
-                        conn.execute(text(f"ALTER TABLE users ADD COLUMN {col} {sql_typ}"))
+                        conn.execute(
+                            text(f"ALTER TABLE users ADD COLUMN {col} {sql_typ}")
+                        )
                         conn.commit()
         except Exception:
             conn.rollback()
         try:
             cols = _sqlite_columns(conn, "client_profiles")
             if "occupation" not in cols:
-                conn.execute(text("ALTER TABLE client_profiles ADD COLUMN occupation VARCHAR"))
+                conn.execute(
+                    text("ALTER TABLE client_profiles ADD COLUMN occupation VARCHAR")
+                )
                 conn.commit()
             cols = _sqlite_columns(conn, "client_profiles")
             if "medical_concerns" not in cols:
-                conn.execute(text("ALTER TABLE client_profiles ADD COLUMN medical_concerns TEXT"))
+                conn.execute(
+                    text("ALTER TABLE client_profiles ADD COLUMN medical_concerns TEXT")
+                )
                 conn.commit()
         except Exception:
             conn.rollback()
@@ -87,7 +101,9 @@ def ensure_sqlite_columns(engine: Engine) -> None:
         # ── clinical_reports columns ─────────────────────────────────────────
         try:
             cr_tbl = conn.execute(
-                text("SELECT name FROM sqlite_master WHERE type='table' AND name='clinical_reports'")
+                text(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name='clinical_reports'"
+                )
             ).fetchone()
             if cr_tbl:
                 cr_cols = _sqlite_columns(conn, "clinical_reports")
@@ -107,14 +123,20 @@ def ensure_sqlite_columns(engine: Engine) -> None:
                     ("assessed_by", "VARCHAR"),
                 ]:
                     if col not in cr_cols:
-                        conn.execute(text(f"ALTER TABLE clinical_reports ADD COLUMN {col} {sql_typ}"))
+                        conn.execute(
+                            text(
+                                f"ALTER TABLE clinical_reports ADD COLUMN {col} {sql_typ}"
+                            )
+                        )
                         conn.commit()
         except Exception:
             conn.rollback()
         # ── client_consents columns ──────────────────────────────────────────
         try:
             cc_tbl = conn.execute(
-                text("SELECT name FROM sqlite_master WHERE type='table' AND name='client_consents'")
+                text(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name='client_consents'"
+                )
             ).fetchone()
             if cc_tbl:
                 cc_cols = _sqlite_columns(conn, "client_consents")
@@ -122,13 +144,19 @@ def ensure_sqlite_columns(engine: Engine) -> None:
                     ("updated_by", "VARCHAR"),
                 ]:
                     if col not in cc_cols:
-                        conn.execute(text(f"ALTER TABLE client_consents ADD COLUMN {col} {sql_typ}"))
+                        conn.execute(
+                            text(
+                                f"ALTER TABLE client_consents ADD COLUMN {col} {sql_typ}"
+                            )
+                        )
                         conn.commit()
         except Exception:
             conn.rollback()
         try:
             tbl = conn.execute(
-                text("SELECT name FROM sqlite_master WHERE type='table' AND name='invoice_requests'")
+                text(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name='invoice_requests'"
+                )
             ).fetchone()
             if tbl:
                 cols = _sqlite_columns(conn, "invoice_requests")
@@ -147,41 +175,65 @@ def ensure_sqlite_columns(engine: Engine) -> None:
                     conn.commit()
                 cols = _sqlite_columns(conn, "invoice_requests")
                 if "reviewed_by_user_id" not in cols:
-                    conn.execute(text("ALTER TABLE invoice_requests ADD COLUMN reviewed_by_user_id VARCHAR"))
+                    conn.execute(
+                        text(
+                            "ALTER TABLE invoice_requests ADD COLUMN reviewed_by_user_id VARCHAR"
+                        )
+                    )
                     conn.commit()
                 cols = _sqlite_columns(conn, "invoice_requests")
                 if "reviewed_at" not in cols:
-                    conn.execute(text("ALTER TABLE invoice_requests ADD COLUMN reviewed_at DATETIME"))
+                    conn.execute(
+                        text(
+                            "ALTER TABLE invoice_requests ADD COLUMN reviewed_at DATETIME"
+                        )
+                    )
                     conn.commit()
                 cols = _sqlite_columns(conn, "invoice_requests")
                 if "review_notes" not in cols:
-                    conn.execute(text("ALTER TABLE invoice_requests ADD COLUMN review_notes TEXT"))
+                    conn.execute(
+                        text(
+                            "ALTER TABLE invoice_requests ADD COLUMN review_notes TEXT"
+                        )
+                    )
                     conn.commit()
         except Exception:
             conn.rollback()
         try:
             ct = conn.execute(
-                text("SELECT name FROM sqlite_master WHERE type='table' AND name='clients'"),
+                text(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name='clients'"
+                ),
             ).fetchone()
             if ct:
                 cols = _sqlite_columns(conn, "clients")
                 if "clinic_id" not in cols:
-                    conn.execute(text("ALTER TABLE clients ADD COLUMN clinic_id VARCHAR"))
+                    conn.execute(
+                        text("ALTER TABLE clients ADD COLUMN clinic_id VARCHAR")
+                    )
                     conn.commit()
             cr_tbl = conn.execute(
-                text("SELECT name FROM sqlite_master WHERE type='table' AND name='clinical_reports'"),
+                text(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name='clinical_reports'"
+                ),
             ).fetchone()
             if cr_tbl:
                 cols = _sqlite_columns(conn, "clinical_reports")
                 if "clinic_id" not in cols:
-                    conn.execute(text("ALTER TABLE clinical_reports ADD COLUMN clinic_id VARCHAR"))
+                    conn.execute(
+                        text(
+                            "ALTER TABLE clinical_reports ADD COLUMN clinic_id VARCHAR"
+                        )
+                    )
                     conn.commit()
         except Exception:
             conn.rollback()
         # ── support_tickets: guard additive columns after first run ──────────
         try:
             st_tbl = conn.execute(
-                text("SELECT name FROM sqlite_master WHERE type='table' AND name='support_tickets'"),
+                text(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name='support_tickets'"
+                ),
             ).fetchone()
             if st_tbl:
                 st_cols = _sqlite_columns(conn, "support_tickets")
@@ -197,7 +249,9 @@ def ensure_sqlite_columns(engine: Engine) -> None:
                 ]:
                     if col not in st_cols:
                         conn.execute(
-                            text(f"ALTER TABLE support_tickets ADD COLUMN {col} {sql_typ}")
+                            text(
+                                f"ALTER TABLE support_tickets ADD COLUMN {col} {sql_typ}"
+                            )
                         )
                         conn.commit()
         except Exception:
@@ -205,16 +259,22 @@ def ensure_sqlite_columns(engine: Engine) -> None:
         # ── client_documents: OCR columns ────────────────────────────────────
         try:
             cd_tbl = conn.execute(
-                text("SELECT name FROM sqlite_master WHERE type='table' AND name='client_documents'"),
+                text(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name='client_documents'"
+                ),
             ).fetchone()
             if cd_tbl:
                 cd_cols = _sqlite_columns(conn, "client_documents")
                 for col, sql_typ in [
-                    ("ocr_text",   "TEXT"),
+                    ("ocr_text", "TEXT"),
                     ("indexed_at", "DATETIME"),
                 ]:
                     if col not in cd_cols:
-                        conn.execute(text(f"ALTER TABLE client_documents ADD COLUMN {col} {sql_typ}"))
+                        conn.execute(
+                            text(
+                                f"ALTER TABLE client_documents ADD COLUMN {col} {sql_typ}"
+                            )
+                        )
                         conn.commit()
         except Exception:
             conn.rollback()
@@ -222,19 +282,23 @@ def ensure_sqlite_columns(engine: Engine) -> None:
         #    but guard additive columns for forward compatibility
         try:
             aj_tbl = conn.execute(
-                text("SELECT name FROM sqlite_master WHERE type='table' AND name='ai_jobs'"),
+                text(
+                    "SELECT name FROM sqlite_master WHERE type='table' AND name='ai_jobs'"
+                ),
             ).fetchone()
             if aj_tbl:
                 aj_cols = _sqlite_columns(conn, "ai_jobs")
                 for col, sql_typ in [
-                    ("clinic_id",    "VARCHAR"),
-                    ("created_by",   "VARCHAR"),
-                    ("started_at",   "DATETIME"),
+                    ("clinic_id", "VARCHAR"),
+                    ("created_by", "VARCHAR"),
+                    ("started_at", "DATETIME"),
                     ("completed_at", "DATETIME"),
-                    ("error",        "TEXT"),
+                    ("error", "TEXT"),
                 ]:
                     if col not in aj_cols:
-                        conn.execute(text(f"ALTER TABLE ai_jobs ADD COLUMN {col} {sql_typ}"))
+                        conn.execute(
+                            text(f"ALTER TABLE ai_jobs ADD COLUMN {col} {sql_typ}")
+                        )
                         conn.commit()
         except Exception:
             conn.rollback()

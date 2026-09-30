@@ -23,13 +23,11 @@ def compliance_dashboard(
     """Aggregate compliance KPIs for the CQC dashboard."""
     from app.models.client import ClientRecord
     from app.models.form_token import FormToken
-    from app.models.consent import ConsentRecord  # may not exist — graceful
     from app.models.client_case_note import ClientCaseNoteRecord
 
     clinic_id = _clinic_id(user)
     now = datetime.now(timezone.utc)
     window_30 = now - timedelta(days=30)
-    window_90 = now - timedelta(days=90)
 
     # ── Clients ─────────────────────────────────────────────────────────────
     client_q = db.query(ClientRecord)
@@ -51,6 +49,7 @@ def compliance_dashboard(
     # ── Report turnaround ───────────────────────────────────────────────────
     try:
         from app.models.clinical_report import ClinicalReportRecord
+
         report_q = db.query(ClinicalReportRecord)
         if user.role != "super-platform-admin":
             report_q = report_q.filter(ClinicalReportRecord.clinic_id == clinic_id)
@@ -84,25 +83,26 @@ def compliance_dashboard(
 
     # ── Safeguarding flags (from case note body keywords) ──────────────────
     import re
+
     _SG_PATTERN = re.compile(
-        r'\b(self[-\s]?harm|suicid|crisis|safeguarding|abus|neglect|assault|harm\s+to\s+others)\b',
-        re.IGNORECASE
+        r"\b(self[-\s]?harm|suicid|crisis|safeguarding|abus|neglect|assault|harm\s+to\s+others)\b",
+        re.IGNORECASE,
     )
     try:
-        sg_flagged = sum(
-            1 for n in notes
-            if n.body and _SG_PATTERN.search(n.body)
-        )
+        sg_flagged = sum(1 for n in notes if n.body and _SG_PATTERN.search(n.body))
     except Exception:  # noqa: BLE001
         sg_flagged = 0
 
     # ── Clients without assigned clinician ─────────────────────────────────
-    unassigned = sum(1 for c in clients if not getattr(c, "assigned_clinician_user_id", None))
+    unassigned = sum(
+        1 for c in clients if not getattr(c, "assigned_clinician_user_id", None)
+    )
 
     # ── Outstanding consents >14 days ──────────────────────────────────────
     cutoff_14 = now - timedelta(days=14)
     overdue_forms = [
-        f for f in all_forms
+        f
+        for f in all_forms
         if f.status != "submitted" and f.created_at and f.created_at < cutoff_14
     ]
 
@@ -110,36 +110,34 @@ def compliance_dashboard(
     recent_activity = [
         {
             "timestamp": n.created_at.isoformat() if n.created_at else None,
-            "event":     "Case note recorded",
-            "actor":     n.author_name or "Unknown",
+            "event": "Case note recorded",
+            "actor": n.author_name or "Unknown",
             "client_id": n.client_id,
         }
-        for n in sorted(notes, key=lambda x: x.created_at or datetime.min, reverse=True)[:20]
+        for n in sorted(
+            notes, key=lambda x: x.created_at or datetime.min, reverse=True
+        )[:20]
     ]
 
     return {
-        "generated_at":         now.isoformat(),
-        "period":               "All time (30-day notes window)",
-
+        "generated_at": now.isoformat(),
+        "period": "All time (30-day notes window)",
         # Governance KPIs
-        "total_clients":        total_clients,
-        "consent_rate_pct":     consent_rate,
-        "forms_outstanding":    len(overdue_forms),
+        "total_clients": total_clients,
+        "consent_rate_pct": consent_rate,
+        "forms_outstanding": len(overdue_forms),
         "avg_report_turnaround_days": avg_turnaround,
         "max_report_turnaround_days": max_turnaround,
         "total_reports_issued": total_reports_issued,
-
         # Safeguarding
         "safeguarding_flags_total": sg_flagged,
-        "notes_total":          total_notes,
-        "notes_last_30d":       notes_30d,
-
+        "notes_total": total_notes,
+        "notes_last_30d": notes_30d,
         # Operational
-        "clients_unassigned":   unassigned,
+        "clients_unassigned": unassigned,
         "overdue_consent_forms": len(overdue_forms),
-
         # Audit trail
-        "recent_activity":      recent_activity,
+        "recent_activity": recent_activity,
     }
 
 
@@ -164,34 +162,46 @@ def audit_trail(
 
     # Case notes
     try:
-        notes = db.query(ClientCaseNoteRecord).filter(
-            ClientCaseNoteRecord.client_id.in_(client_ids)
-        ).all()
+        notes = (
+            db.query(ClientCaseNoteRecord)
+            .filter(ClientCaseNoteRecord.client_id.in_(client_ids))
+            .all()
+        )
         for n in notes:
-            events.append({
-                "timestamp": n.created_at.isoformat() if n.created_at else None,
-                "event_type": "case_note",
-                "description": "Case note recorded",
-                "actor": n.author_name or "Unknown",
-                "client_id": n.client_id,
-            })
+            events.append(
+                {
+                    "timestamp": n.created_at.isoformat() if n.created_at else None,
+                    "event_type": "case_note",
+                    "description": "Case note recorded",
+                    "actor": n.author_name or "Unknown",
+                    "client_id": n.client_id,
+                }
+            )
     except Exception:  # noqa: BLE001
         pass
 
     # Form submissions
     try:
-        forms = db.query(FormToken).filter(
-            FormToken.client_id.in_(client_ids),
-            FormToken.status == "submitted",
-        ).all()
+        forms = (
+            db.query(FormToken)
+            .filter(
+                FormToken.client_id.in_(client_ids),
+                FormToken.status == "submitted",
+            )
+            .all()
+        )
         for f in forms:
-            events.append({
-                "timestamp": f.submitted_at.isoformat() if getattr(f, "submitted_at", None) else None,
-                "event_type": "form_submitted",
-                "description": f"Form submitted: {f.form_type or 'Assessment form'}",
-                "actor": "Client",
-                "client_id": f.client_id,
-            })
+            events.append(
+                {
+                    "timestamp": f.submitted_at.isoformat()
+                    if getattr(f, "submitted_at", None)
+                    else None,
+                    "event_type": "form_submitted",
+                    "description": f"Form submitted: {f.form_type or 'Assessment form'}",
+                    "actor": "Client",
+                    "client_id": f.client_id,
+                }
+            )
     except Exception:  # noqa: BLE001
         pass
 

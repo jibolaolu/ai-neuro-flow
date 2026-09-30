@@ -2,6 +2,7 @@
 Prescribing & Titration module.
 Tracks medications, titration phases, monitoring, and generates shared-care letters.
 """
+
 from __future__ import annotations
 
 import json
@@ -20,33 +21,123 @@ router = APIRouter()
 
 # ── Common ADHD/autism medications for auto-complete ─────────────────────────
 ADHD_MEDICATIONS = [
-    {"name": "Methylphenidate", "formulations": ["immediate-release tablet", "modified-release capsule", "patch"],
-     "titration_steps": [{"phase": 1, "dose_mg": 5, "duration_weeks": 2, "notes": "Starter dose — monitor BP/HR"},
-                         {"phase": 2, "dose_mg": 10, "duration_weeks": 2, "notes": "Increase if tolerated"},
-                         {"phase": 3, "dose_mg": 18, "duration_weeks": 2, "notes": "Standard dose"},
-                         {"phase": 4, "dose_mg": 27, "duration_weeks": 4, "notes": "If insufficient response"},
-                         {"phase": 5, "dose_mg": 36, "duration_weeks": 4, "notes": "Maximum standard dose"}]},
-    {"name": "Lisdexamfetamine (Vyvanse)", "formulations": ["capsule"],
-     "titration_steps": [{"phase": 1, "dose_mg": 20, "duration_weeks": 2, "notes": "Starting dose"},
-                         {"phase": 2, "dose_mg": 30, "duration_weeks": 2, "notes": "First increase"},
-                         {"phase": 3, "dose_mg": 40, "duration_weeks": 2, "notes": "If insufficient"},
-                         {"phase": 4, "dose_mg": 50, "duration_weeks": 4, "notes": "Optimal range start"},
-                         {"phase": 5, "dose_mg": 60, "duration_weeks": 4, "notes": "Approach maximum"},
-                         {"phase": 6, "dose_mg": 70, "duration_weeks": 4, "notes": "Maximum licensed dose"}]},
-    {"name": "Atomoxetine (Strattera)", "formulations": ["capsule"],
-     "titration_steps": [{"phase": 1, "dose_mg": 40, "duration_weeks": 4, "notes": "Initial — takes 4-6 wk for effect"},
-                         {"phase": 2, "dose_mg": 60, "duration_weeks": 4, "notes": "Increase after minimum 4 weeks"},
-                         {"phase": 3, "dose_mg": 80, "duration_weeks": 4, "notes": "If insufficient response"},
-                         {"phase": 4, "dose_mg": 100, "duration_weeks": 8, "notes": "Max 100mg/day"}]},
-    {"name": "Guanfacine (Intuniv)", "formulations": ["modified-release tablet"],
-     "titration_steps": [{"phase": 1, "dose_mg": 1, "duration_weeks": 1, "notes": "Slow up-titration required"},
-                         {"phase": 2, "dose_mg": 2, "duration_weeks": 1, "notes": "Increase weekly"},
-                         {"phase": 3, "dose_mg": 3, "duration_weeks": 1, "notes": "Target range"},
-                         {"phase": 4, "dose_mg": 4, "duration_weeks": 2, "notes": "Maximum in children"}]},
+    {
+        "name": "Methylphenidate",
+        "formulations": [
+            "immediate-release tablet",
+            "modified-release capsule",
+            "patch",
+        ],
+        "titration_steps": [
+            {
+                "phase": 1,
+                "dose_mg": 5,
+                "duration_weeks": 2,
+                "notes": "Starter dose — monitor BP/HR",
+            },
+            {
+                "phase": 2,
+                "dose_mg": 10,
+                "duration_weeks": 2,
+                "notes": "Increase if tolerated",
+            },
+            {"phase": 3, "dose_mg": 18, "duration_weeks": 2, "notes": "Standard dose"},
+            {
+                "phase": 4,
+                "dose_mg": 27,
+                "duration_weeks": 4,
+                "notes": "If insufficient response",
+            },
+            {
+                "phase": 5,
+                "dose_mg": 36,
+                "duration_weeks": 4,
+                "notes": "Maximum standard dose",
+            },
+        ],
+    },
+    {
+        "name": "Lisdexamfetamine (Vyvanse)",
+        "formulations": ["capsule"],
+        "titration_steps": [
+            {"phase": 1, "dose_mg": 20, "duration_weeks": 2, "notes": "Starting dose"},
+            {"phase": 2, "dose_mg": 30, "duration_weeks": 2, "notes": "First increase"},
+            {
+                "phase": 3,
+                "dose_mg": 40,
+                "duration_weeks": 2,
+                "notes": "If insufficient",
+            },
+            {
+                "phase": 4,
+                "dose_mg": 50,
+                "duration_weeks": 4,
+                "notes": "Optimal range start",
+            },
+            {
+                "phase": 5,
+                "dose_mg": 60,
+                "duration_weeks": 4,
+                "notes": "Approach maximum",
+            },
+            {
+                "phase": 6,
+                "dose_mg": 70,
+                "duration_weeks": 4,
+                "notes": "Maximum licensed dose",
+            },
+        ],
+    },
+    {
+        "name": "Atomoxetine (Strattera)",
+        "formulations": ["capsule"],
+        "titration_steps": [
+            {
+                "phase": 1,
+                "dose_mg": 40,
+                "duration_weeks": 4,
+                "notes": "Initial — takes 4-6 wk for effect",
+            },
+            {
+                "phase": 2,
+                "dose_mg": 60,
+                "duration_weeks": 4,
+                "notes": "Increase after minimum 4 weeks",
+            },
+            {
+                "phase": 3,
+                "dose_mg": 80,
+                "duration_weeks": 4,
+                "notes": "If insufficient response",
+            },
+            {"phase": 4, "dose_mg": 100, "duration_weeks": 8, "notes": "Max 100mg/day"},
+        ],
+    },
+    {
+        "name": "Guanfacine (Intuniv)",
+        "formulations": ["modified-release tablet"],
+        "titration_steps": [
+            {
+                "phase": 1,
+                "dose_mg": 1,
+                "duration_weeks": 1,
+                "notes": "Slow up-titration required",
+            },
+            {"phase": 2, "dose_mg": 2, "duration_weeks": 1, "notes": "Increase weekly"},
+            {"phase": 3, "dose_mg": 3, "duration_weeks": 1, "notes": "Target range"},
+            {
+                "phase": 4,
+                "dose_mg": 4,
+                "duration_weeks": 2,
+                "notes": "Maximum in children",
+            },
+        ],
+    },
 ]
 
 
 # ── Schemas ───────────────────────────────────────────────────────────────────
+
 
 class TitrationStep(BaseModel):
     phase: int
@@ -84,17 +175,24 @@ class StopBody(BaseModel):
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
+
 def _get_prescription(db: Session, clinic_id: int, rx_id: int) -> PrescriptionRecord:
-    rx = db.query(PrescriptionRecord).filter(
-        PrescriptionRecord.id == rx_id,
-        PrescriptionRecord.clinic_id == clinic_id,
-    ).first()
+    rx = (
+        db.query(PrescriptionRecord)
+        .filter(
+            PrescriptionRecord.id == rx_id,
+            PrescriptionRecord.clinic_id == clinic_id,
+        )
+        .first()
+    )
     if not rx:
         raise HTTPException(status_code=404, detail="Prescription not found")
     return rx
 
 
-def _generate_shared_care_letter(rx: PrescriptionRecord, gp_name: str, clinic_name: str = "The Clinic") -> str:
+def _generate_shared_care_letter(
+    rx: PrescriptionRecord, gp_name: str, clinic_name: str = "The Clinic"
+) -> str:
     today = date.today().strftime("%d %B %Y")
     return f"""SHARED CARE AGREEMENT REQUEST
 Date: {today}
@@ -107,11 +205,11 @@ I am writing to request your participation in a shared care agreement for the ab
 
 CURRENT MEDICATION
 Medication:    {rx.medication}
-Formulation:   {rx.formulation or 'standard'}
-Dose:          {rx.dose_mg or '—'} mg
-Frequency:     {rx.frequency or 'once daily'}
-Route:         {rx.route or 'oral'}
-Indication:    {rx.indication or 'ADHD'}
+Formulation:   {rx.formulation or "standard"}
+Dose:          {rx.dose_mg or "—"} mg
+Frequency:     {rx.frequency or "once daily"}
+Route:         {rx.route or "oral"}
+Indication:    {rx.indication or "ADHD"}
 Titration phase: {rx.titration_phase}
 
 CLINICAL SUMMARY
@@ -138,6 +236,7 @@ Yours sincerely,
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
+
 @router.get("/medications")
 def list_medications():
     """Reference list of common ADHD medications with default titration plans."""
@@ -151,10 +250,15 @@ def list_for_client(
     user: Any = Depends(get_current_user),
 ):
     cid = effective_clinic_id(user)
-    rxs = db.query(PrescriptionRecord).filter(
-        PrescriptionRecord.clinic_id == cid,
-        PrescriptionRecord.client_id == client_id,
-    ).order_by(PrescriptionRecord.created_at.desc()).all()
+    rxs = (
+        db.query(PrescriptionRecord)
+        .filter(
+            PrescriptionRecord.clinic_id == cid,
+            PrescriptionRecord.client_id == client_id,
+        )
+        .order_by(PrescriptionRecord.created_at.desc())
+        .all()
+    )
     return [r.to_dict() for r in rxs]
 
 
@@ -170,7 +274,14 @@ def create_prescription(
         plan_json = json.dumps([s.model_dump() for s in body.titration_plan])
     else:
         # Auto-fill from medication reference if known
-        med_ref = next((m for m in ADHD_MEDICATIONS if m["name"].lower() in body.medication.lower()), None)
+        med_ref = next(
+            (
+                m
+                for m in ADHD_MEDICATIONS
+                if m["name"].lower() in body.medication.lower()
+            ),
+            None,
+        )
         if med_ref:
             plan_json = json.dumps(med_ref["titration_steps"])
 
@@ -213,7 +324,15 @@ def update_prescription(
 ):
     cid = effective_clinic_id(user)
     rx = _get_prescription(db, cid, rx_id)
-    allowed = {"dose_mg", "frequency", "formulation", "review_date", "monitoring_notes", "side_effects", "titration_notes"}
+    allowed = {
+        "dose_mg",
+        "frequency",
+        "formulation",
+        "review_date",
+        "monitoring_notes",
+        "side_effects",
+        "titration_notes",
+    }
     for k, v in body.items():
         if k in allowed:
             setattr(rx, k, v)
@@ -245,9 +364,13 @@ def titrate(
     rx.titration_phase = new_phase
     if next_step:
         rx.dose_mg = next_step.get("dose_mg", rx.dose_mg)
-        rx.review_date = date.today() + timedelta(weeks=next_step.get("duration_weeks", 4))
+        rx.review_date = date.today() + timedelta(
+            weeks=next_step.get("duration_weeks", 4)
+        )
     if body.notes:
-        rx.titration_notes = (rx.titration_notes or "") + f"\n[{date.today()}] Phase {new_phase}: {body.notes}"
+        rx.titration_notes = (
+            rx.titration_notes or ""
+        ) + f"\n[{date.today()}] Phase {new_phase}: {body.notes}"
     rx.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(rx)
@@ -265,6 +388,7 @@ def request_shared_care(
     cid = effective_clinic_id(user)
     rx = _get_prescription(db, cid, rx_id)
     from app.core.branding import get_clinic_branding
+
     branding = get_clinic_branding(db, str(cid))
     letter = _generate_shared_care_letter(rx, body.gp_name, branding.display_name)
     rx.shared_care_requested = True
