@@ -20,6 +20,7 @@ def _get_ef():
         from chromadb.utils.embedding_functions import (
             SentenceTransformerEmbeddingFunction,
         )
+
         from app.core.config import settings
 
         return SentenceTransformerEmbeddingFunction(model_name=settings.embedding_model)
@@ -45,7 +46,7 @@ class EmbeddingService:
                 "vector": vec,
                 "model": "all-MiniLM-L6-v2",
             }
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.error("embed_text failed: %s", exc)
             return {"dimensions": 0, "vector": [], "error": str(exc)}
 
@@ -56,6 +57,6 @@ class EmbeddingService:
             return [[] for _ in texts]
         try:
             return list(ef(texts))
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.error("embed_batch failed: %s", exc)
             return [[] for _ in texts]

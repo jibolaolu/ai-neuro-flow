@@ -44,8 +44,9 @@ class LLMGateway:
         Retries up to _MAX_RETRIES on transient errors.
         Raises RuntimeError if all retries fail.
         """
-        from app.core.config import settings
         import anthropic
+
+        from app.core.config import settings
 
         _model = model or settings.anthropic_model
         api_key = settings.anthropic_api_key or None
@@ -81,7 +82,7 @@ class LLMGateway:
                     response.usage.output_tokens if response.usage else "?",
                 )
                 return text
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 last_exc = exc
                 logger.warning("LLM call attempt %d failed: %s", attempt + 1, exc)
                 if attempt < _MAX_RETRIES - 1:

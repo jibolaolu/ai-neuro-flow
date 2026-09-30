@@ -26,7 +26,8 @@ def _get_client():
     """Lazy-init ChromaDB persistent client."""
     try:
         import chromadb
-        from app.core.config import settings, _BACKEND_DIR
+
+        from app.core.config import _BACKEND_DIR, settings
 
         raw = (settings.chroma_persist_dir or "").strip()
         persist_path = (
@@ -51,11 +52,12 @@ def _collection(name: str):
         from chromadb.utils.embedding_functions import (
             SentenceTransformerEmbeddingFunction,
         )
+
         from app.core.config import settings
 
         ef = SentenceTransformerEmbeddingFunction(model_name=settings.embedding_model)
         return client.get_or_create_collection(name=name, embedding_function=ef)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001
         logger.error("ChromaDB collection(%s) failed: %s", name, exc)
         return None
 
@@ -80,7 +82,7 @@ class RAGEngine:
             meta = {"clinic_id": clinic_id, **(metadata or {})}
             col.upsert(ids=[doc_id], documents=[text], metadatas=[meta])
             return True
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.error("index_document failed [%s/%s]: %s", collection, doc_id, exc)
             return False
 
@@ -91,7 +93,7 @@ class RAGEngine:
         try:
             col.delete(ids=[doc_id])
             return True
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.error("delete_document failed [%s/%s]: %s", collection, doc_id, exc)
             return False
 
@@ -140,7 +142,7 @@ class RAGEngine:
                 )
             return {"query": query, "collection": collection, "matches": matches}
 
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.error("retrieve failed [%s]: %s", collection, exc)
             return {"query": query, "matches": [], "error": str(exc)}
 

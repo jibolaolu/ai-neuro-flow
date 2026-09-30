@@ -31,7 +31,7 @@ def get_db() -> Generator:
 
 def get_bearer_token(
     request: Request,
-    credentials: HTTPAuthorizationCredentials | None = Depends(security),
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),  # noqa: B008
 ) -> str:
     if credentials and credentials.scheme.lower() == "bearer":
         return credentials.credentials
@@ -46,8 +46,8 @@ def get_bearer_token(
 
 
 def get_current_user(
-    token: str = Depends(get_bearer_token),
-    db: Session = Depends(get_db),
+    token: str = Depends(get_bearer_token),  # noqa: B008
+    db: Session = Depends(get_db),  # noqa: B008
 ) -> UserRecord:
     try:
         claims, source = decode_token(token)
@@ -130,7 +130,7 @@ def _provision_auth0_user(db: Session, email: str, claims: dict) -> UserRecord:
 
 
 def require_roles(*allowed: str) -> Callable:
-    def _inner(user: UserRecord = Depends(get_current_user)) -> UserRecord:
+    def _inner(user: UserRecord = Depends(get_current_user)) -> UserRecord:  # noqa: B008
         if user.role in allowed:
             return user
         raise HTTPException(
@@ -143,7 +143,7 @@ def require_roles(*allowed: str) -> Callable:
 
 def get_api_key_clinic(
     request: Request,
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_db),  # noqa: B008
 ) -> str:
     """
     Dependency for API-key-authenticated endpoints.
@@ -180,7 +180,7 @@ def get_api_key_clinic(
         record.last_used_at = __import__("datetime").datetime.now(_tz.utc)
         db.add(record)
         db.commit()
-    except Exception:
+    except Exception:  # noqa: BLE001
         db.rollback()
 
     return record.clinic_id
