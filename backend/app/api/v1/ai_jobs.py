@@ -8,7 +8,7 @@ Platform/clinic admins can see all jobs for their clinic.
 from __future__ import annotations
 
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db
@@ -89,7 +89,7 @@ def get_job(
     return job
 
 
-@router.delete("/{job_id}", status_code=204)
+@router.delete("/{job_id}", status_code=204, response_class=Response)
 def cancel_job(
     job_id: str,
     db: Session = Depends(get_db),

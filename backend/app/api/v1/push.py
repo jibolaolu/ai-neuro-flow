@@ -10,7 +10,7 @@ import json
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -42,7 +42,7 @@ class PushPayload(BaseModel):
     tag: str | None = None
 
 
-@router.post("/subscribe", status_code=204)
+@router.post("/subscribe", status_code=204, response_class=Response)
 def subscribe(
     sub: PushSubscription,
     db: Session = Depends(get_db),
@@ -56,7 +56,7 @@ def subscribe(
     return None
 
 
-@router.delete("/unsubscribe", status_code=204)
+@router.delete("/unsubscribe", status_code=204, response_class=Response)
 def unsubscribe(
     sub: PushSubscription,
     db: Session = Depends(get_db),

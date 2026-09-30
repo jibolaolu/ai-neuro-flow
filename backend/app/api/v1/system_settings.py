@@ -2,7 +2,7 @@
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -71,7 +71,7 @@ def upsert_setting(
     return SettingOut.model_validate(row)
 
 
-@router.delete("/{key}", status_code=204)
+@router.delete("/{key}", status_code=204, response_class=Response)
 def delete_setting(
     key: str,
     db: Session = Depends(get_db),
